@@ -53,6 +53,28 @@ REVIEW_TEMPLATE = """
 </html>
 """
 
+SAVED_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workout Saved!</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="nav">
+        <a href="/">Log Another</a>
+        <a href="/search">Search Log</a>
+    </div>
+    <h1>Workout Saved!</h1>
+    <div class="status">
+        Your workout has been successfully logged.
+    </div>
+    <h2>What You Just Logged:</h2>
+    <pre>{{ pretty_json }}</pre>
+</body>
+</html>
+"""
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -64,7 +86,7 @@ HTML_TEMPLATE = """
     <div class="nav">
         <a href="/search">Search/Filter Log</a>
     </div>
-    <h1>Log Your Workout</h1>
+    <h1>GymLLM</h1>
     <form method="post" action="/review">
         <label for="workout">Workout:</label><br>
         <textarea id="workout" name="workout" rows="4" cols="50" placeholder="e.g. bench 185 for 5x5, lat pulldowns 3x10, etc."></textarea><br>
@@ -190,15 +212,12 @@ def confirm():
                 entry.get("notes", ""),
                 tags
             ])
-    return """
-    <!DOCTYPE html>
-    <html>
-    <body>
-        <h1>Workout Saved!</h1>
-        <a href="/">Log Another</a> | <a href="/search">Search Log</a>
-    </body>
-    </html>
-    """
+    # Show a nice summary after saving
+    pretty_json = json.dumps(parsed_data, indent=2)
+    return render_template_string(
+        SAVED_TEMPLATE,
+        pretty_json=pretty_json
+    )
 
 if __name__ == "__main__":
     # Start the Flask dev server on localhost:5000 with debug mode
