@@ -7,6 +7,7 @@ from datetime import datetime
 
 # Import parsing function and exercise list text from main.py
 from main import parse_workout_input, exerciseListText
+from main import find_best_match, tag_df
 from flask import Flask, request, render_template_string
 
 # Load your OpenAI API key from .env
@@ -69,15 +70,19 @@ def home():
                 if not file_exists:
                     writer.writerow(["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
                 today_str = datetime.now().strftime("%Y-%m-%d")
+                
                 for entry in parsed_data:
+                    # Normalize exercise name and get tags using your canonical list
+                    matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df)
+                    # Overwrite the name with the canonical one, and save tags
                     writer.writerow([
                         today_str,
-                        entry.get("exercise", ""),
+                        matched_name,
                         entry.get("weight", ""),
                         entry.get("sets", ""),
                         entry.get("reps", ""),
                         entry.get("notes", ""),
-                        ""  # tags will be added in a future step
+                        tags
                     ])
             log_status = f"Logged {len(parsed_data)} workout(s) to CSV."
         except Exception as e:
