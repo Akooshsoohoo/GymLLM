@@ -37,7 +37,20 @@ def find_best_match(raw_name, tag_df):
     for i, canonical in enumerate(tag_df["exercise"]):
         if raw in canonical or canonical in raw:
             return tag_df.iloc[i]["exercise"], tag_df.iloc[i]["tags"]
-    return raw_name, ""  # fallback
+    
+    # No match found — fallback to generating tags using LLM
+    tag_prompt = (
+        f"Assign descriptive muscle group and movement-type tags for the exercise: '{raw_name}'. "
+        "Respond only with a semicolon-separated list of lowercase tags. "
+        "Examples: 'back;pull;compound;lats', 'chest;push;isolation', 'quads;legs;compound;lower'."
+    )
+    tag_response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": tag_prompt}]
+    )
+    generated_tags = tag_response.choices[0].message.content.strip()
+    return raw_name, generated_tags
+
 
 tag_df = load_tagged_exercise_list()
 
