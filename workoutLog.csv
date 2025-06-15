@@ -1,9 +1,4 @@
-2025-06-02,weighted dips,50 lbs,3,"[8, 8, 6]",
-2025-06-02,seated cable flys,30 lbs,1,[8],
-2025-06-02,seated cable flys,35 lbs,2,[6],
-2025-06-02,machine tricep push downs,190 lbs,1,[9],
-2025-06-02,machine tricep push downs,197.5 lbs,1,[8],
-2025-06-02,overhead tricep cable extensions,40 lbs,3,"[8, 8, 8]",
-2025-06-02,overhead barbell shoulder press,65 lbs,2,[5],
-2025-06-02,machine lateral raises,57.5 lbs,3,"[7, 7, 7]",
-2025-06-14,flat dumbbell bench press,60,3,[],Assuming 3 sets were performed.
+date,exercise,weight,sets,reps,notes,tags
+2025-06-15,wide-grip lat pulldown,55 lbs,3,"[15, 12, 14]",,back;compound;lats;pull;upper
+2025-06-15,single arm cable row,70 lbs,3,"[12, 12, 12]",,back;pull;isolated;rowing
+2025-06-15,dumbbell bicep curl,8 lbs,3,"[12, 12, 12]",,biceps;isolation;pull;upper
