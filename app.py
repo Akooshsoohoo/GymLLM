@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import csv
 import json
+import pandas as pd 
 from datetime import datetime
 
 # Import parsing function and exercise list text from main.py
@@ -31,6 +32,9 @@ HTML_TEMPLATE = """
         <input type="submit" value="Submit">
     </form>
     {% if submitted %}
+    <br>
+    <a href="/search">Go to Search/Filter Log</a>
+    <br>
         <h2>You submitted:</h2>
         <pre>{{ workout_text }}</pre>
         {% if parsed_output %}
@@ -44,6 +48,46 @@ HTML_TEMPLATE = """
 </body>
 </html>
 """
+
+#html template for the searchUI tool
+SEARCH_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Workout Log</title>
+</head>
+<body>
+    <h1>Search Your Workout Log</h1>
+    <form method="get">
+        <label for="query">Search (name or tag):</label>
+        <input type="text" id="query" name="query" value="{{ query|default('') }}">
+        <input type="submit" value="Search">
+    </form>
+    <br>
+    <table border="1">
+        <tr>
+            <th>Date</th>
+            <th>Exercise</th>
+            <th>Weight</th>
+            <th>Sets</th>
+            <th>Reps</th>
+            <th>Notes</th>
+            <th>Tags</th>
+        </tr>
+        {% for row in rows %}
+        <tr>
+            {% for item in row %}
+            <td>{{ item }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    <br>
+    <a href="/">Back to Log Input</a>
+</body>
+</html>
+"""
+
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -97,6 +141,22 @@ def home():
         parsed_output=parsed_output,
         log_status=log_status
     )
+
+@app.route("/search", methods=["GET"])
+def search():
+    # Get the query from the search form
+    query = request.args.get("query", "").lower()
+    try:
+        df = pd.read_csv("workoutLog.csv")
+    except FileNotFoundError:
+        df = pd.DataFrame(columns=["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
+    # If a query is given, filter the DataFrame
+    if query:
+        df = df[df.apply(lambda row: query in row.to_string().lower(), axis=1)]
+    # Convert DataFrame to list of rows
+    rows = df.values.tolist()
+    return render_template_string(SEARCH_TEMPLATE, rows=rows, query=query)
+    
 
 if __name__ == "__main__":
     # Start the Flask dev server on localhost:5000 with debug mode
