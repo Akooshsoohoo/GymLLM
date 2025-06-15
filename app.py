@@ -6,7 +6,7 @@ import json
 import pandas as pd 
 from datetime import datetime
 
-# Import parsing function and exercise list text from main.py
+# Import parsing and matching functions from your main.py
 from main import parse_workout_input, exerciseListText
 from main import find_best_match, tag_df
 from flask import Flask, request, render_template_string
@@ -17,7 +17,50 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = Flask(__name__)
 
-# --------- HTML template for the simple web UI ----------
+# --------- HTML templates ----------
+
+REVIEW_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Review & Confirm Workout</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; background: #fafafa; }
+        .nav { margin-bottom: 15px; }
+        .nav a { color: #247ba0; text-decoration: none; margin-right: 18px; font-weight: bold; }
+        pre { background: #f4f4f4; padding: 8px; border-radius: 4px;}
+        .status { margin: 15px 0; padding: 10px; background: #ffe; border-left: 4px solid #fdcb6e;}
+        .actions { margin: 20px 0; }
+        textarea { width: 100%; font-size: 1.1em; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/">Log Workout</a>
+        <a href="/search">Search/Filter Log</a>
+    </div>
+    <h1>Review & Confirm Workout</h1>
+    {% if error %}
+        <div class="status">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/review">
+        <label for="workout">Edit your original workout prompt:</label><br>
+        <textarea id="workout" name="workout" rows="4" cols="50">{{ workout_text }}</textarea><br>
+        <input type="submit" value="Re-Parse & Review">
+    </form>
+    {% if pretty_json %}
+        <h2>LLM Parsed Output:</h2>
+        <pre>{{ pretty_json }}</pre>
+        <form method="post" action="/confirm">
+            <input type="hidden" name="workout_text" value="{{ workout_text }}">
+            <input type="hidden" name="parsed_output" value="{{ parsed_output }}">
+            <button type="submit">Approve & Save to Log</button>
+        </form>
+    {% endif %}
+</body>
+</html>
+"""
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -40,27 +83,15 @@ HTML_TEMPLATE = """
         <a href="/search">Search/Filter Log</a>
     </div>
     <h1>Log Your Workout</h1>
-    <form method="post">
+    <form method="post" action="/review">
         <label for="workout">Workout:</label><br>
         <textarea id="workout" name="workout" rows="4" cols="50" placeholder="e.g. bench 185 for 5x5, lat pulldowns 3x10, etc."></textarea><br>
         <input type="submit" value="Submit">
     </form>
-    {% if log_status %}
-        <div class="status">{{ log_status }}</div>
-    {% endif %}
-    {% if submitted %}
-        <h2>You submitted:</h2>
-        <pre>{{ workout_text }}</pre>
-        {% if parsed_output %}
-            <h2>LLM Output:</h2>
-            <pre>{{ parsed_output }}</pre>
-        {% endif %}
-    {% endif %}
 </body>
 </html>
 """
 
-#html template for the searchUI tool
 SEARCH_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -99,58 +130,17 @@ SEARCH_TEMPLATE = """
 </html>
 """
 
+# --------- Routes ---------
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
 def home():
-    parsed_output = None      # What the LLM returns
-    workout_text = ""         # What user entered
-    log_status = ""           # Message to show if we logged the workout
-
-    if request.method == "POST":
-        workout_text = request.form.get("workout", "")
-        # 1. Call your LLM parser from main.py
-        parsed_output = parse_workout_input(workout_text, client, exerciseListText)
-
-        # 2. Try to parse as JSON and log to CSV if possible
-        try:
-            parsed_data = json.loads(parsed_output)
-            # parsed_data should be a list of dicts
-
-            # Prepare CSV logging (append mode, create if not exists)
-            csv_path = "workoutLog.csv"
-            file_exists = os.path.exists(csv_path)
-            with open(csv_path, mode="a", newline="") as file:
-                writer = csv.writer(file)
-                # If new file, write header
-                if not file_exists:
-                    writer.writerow(["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
-                today_str = datetime.now().strftime("%Y-%m-%d")
-                
-                for entry in parsed_data:
-                    # Normalize exercise name and get tags using your canonical list
-                    matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df)
-                    # Overwrite the name with the canonical one, and save tags
-                    writer.writerow([
-                        today_str,
-                        matched_name,
-                        entry.get("weight", ""),
-                        entry.get("sets", ""),
-                        entry.get("reps", ""),
-                        entry.get("notes", ""),
-                        tags
-                    ])
-            log_status = f"Logged {len(parsed_data)} workout(s) to CSV."
-        except Exception as e:
-            # Not valid JSON—probably a clarifying question or error
-            log_status = "Not logged (clarifying question or invalid response)."
-
-    # Render the HTML, passing in all variables
+    # GET only: just show the input form, do not process/log anything here
     return render_template_string(
         HTML_TEMPLATE,
-        submitted=(request.method == "POST"),
-        workout_text=workout_text,
-        parsed_output=parsed_output,
-        log_status=log_status
+        submitted=False,
+        workout_text="",
+        parsed_output=None,
+        log_status=""
     )
 
 @app.route("/search", methods=["GET"])
@@ -167,7 +157,65 @@ def search():
     # Convert DataFrame to list of rows
     rows = df.values.tolist()
     return render_template_string(SEARCH_TEMPLATE, rows=rows, query=query)
-    
+
+@app.route("/review", methods=["POST"])
+def review():
+    # Get the raw prompt—either from the first input or user edits
+    workout_text = request.form.get("workout", "")
+    # Always run LLM parse on current input
+    parsed_output = parse_workout_input(workout_text, client, exerciseListText)
+    # Try to parse as JSON
+    try:
+        parsed_data = json.loads(parsed_output)
+        pretty_json = json.dumps(parsed_data, indent=2)
+        error = None
+    except Exception:
+        pretty_json = None
+        error = "Could not parse the workout. LLM responded with a question or invalid format."
+    return render_template_string(REVIEW_TEMPLATE,
+        workout_text=workout_text,
+        pretty_json=pretty_json,
+        error=error,
+        parsed_output=parsed_output
+    )
+
+@app.route("/confirm", methods=["POST"])
+def confirm():
+    workout_text = request.form.get("workout_text", "")
+    parsed_output = request.form.get("parsed_output", "")
+    # De-serialize safely (just once)
+    try:
+        parsed_data = json.loads(parsed_output)
+    except Exception as e:
+        return f"Failed to parse data for saving: {e}", 400
+    # Write to CSV (using your canonical name and tag logic)
+    csv_path = "workoutLog.csv"
+    file_exists = os.path.exists(csv_path)
+    with open(csv_path, mode="a", newline="") as file:
+        writer = csv.writer(file)
+        if not file_exists:
+            writer.writerow(["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        for entry in parsed_data:
+            matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df)
+            writer.writerow([
+                today_str,
+                matched_name,
+                entry.get("weight", ""),
+                entry.get("sets", ""),
+                entry.get("reps", ""),
+                entry.get("notes", ""),
+                tags
+            ])
+    return """
+    <!DOCTYPE html>
+    <html>
+    <body>
+        <h1>Workout Saved!</h1>
+        <a href="/">Log Another</a> | <a href="/search">Search Log</a>
+    </body>
+    </html>
+    """
 
 if __name__ == "__main__":
     # Start the Flask dev server on localhost:5000 with debug mode
