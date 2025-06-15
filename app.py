@@ -23,16 +23,8 @@ REVIEW_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <title>Review & Confirm Workout</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; background: #fafafa; }
-        .nav { margin-bottom: 15px; }
-        .nav a { color: #247ba0; text-decoration: none; margin-right: 18px; font-weight: bold; }
-        pre { background: #f4f4f4; padding: 8px; border-radius: 4px;}
-        .status { margin: 15px 0; padding: 10px; background: #ffe; border-left: 4px solid #fdcb6e;}
-        .actions { margin: 20px 0; }
-        textarea { width: 100%; font-size: 1.1em; }
-    </style>
 </head>
 <body>
     <div class="nav">
@@ -65,18 +57,8 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <title>GymLLM Workout Logger</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; background: #fafafa; }
-        h1 { color: #2d4059; }
-        form { margin-bottom: 20px; }
-        textarea { width: 100%; font-size: 1.1em; }
-        input[type="submit"] { padding: 6px 18px; background: #247ba0; color: white; border: none; border-radius: 4px; }
-        .nav { margin-bottom: 15px; }
-        .nav a { color: #247ba0; text-decoration: none; margin-right: 18px; font-weight: bold; }
-        .status { margin: 15px 0; padding: 10px; background: #ffe; border-left: 4px solid #fdcb6e;}
-        pre { background: #f4f4f4; padding: 8px; border-radius: 4px;}
-    </style>
 </head>
 <body>
     <div class="nav">
@@ -96,6 +78,7 @@ SEARCH_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <title>Search Workout Log</title>
 </head>
 <body>
