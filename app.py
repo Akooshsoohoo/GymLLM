@@ -102,17 +102,62 @@ SEARCH_TEMPLATE = """
 <head>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <title>Search Workout Log</title>
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    th, td {
+        border: 1px solid #bbb;
+        padding: 8px;
+        text-align: left;
+        font-size: 1rem;
+    }
+    th {
+        background: #e0e9f3;
+        font-weight: bold;
+    }
+    input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 1rem;
+        padding: 5px 4px;
+        border: 1px solid #d2d2d2;
+        border-radius: 5px;
+        background: #f9f9fc;
+    }
+    input[type="submit"], button {
+        margin-top: 10px;
+        padding: 8px 18px;
+        font-size: 1rem;
+        background: #2288c7;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    input[type="submit"]:hover, button:hover {
+        background: #1e6ea3;
+    }
+    body {
+        font-family: "Segoe UI", Arial, sans-serif;
+    }
+    .nav, a {
+        font-size: 1rem;
+    }
+</style>
 </head>
 <body>
     <h1>Search Your Workout Log</h1>
-    <form method="get">
+    <form method="get" style="margin-bottom: 16px;">
         <label for="query">Search (name or tag):</label>
-        <input type="text" id="query" name="query" value="{{ query|default('') }}">
+        <input type="text" id="query" name="query" value="{{ query|default('') }}" style="width:60%;">
         <input type="submit" value="Search">
     </form>
-    <br>
     <form method="post" action="/search">
-        <table border="1">
+        <table>
             <tr>
                 <th>Date</th>
                 <th>Exercise</th>
@@ -132,7 +177,6 @@ SEARCH_TEMPLATE = """
             </tr>
             {% endfor %}
         </table>
-        <br>
         <input type="hidden" name="num_rows" value="{{ rows|length }}">
         <input type="hidden" name="num_cols" value="{{ rows[0]|length if rows else 7 }}">
         <input type="submit" value="Save Changes">
@@ -142,6 +186,7 @@ SEARCH_TEMPLATE = """
 </body>
 </html>
 """
+
 
 
 # --------- Routes ---------
