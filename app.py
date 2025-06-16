@@ -101,7 +101,7 @@ SEARCH_TEMPLATE = """
 <html>
 <head>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <title>Search Workout Log</title>
+<title>Search Workout Log</title>
 </head>
 <body>
     <h1>Search Your Workout Log</h1>
@@ -111,29 +111,38 @@ SEARCH_TEMPLATE = """
         <input type="submit" value="Search">
     </form>
     <br>
-    <table border="1">
-        <tr>
-            <th>Date</th>
-            <th>Exercise</th>
-            <th>Weight</th>
-            <th>Sets</th>
-            <th>Reps</th>
-            <th>Notes</th>
-            <th>Tags</th>
-        </tr>
-        {% for row in rows %}
-        <tr>
-            {% for item in row %}
-            <td>{{ item }}</td>
+    <form method="post" action="/search">
+        <table border="1">
+            <tr>
+                <th>Date</th>
+                <th>Exercise</th>
+                <th>Weight</th>
+                <th>Sets</th>
+                <th>Reps</th>
+                <th>Notes</th>
+                <th>Tags</th>
+            </tr>
+            {% for i in range(rows|length) %}
+            <tr>
+                {% for j in range(rows[i]|length) %}
+                <td>
+                    <input type="text" name="cell-{{i}}-{{j}}" value="{{ rows[i][j] }}">
+                </td>
+                {% endfor %}
+            </tr>
             {% endfor %}
-        </tr>
-        {% endfor %}
-    </table>
+        </table>
+        <br>
+        <input type="hidden" name="num_rows" value="{{ rows|length }}">
+        <input type="hidden" name="num_cols" value="{{ rows[0]|length if rows else 7 }}">
+        <input type="submit" value="Save Changes">
+    </form>
     <br>
     <a href="/">Back to Log Input</a>
 </body>
 </html>
 """
+
 
 # --------- Routes ---------
 
@@ -148,18 +157,31 @@ def home():
         log_status=""
     )
 
-@app.route("/search", methods=["GET"])
+@app.route("/search", methods=["GET", "POST"])
 def search():
-    # Get the query from the search form
-    query = request.args.get("query", "").lower()
+    query = request.values.get("query", "").lower()
     try:
         df = pd.read_csv("workoutLog.csv")
     except FileNotFoundError:
         df = pd.DataFrame(columns=["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
-    # If a query is given, filter the DataFrame
+
+    if request.method == "POST":
+        # Update DataFrame with posted cell data
+        num_rows = int(request.form.get("num_rows", 0))
+        num_cols = int(request.form.get("num_cols", 7))
+        updated_rows = []
+        for i in range(num_rows):
+            row = []
+            for j in range(num_cols):
+                val = request.form.get(f"cell-{i}-{j}", "")
+                row.append(val)
+            updated_rows.append(row)
+        df = pd.DataFrame(updated_rows, columns=df.columns if not df.empty else ["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
+        df.to_csv("workoutLog.csv", index=False)
+
+    # Filter for search as usual (after possible update)
     if query:
         df = df[df.apply(lambda row: query in row.to_string().lower(), axis=1)]
-    # Convert DataFrame to list of rows
     rows = df.values.tolist()
     return render_template_string(SEARCH_TEMPLATE, rows=rows, query=query)
 
