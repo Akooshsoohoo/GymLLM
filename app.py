@@ -5,6 +5,7 @@ import csv
 import json
 import pandas as pd 
 from datetime import datetime
+from flask import redirect, url_for
 
 # Import parsing and matching functions from your main.py
 from main import parse_workout_input, exerciseListText
@@ -183,11 +184,44 @@ SEARCH_TEMPLATE = """
     </form>
     <br>
     <a href="/">Back to Log Input</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let changed = false;
+            const inputs = document.querySelectorAll("form[action='/search'] input[type='text']");
+            const saveButton = document.querySelector("form[action='/search'] input[type='submit']");
+            const form = document.querySelector("form[action='/search']");
+
+            // Hide Save button initially
+            saveButton.style.display = "none";
+
+            // If anything is typed, mark as changed
+            inputs.forEach(input => {
+                input.addEventListener("input", () => {
+                    if (!changed) {
+                        changed = true;
+                        saveButton.style.display = "inline-block";
+                    }
+                });
+            });
+
+            // Cancel warning on form submission
+            form.addEventListener("submit", () => {
+                changed = false;
+            });
+
+            // Trigger warning if user tries to leave with unsaved edits
+            window.addEventListener("beforeunload", function (e) {
+                if (changed) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
 """
-
-
 
 # --------- Routes ---------
 
@@ -205,6 +239,7 @@ def home():
 @app.route("/search", methods=["GET", "POST"])
 def search():
     query = request.values.get("query", "").lower()
+
     try:
         df = pd.read_csv("workoutLog.csv")
     except FileNotFoundError:
@@ -215,18 +250,24 @@ def search():
         num_rows = int(request.form.get("num_rows", 0))
         num_cols = int(request.form.get("num_cols", 7))
         updated_rows = []
+
         for i in range(num_rows):
             row = []
             for j in range(num_cols):
                 val = request.form.get(f"cell-{i}-{j}", "")
                 row.append(val)
             updated_rows.append(row)
+
         df = pd.DataFrame(updated_rows, columns=df.columns if not df.empty else ["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
         df.to_csv("workoutLog.csv", index=False)
 
-    # Filter for search as usual (after possible update)
+        # 🔁 Redirect to avoid form resubmission on reload
+        return redirect(url_for("search", query=query))
+
+    # Handle search filter (for both GET and after redirect)
     if query:
         df = df[df.apply(lambda row: query in row.to_string().lower(), axis=1)]
+
     rows = df.values.tolist()
     return render_template_string(SEARCH_TEMPLATE, rows=rows, query=query)
 
