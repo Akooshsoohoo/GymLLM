@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: gymllm
+    env: python
+    buildCommand: "pip install --no-build-isolation -r requirements.txt"
+    startCommand: "python app.py"
