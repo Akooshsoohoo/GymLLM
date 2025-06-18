@@ -1,22 +1,40 @@
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+load_dotenv()
+
+from flask import Flask, redirect, url_for, session, request, render_template_string
+from flask_dance.contrib.google import make_google_blueprint, google
+
 import csv
 import json
-import pandas as pd 
+import pandas as pd
 from datetime import datetime
-from flask import redirect, url_for
+from openai import OpenAI
 
-# Import parsing and matching functions from your main.py
-from main import parse_workout_input, exerciseListText
-from main import find_best_match, tag_df
-from flask import Flask, request, render_template_string
+# Import your parsing and matching functions
+from main import parse_workout_input, exerciseListText, find_best_match, tag_df
 
-# Load your OpenAI API key from .env
-load_dotenv()
+# Set up OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# --- BEGIN CRUCIAL OAUTH FIXES --- #
+# The .env should use GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET exactly as in your Google Cloud credentials.
+# Also, use the correct redirect_url path: '/login/google/authorized'
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")  # Needed for sessions
+
+google_bp = make_google_blueprint(
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),           # <-- match .env key
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),   # <-- match .env key
+    scope=[
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "openid"
+    ],
+    redirect_url="/login/google/authorized"            # <-- must match Google Cloud Console
+)
+app.register_blueprint(google_bp, url_prefix="/login")
+# --- END CRUCIAL OAUTH FIXES --- #
 
 # --------- HTML templates ----------
 
@@ -225,6 +243,15 @@ SEARCH_TEMPLATE = """
 
 # --------- Routes ---------
 
+@app.route("/login")
+def login():
+    if not google.authorized:
+        return redirect(url_for("google.login"))
+    resp = google.get("/oauth2/v2/userinfo")
+    assert resp.ok, resp.text
+    email = resp.json()["email"]
+    return f"Logged in as: {email}"
+
 @app.route("/", methods=["GET"])
 def home():
     # GET only: just show the input form, do not process/log anything here
@@ -330,3 +357,6 @@ def confirm():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
+
+app.debug = True
