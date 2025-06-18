@@ -269,6 +269,11 @@ def login():
     email = resp.json()["email"]
     return f"Logged in as: {email}"
 
+@app.route("/logout")
+def logout():
+    session.clear()  # This logs the user out by clearing all session data
+    return redirect(url_for("home"))
+
 @app.route("/", methods=["GET"])
 def home():
     # GET only: just show the input form, do not process/log anything here
