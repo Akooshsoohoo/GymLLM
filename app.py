@@ -246,18 +246,26 @@ SEARCH_TEMPLATE = """
 
 @app.route("/login")
 def login():
-    # --- FIX: cast expires_in to int if Google gave us a float ----
-    token = session.get("google_oauth_token")
-    if token and isinstance(token.get("expires_in"), float):
-        token["expires_in"] = int(token["expires_in"])
-        session["google_oauth_token"] = token          # save back
-        google_bp.session.token = token                # update live session
+    # fetch whatever token Flask-Dance already saved
+    token = google_bp.token          # uses blueprint storage under the hood
 
-    if not google.authorized:
+    if token:
+        exp = token.get("expires_in")
+        if exp is not None and not isinstance(exp, int):
+            try:
+                token["expires_in"] = int(float(exp))   # works for "2393.9" or 2393.9
+            except ValueError:
+                token["expires_in"] = int(str(exp).split(".")[0] or 0)
+            # write back to *all* places Flask-Dance looks
+            google_bp.token = token                     # storage
+            google_bp.session.token = token             # requests-oauthlib session
+            session[f"{google_bp.name}_oauth_token"] = token
+
+    if not google.authorized:               # may redirect to Google
         return redirect(url_for("google.login"))
 
-    resp = google.get("/oauth2/v2/userinfo")
-    resp.raise_for_status()           # nicer error if Google errors
+    resp = google.get("/oauth2/v2/userinfo")  
+    resp.raise_for_status()
     email = resp.json()["email"]
     return f"Logged in as: {email}"
 
