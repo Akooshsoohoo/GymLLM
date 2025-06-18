@@ -243,8 +243,6 @@ SEARCH_TEMPLATE = """
 
 # --------- Routes ---------
 
-#TEMP
-print("google.token =", google.token)
 
 @app.route("/login")
 def login():
