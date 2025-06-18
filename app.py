@@ -246,11 +246,18 @@ SEARCH_TEMPLATE = """
 
 @app.route("/login")
 def login():
-    print("google.token =", google.token)
+    # --- FIX: cast expires_in to int if Google gave us a float ----
+    token = session.get("google_oauth_token")
+    if token and isinstance(token.get("expires_in"), float):
+        token["expires_in"] = int(token["expires_in"])
+        session["google_oauth_token"] = token          # save back
+        google_bp.session.token = token                # update live session
+
     if not google.authorized:
         return redirect(url_for("google.login"))
+
     resp = google.get("/oauth2/v2/userinfo")
-    assert resp.ok, resp.text
+    resp.raise_for_status()           # nicer error if Google errors
     email = resp.json()["email"]
     return f"Logged in as: {email}"
 
