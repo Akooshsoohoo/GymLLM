@@ -248,6 +248,7 @@ print("google.token =", google.token)
 
 @app.route("/login")
 def login():
+    print("google.token =", google.token)
     if not google.authorized:
         return redirect(url_for("google.login"))
     resp = google.get("/oauth2/v2/userinfo")
