@@ -17,11 +17,9 @@ from main import parse_workout_input, exerciseListText, find_best_match, tag_df
 # Set up OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# --- BEGIN CRUCIAL OAUTH FIXES --- #
-# The .env should use GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET exactly as in your Google Cloud credentials.
-# Also, use the correct redirect_url path: '/login/google/authorized'
+# --- BEGIN OAUTH SETUP -------------------------------------------------
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")  # Needed for sessions
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")
 
 google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
@@ -30,10 +28,13 @@ google_bp = make_google_blueprint(
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
         "openid",
-    ]
+    ],
+    # After Google finishes, jump to /oauth_success (defined just below)
+    redirect_to="oauth_success",
 )
 app.register_blueprint(google_bp, url_prefix="/login")
-# --- END CRUCIAL OAUTH FIXES --- #
+# --- END  OAUTH SETUP --------------------------------------------------
+
 
 # --------- HTML templates ----------
 
@@ -261,37 +262,25 @@ SEARCH_TEMPLATE = """
 
 @app.route("/login")
 def login():
-    # fetch whatever token Flask-Dance already saved
-    token = google_bp.token          # uses blueprint storage under the hood
-
-    if token:
-        exp = token.get("expires_in")
-        if exp is not None and not isinstance(exp, int):
-            try:
-                token["expires_in"] = int(float(exp))   # works for "2393.9" or 2393.9
-            except ValueError:
-                token["expires_in"] = int(str(exp).split(".")[0] or 0)
-            # write back to *all* places Flask-Dance looks
-            google_bp.token = token                     # storage
-            google_bp.session.token = token             # requests-oauthlib session
-            session[f"{google_bp.name}_oauth_token"] = token
-
-    if not google.authorized:               # may redirect to Google
-        return redirect(url_for("google.login"))
-
-    resp = google.get("/oauth2/v2/userinfo")  
-    resp.raise_for_status()
-    email = resp.json()["email"]
-    return f"Logged in as: {email}"
+    if google.authorized:
+        return redirect(url_for("home"))
+    return redirect(url_for("google.login"))
 
 @app.route("/logout")
 def logout():
-    session.clear()  # This logs the user out by clearing all session data
+    session.clear()
+    return redirect(url_for("home"))
+
+@app.route("/oauth_success")
+def oauth_success():
+    """
+    User lands here immediately after Google OAuth succeeds.
+    We don't need to do anything—just send them to the home page.
+    """
     return redirect(url_for("home"))
 
 @app.route("/", methods=["GET"])
 def home():
-    # See if user is logged in
     user_email = None
     if google.authorized:
         try:
@@ -308,7 +297,6 @@ def home():
         log_status="",
         user_email=user_email
     )
-
 
 @app.route("/search", methods=["GET", "POST"])
 def search():
