@@ -99,9 +99,24 @@ HTML_TEMPLATE = """
 <html>
 <head>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <title>GymLLM Workout Logger</title>
+<title>GymLLM Workout Logger</title>
+<style>
+    .topright {
+        position: absolute;
+        top: 16px;
+        right: 24px;
+    }
+</style>
 </head>
 <body>
+    <div class="topright">
+        {% if user_email %}
+            <span style="margin-right:10px;">{{ user_email }}</span>
+            <a href="/logout">Logout</a>
+        {% else %}
+            <a href="/login">Create Account / Login</a>
+        {% endif %}
+    </div>
     <div class="nav">
         <a href="/search">Search/Filter Log</a>
     </div>
@@ -114,6 +129,7 @@ HTML_TEMPLATE = """
 </body>
 </html>
 """
+
 
 SEARCH_TEMPLATE = """
 <!DOCTYPE html>
@@ -276,14 +292,24 @@ def logout():
 
 @app.route("/", methods=["GET"])
 def home():
-    # GET only: just show the input form, do not process/log anything here
+    # See if user is logged in
+    user_email = None
+    if google.authorized:
+        try:
+            resp = google.get("/oauth2/v2/userinfo")
+            if resp.ok:
+                user_email = resp.json().get("email")
+        except Exception:
+            pass
     return render_template_string(
         HTML_TEMPLATE,
         submitted=False,
         workout_text="",
         parsed_output=None,
-        log_status=""
+        log_status="",
+        user_email=user_email
     )
+
 
 @app.route("/search", methods=["GET", "POST"])
 def search():
