@@ -24,14 +24,13 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")  # Needed for sessions
 
 google_bp = make_google_blueprint(
-    client_id=os.getenv("GOOGLE_CLIENT_ID"),           # <-- match .env key
-    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),   # <-- match .env key
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
     scope=[
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
-        "openid"
-    ],
-    redirect_url="/login/google/authorized"            # <-- must match Google Cloud Console
+        "openid",
+    ]
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 # --- END CRUCIAL OAUTH FIXES --- #
