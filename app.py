@@ -260,6 +260,19 @@ SEARCH_TEMPLATE = """
 # --------- Routes ---------
 
 
+@app.before_request
+def _fix_google_token_expires():
+    token = google_bp.token
+    if token and "expires_in" in token and not isinstance(token["expires_in"], int):
+        try:
+            token["expires_in"] = int(float(token["expires_in"]))
+        except (ValueError, TypeError):
+            token["expires_in"] = 0          # force refresh next time
+        # write back everywhere Flask-Dance looks
+        google_bp.token = token
+        google_bp.session.token = token
+        session[f"{google_bp.name}_oauth_token"] = token
+
 @app.route("/login")
 def login():
     if google.authorized:
