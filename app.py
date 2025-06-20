@@ -5,6 +5,8 @@ load_dotenv()
 from flask import Flask, redirect, url_for, session, request, render_template_string
 from flask_dance.contrib.google import make_google_blueprint, google
 
+from flask_sqlalchemy import SQLAlchemy
+
 import csv
 import json
 import pandas as pd
@@ -20,6 +22,25 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # --- BEGIN OAUTH SETUP -------------------------------------------------
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")
+
+
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+class Workout(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_email = db.Column(db.String, nullable=False)
+    date = db.Column(db.String, nullable=False)
+    exercise = db.Column(db.String, nullable=False)
+    weight = db.Column(db.String, nullable=True)
+    sets = db.Column(db.String, nullable=True)
+    reps = db.Column(db.String, nullable=True)
+    notes = db.Column(db.String, nullable=True)
+    tags = db.Column(db.String, nullable=True)
+
+
 
 google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
