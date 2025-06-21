@@ -2,30 +2,25 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-from flask import (
-    Flask, redirect, url_for, session,
-    request, render_template_string
-)
+from flask import Flask, redirect, url_for, session, request, render_template_string
 from flask_dance.contrib.google import make_google_blueprint, google
 from flask_sqlalchemy import SQLAlchemy
 
+import csv       # still imported for other modules—safe to keep
 import json
+import pandas as pd
 from datetime import datetime
 from openai import OpenAI
 
-# ---------- LLM helpers ----------
-from main import (
-    parse_workout_input,
-    exerciseListText,
-    find_best_match,
-    tag_df,
-)
+# Import your parsing and matching functions
+from main import parse_workout_input, exerciseListText, find_best_match, tag_df
 
+# Set up OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# ---------- Flask setup ----------
+# --- BEGIN OAUTH SETUP -------------------------------------------------
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersekrit")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -37,14 +32,13 @@ class Workout(db.Model):
     user_email = db.Column(db.String, nullable=False)
     date = db.Column(db.String, nullable=False)
     exercise = db.Column(db.String, nullable=False)
-    weight = db.Column(db.String)
-    sets = db.Column(db.String)
-    reps = db.Column(db.String)
-    notes = db.Column(db.String)
-    tags = db.Column(db.String)
+    weight = db.Column(db.String, nullable=True)
+    sets = db.Column(db.String, nullable=True)
+    reps = db.Column(db.String, nullable=True)
+    notes = db.Column(db.String, nullable=True)
+    tags = db.Column(db.String, nullable=True)
 
 
-# ---------- Google OAuth ----------
 google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
@@ -56,23 +50,38 @@ google_bp = make_google_blueprint(
     redirect_to="oauth_success",
 )
 app.register_blueprint(google_bp, url_prefix="/login")
+# --- END  OAUTH SETUP --------------------------------------------------
 
-# ---------- HTML templates (unchanged except extra Delete col & hidden id) ----------
-# … [REVIEW_TEMPLATE, SAVED_TEMPLATE, HTML_TEMPLATE unchanged] …
-# … SEARCH_TEMPLATE includes a final <th>Delete</th> column, a checkbox,
-#   and now also a hidden input 'id-{{i}}' per row …
 
-REVIEW_TEMPLATE = """ (unchanged, omitted for brevity) """
-SAVED_TEMPLATE  = """ (unchanged, omitted for brevity) """
-HTML_TEMPLATE   = """ (unchanged, omitted for brevity) """
+# --------- HTML templates ----------
 
+REVIEW_TEMPLATE = """ (unchanged) """
+
+SAVED_TEMPLATE = """ (unchanged) """
+
+HTML_TEMPLATE = """ (unchanged) """
+
+# --- SEARCH_TEMPLATE (only the <thead>/<tbody> loops changed) ----------
 SEARCH_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <title>Search Workout Log</title>
-<style> /* … styles unchanged … */ </style>
+<style>
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th,td { border:1px solid #bbb; padding:8px; text-align:left; font-size:1rem; }
+    th     { background:#e0e9f3; font-weight:bold; }
+    input[type="text"] { width:100%; box-sizing:border-box; font-size:1rem;
+                         padding:5px 4px; border:1px solid #d2d2d2; border-radius:5px;
+                         background:#f9f9fc; }
+    input[type="submit"],button { margin-top:10px; padding:8px 18px; font-size:1rem;
+                                  background:#2288c7; color:#fff; border:none; border-radius:6px;
+                                  cursor:pointer; transition:background .15s; }
+    input[type="submit"]:hover,button:hover { background:#1e6ea3; }
+    body { font-family:"Segoe UI",Arial,sans-serif; }
+    .nav,a { font-size:1rem; }
+</style>
 </head>
 <body>
     <h1>Search Your Workout Log</h1>
@@ -91,62 +100,66 @@ SEARCH_TEMPLATE = """
             </tr>
             {% for i in range(rows|length) %}
             <tr>
-                {% for j in range(7) %}
-                <td>
-                    <input type="text"
-                           name="cell-{{i}}-{{j}}"
-                           value="{{ rows[i][j] }}">
-                </td>
+                {% for j in range(7) %}  {# only show the first 7 visible cols #}
+                <td><input type="text" name="cell-{{i}}-{{j}}"
+                           value="{{ rows[i][j] }}"></td>
                 {% endfor %}
                 <td style="text-align:center;">
                     <input type="checkbox" name="delete-{{i}}">
-                    <input type="hidden" name="id-{{i}}" value="{{ rows[i][7] }}">
                 </td>
             </tr>
+            <!-- row ID hidden so we can edit/delete -->
+            <input type="hidden" name="id-{{i}}" value="{{ rows[i][7] }}">
             {% endfor %}
         </table>
+
         <input type="hidden" name="num_rows" value="{{ rows|length }}">
+        <input type="hidden" name="num_cols" value="7">
         <input type="submit" value="Save Changes">
     </form>
-    <br><a href="/">Back to Log Input</a>
+    <br>
+    <a href="/">Back to Log Input</a>
 
     <script>
-        // simple unsaved-changes warning (unchanged) …
+    document.addEventListener("DOMContentLoaded", () => {
+        let changed=false;
+        const inputs=document.querySelectorAll("form[action='/search'] input[type='text']");
+        const saveBtn=document.querySelector("form[action='/search'] input[type='submit']");
+        const form=document.querySelector("form[action='/search']");
+        saveBtn.style.display="none";
+        inputs.forEach(inp=>inp.addEventListener("input",()=>{
+            if(!changed){ changed=true; saveBtn.style.display="inline-block"; }
+        }));
+        form.addEventListener("submit",()=>changed=false);
+        window.addEventListener("beforeunload",e=>{
+            if(changed){ e.preventDefault(); e.returnValue=''; }
+        });
+    });
     </script>
 </body>
 </html>
 """
-
-# ---------- Helpers ----------
-def _current_user_email() -> str | None:
-    if not google.authorized:
-        return None
-    try:
-        resp = google.get("/oauth2/v2/userinfo")
-        if resp.ok:
-            return resp.json().get("email")
-    except Exception:
-        pass
-    return None
+# ----------------------------------------------------------------------
 
 
-# ---------- Routes ----------
+# --------- Routes ---------
+
 @app.before_request
 def _fix_google_token_expires():
-    tok = google_bp.token
-    if tok and "expires_in" in tok and not isinstance(tok["expires_in"], int):
+    token = google_bp.token
+    if token and "expires_in" in token and not isinstance(token["expires_in"], int):
         try:
-            tok["expires_in"] = int(float(tok["expires_in"]))
-        except Exception:
-            tok["expires_in"] = 0
-        google_bp.token = tok
-        google_bp.session.token = tok
-        session[f"{google_bp.name}_oauth_token"] = tok
+            token["expires_in"] = int(float(token["expires_in"]))
+        except (ValueError, TypeError):
+            token["expires_in"] = 0
+        google_bp.token = token
+        google_bp.session.token = token
+        session[f"{google_bp.name}_oauth_token"] = token
 
 
 @app.route("/login")
 def login():
-    return redirect(url_for("google.login"))
+    return redirect(url_for("home")) if google.authorized else redirect(url_for("google.login"))
 
 
 @app.route("/logout")
@@ -162,65 +175,75 @@ def oauth_success():
 
 @app.route("/", methods=["GET"])
 def home():
+    user_email = None
+    if google.authorized:
+        try:
+            r = google.get("/oauth2/v2/userinfo")
+            if r.ok:
+                user_email = r.json().get("email")
+        except Exception:
+            pass
     return render_template_string(
         HTML_TEMPLATE,
-        user_email=_current_user_email()
+        user_email=user_email,
+        submitted=False, workout_text="", parsed_output=None, log_status=""
     )
 
 
 @app.route("/search", methods=["GET", "POST"])
 def search():
-    user = _current_user_email()
-    if not user:
+    # --- who is logged in? --------------------------------------------
+    user_email = None
+    if google.authorized:
+        try:
+            r = google.get("/oauth2/v2/userinfo")
+            if r.ok:
+                user_email = r.json().get("email")
+        except Exception:
+            pass
+    if not user_email:
         return redirect(url_for("login"))
 
-    # -------- handle POST (save edits / deletes) --------
+    # --- UPDATE / DELETE submitted rows -------------------------------
     if request.method == "POST":
         num_rows = int(request.form.get("num_rows", 0))
 
         for i in range(num_rows):
-            row_id   = int(request.form.get(f"id-{i}", 0))
-            to_delete = request.form.get(f"delete-{i}") is not None
-            workout = Workout.query.get(row_id)
+            row_id = request.form.get(f"id-{i}")
+            if not row_id:
+                continue
+            workout = Workout.query.filter_by(id=row_id, user_email=user_email).first()
+            if not workout:
+                continue
 
-            if not workout or workout.user_email != user:
-                continue  # skip anything weird
-
-            if to_delete:
+            # delete?
+            if request.form.get(f"delete-{i}"):
                 db.session.delete(workout)
                 continue
 
-            # update fields
-            workout.date     = request.form.get(f"cell-{i}-0", workout.date)
-            workout.exercise = request.form.get(f"cell-{i}-1", workout.exercise)
-            workout.weight   = request.form.get(f"cell-{i}-2", workout.weight)
-            workout.sets     = request.form.get(f"cell-{i}-3", workout.sets)
-            workout.reps     = request.form.get(f"cell-{i}-4", workout.reps)
-            workout.notes    = request.form.get(f"cell-{i}-5", workout.notes)
-            workout.tags     = request.form.get(f"cell-{i}-6", workout.tags)
-
+            # otherwise, update seven editable fields
+            workout.date     = request.form.get(f"cell-{i}-0", "")
+            workout.exercise = request.form.get(f"cell-{i}-1", "")
+            workout.weight   = request.form.get(f"cell-{i}-2", "")
+            workout.sets     = request.form.get(f"cell-{i}-3", "")
+            workout.reps     = request.form.get(f"cell-{i}-4", "")
+            workout.notes    = request.form.get(f"cell-{i}-5", "")
+            workout.tags     = request.form.get(f"cell-{i}-6", "")
         db.session.commit()
+        # PRG pattern – redirect so refresh won’t resubmit
         return redirect(url_for("search", query=request.args.get("query", "")))
 
-    # -------- handle GET (load/search) --------
-    query = request.args.get("query", "").lower()
+    # --- BUILD table for GET (and after redirect) ---------------------
+    query = request.values.get("query", "").lower()
+    workouts = Workout.query.filter_by(user_email=user_email).all()
 
-    q = Workout.query.filter_by(user_email=user)
     if query:
-        q = q.filter(
-            (Workout.exercise.ilike(f"%{query}%"))
-            | (Workout.tags.ilike(f"%{query}%"))
-            | (Workout.notes.ilike(f"%{query}%"))
-        )
-    workouts = q.order_by(Workout.date.desc()).all()
+        workouts = [w for w in workouts
+                    if query in f"{w.date} {w.exercise} {w.tags}".lower()]
 
-    rows = [
-        [
-            w.date, w.exercise, w.weight, w.sets,
-            w.reps, w.notes, w.tags, w.id
-        ]
-        for w in workouts
-    ]
+    rows = [[w.date, w.exercise, w.weight, w.sets,
+             w.reps, w.notes, w.tags, w.id] for w in workouts]
+
     return render_template_string(SEARCH_TEMPLATE, rows=rows, query=query)
 
 
@@ -232,13 +255,10 @@ def review():
         parsed_data = json.loads(parsed_output)
         pretty_json, error = json.dumps(parsed_data, indent=2), None
     except Exception:
-        pretty_json, error = None, "Could not parse the workout."
-    return render_template_string(
-        REVIEW_TEMPLATE,
-        workout_text=workout_text,
-        pretty_json=pretty_json,
-        error=error,
-        parsed_output=parsed_output,
+        pretty_json, error = None, "Could not parse the workout. LLM responded with a question or invalid format."
+    return render_template_string(REVIEW_TEMPLATE,
+        workout_text=workout_text, pretty_json=pretty_json,
+        error=error, parsed_output=parsed_output
     )
 
 
@@ -248,35 +268,37 @@ def confirm():
     try:
         parsed_data = json.loads(parsed_output)
     except Exception as e:
-        return f"Bad data: {e}", 400
+        return f"Failed to parse data for saving: {e}", 400
 
-    user = _current_user_email()
-    if not user:
+    user_email = None
+    if google.authorized:
+        try:
+            r = google.get("/oauth2/v2/userinfo")
+            if r.ok:
+                user_email = r.json().get("email")
+        except Exception:
+            pass
+    if not user_email:
         return "Not logged in", 401
 
     today = datetime.now().strftime("%Y-%m-%d")
     for entry in parsed_data:
         name, tags = find_best_match(entry.get("exercise", ""), tag_df)
         db.session.add(
-            Workout(
-                user_email=user,
-                date=today,
-                exercise=name,
-                weight=entry.get("weight", ""),
-                sets=entry.get("sets", ""),
-                reps=entry.get("reps", ""),
-                notes=entry.get("notes", ""),
-                tags=tags,
-            )
+            Workout(user_email=user_email, date=today,
+                    exercise=name,
+                    weight=entry.get("weight", ""),
+                    sets=entry.get("sets", ""),
+                    reps=entry.get("reps", ""),
+                    notes=entry.get("notes", ""),
+                    tags=tags)
         )
     db.session.commit()
-
     return render_template_string(
-        SAVED_TEMPLATE,
-        pretty_json=json.dumps(parsed_data, indent=2),
+        SAVED_TEMPLATE, pretty_json=json.dumps(parsed_data, indent=2)
     )
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
