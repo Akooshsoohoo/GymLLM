@@ -277,7 +277,9 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("home"))
+    # Log out of Google, then redirect back to home
+    return redirect("https://accounts.google.com/Logout?continue=https://appengine.google.com/_ah/logout?continue=" + url_for("home", _external=True))
+
 
 @app.route("/oauth_success")
 def oauth_success():
