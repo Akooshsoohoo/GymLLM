@@ -340,6 +340,10 @@ def review():
         error = None
     except Exception:
         pretty_json = None
+        # Show the actual model output if it's a question or short text
+        if parsed_output and "?" in parsed_output and len(parsed_output) < 150:
+            error = f"LLM responded with: {parsed_output}"
+    else:
         error = "Could not parse the workout. LLM responded with a question or invalid format."
     return render_template_string(REVIEW_TEMPLATE,
         workout_text=workout_text,
