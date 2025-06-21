@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request
 import json
-from utils import parse_workout_input
+from utils.utils import parse_workout_input
 from utils.taglist import exerciseListText
 
 review_bp = Blueprint('review_bp', __name__)
