@@ -387,7 +387,6 @@ def review():
         error=error,
         parsed_output=parsed_output
     )
-
 @app.route("/confirm", methods=["POST"])
 def confirm():
     workout_text = request.form.get("workout_text", "")
@@ -397,31 +396,43 @@ def confirm():
         parsed_data = json.loads(parsed_output)
     except Exception as e:
         return f"Failed to parse data for saving: {e}", 400
-    # Write to CSV (using your canonical name and tag logic)
-    csv_path = "workoutLog.csv"
-    file_exists = os.path.exists(csv_path)
-    with open(csv_path, mode="a", newline="") as file:
-        writer = csv.writer(file)
-        if not file_exists:
-            writer.writerow(["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        for entry in parsed_data:
-            matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df)
-            writer.writerow([
-                today_str,
-                matched_name,
-                entry.get("weight", ""),
-                entry.get("sets", ""),
-                entry.get("reps", ""),
-                entry.get("notes", ""),
-                tags
-            ])
-    # Show a nice summary after saving
+
+    # Get logged-in user's email
+    user_email = None
+    if google.authorized:
+        try:
+            resp = google.get("/oauth2/v2/userinfo")
+            if resp.ok:
+                user_email = resp.json().get("email")
+        except Exception:
+            pass
+
+    if not user_email:
+        return "Not logged in", 401
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    # Save each entry to the DB
+    for entry in parsed_data:
+        matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df)
+        workout = Workout(
+            user_email=user_email,
+            date=today_str,
+            exercise=matched_name,
+            weight=entry.get("weight", ""),
+            sets=entry.get("sets", ""),
+            reps=entry.get("reps", ""),
+            notes=entry.get("notes", ""),
+            tags=tags
+        )
+        db.session.add(workout)
+    db.session.commit()
+
     pretty_json = json.dumps(parsed_data, indent=2)
     return render_template_string(
         SAVED_TEMPLATE,
         pretty_json=pretty_json
     )
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
