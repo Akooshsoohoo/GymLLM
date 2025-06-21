@@ -222,6 +222,7 @@ SEARCH_TEMPLATE = """
                 <th>Reps</th>
                 <th>Notes</th>
                 <th>Tags</th>
+                <th>Delete</th>
             </tr>
             {% for i in range(rows|length) %}
             <tr>
@@ -230,6 +231,9 @@ SEARCH_TEMPLATE = """
                     <input type="text" name="cell-{{i}}-{{j}}" value="{{ rows[i][j] }}">
                 </td>
                 {% endfor %}
+                <td style="text-align: center;">
+                <input type="checkbox" name="delete-{{i}}">
+                </td>
             </tr>
             {% endfor %}
         </table>
