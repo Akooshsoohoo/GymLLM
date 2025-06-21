@@ -335,12 +335,9 @@ def home():
         log_status="",
         user_email=user_email
     )
-
 @app.route("/search", methods=["GET", "POST"])
 def search():
-    query = request.values.get("query", "").lower()
-
-    # Ensure user is logged in
+    # 1️⃣  make sure we know who is logged in
     user_email = None
     if google.authorized:
         try:
@@ -353,20 +350,56 @@ def search():
     if not user_email:
         return redirect(url_for("login"))
 
-    # Query all workouts for this user
-    if query:
-        # Filter in Python to keep things simple (could do in SQL later)
-        workouts = [
-            w for w in Workout.query.filter_by(user_email=user_email).all()
-            if query in " ".join([
-                str(w.date), str(w.exercise), str(w.weight), str(w.sets),
-                str(w.reps), str(w.notes), str(w.tags)
-            ]).lower()
-        ]
-    else:
-        workouts = Workout.query.filter_by(user_email=user_email).all()
+    # 2️⃣  handle edits / deletes coming back from the form -----------
+    if request.method == "POST":
+        num_rows = int(request.form.get("num_rows", 0))
 
-    # Prepare rows for template, with the DB id at the end (for future editing/deleting)
+        for i in range(num_rows):
+            row_id   = request.form.get(f"id-{i}")          # hidden id field
+            to_delete = request.form.get(f"delete-{i}")     # checkbox present if ticked
+
+            if not row_id:          # should never happen
+                continue
+
+            workout = Workout.query.get(int(row_id))
+
+            # sanity & ownership check
+            if not workout or workout.user_email != user_email:
+                continue
+
+            if to_delete:
+                db.session.delete(workout)
+                continue           # no need to update if we’re deleting
+
+            # update editable fields
+            workout.date     = request.form.get(f"cell-{i}-0", "")
+            workout.exercise = request.form.get(f"cell-{i}-1", "")
+            workout.weight   = request.form.get(f"cell-{i}-2", "")
+            workout.sets     = request.form.get(f"cell-{i}-3", "")
+            workout.reps     = request.form.get(f"cell-{i}-4", "")
+            workout.notes    = request.form.get(f"cell-{i}-5", "")
+            workout.tags     = request.form.get(f"cell-{i}-6", "")
+
+        db.session.commit()
+        return redirect(url_for("search", query=request.args.get("query", "")))
+
+    # 3️⃣  GET path → fetch rows for this user ------------------------
+    query = request.values.get("query", "").lower()
+
+    workouts_q = Workout.query.filter_by(user_email=user_email)
+    if query:
+        like = f"%{query}%"
+        workouts_q = workouts_q.filter(
+            db.or_(
+                Workout.exercise.ilike(like),
+                Workout.tags.ilike(like),
+                Workout.notes.ilike(like)
+            )
+        )
+
+    workouts = workouts_q.order_by(Workout.date.desc()).all()
+
+    # 4️⃣  convert to list-of-lists for the template (last col = id)
     rows = [
         [
             w.date,
@@ -376,13 +409,12 @@ def search():
             w.reps,
             w.notes,
             w.tags,
-            w.id  # id is used for future delete/edit functionality
+            w.id          # 👈 keep id invisible but send back
         ]
         for w in workouts
     ]
 
     return render_template_string(SEARCH_TEMPLATE, rows=rows, query=query)
-
 
 @app.route("/review", methods=["POST"])
 def review():
