@@ -340,36 +340,49 @@ def home():
 def search():
     query = request.values.get("query", "").lower()
 
-    try:
-        df = pd.read_csv("workoutLog.csv")
-    except FileNotFoundError:
-        df = pd.DataFrame(columns=["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
+    # Ensure user is logged in
+    user_email = None
+    if google.authorized:
+        try:
+            resp = google.get("/oauth2/v2/userinfo")
+            if resp.ok:
+                user_email = resp.json().get("email")
+        except Exception:
+            pass
 
-    if request.method == "POST":
-        # Update DataFrame with posted cell data
-        num_rows = int(request.form.get("num_rows", 0))
-        num_cols = int(request.form.get("num_cols", 7))
-        updated_rows = []
+    if not user_email:
+        return redirect(url_for("login"))
 
-        for i in range(num_rows):
-            row = []
-            for j in range(num_cols):
-                val = request.form.get(f"cell-{i}-{j}", "")
-                row.append(val)
-            updated_rows.append(row)
-
-        df = pd.DataFrame(updated_rows, columns=df.columns if not df.empty else ["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
-        df.to_csv("workoutLog.csv", index=False)
-
-        # 🔁 Redirect to avoid form resubmission on reload
-        return redirect(url_for("search", query=query))
-
-    # Handle search filter (for both GET and after redirect)
+    # Query all workouts for this user
     if query:
-        df = df[df.apply(lambda row: query in row.to_string().lower(), axis=1)]
+        # Filter in Python to keep things simple (could do in SQL later)
+        workouts = [
+            w for w in Workout.query.filter_by(user_email=user_email).all()
+            if query in " ".join([
+                str(w.date), str(w.exercise), str(w.weight), str(w.sets),
+                str(w.reps), str(w.notes), str(w.tags)
+            ]).lower()
+        ]
+    else:
+        workouts = Workout.query.filter_by(user_email=user_email).all()
 
-    rows = df.values.tolist()
+    # Prepare rows for template, with the DB id at the end (for future editing/deleting)
+    rows = [
+        [
+            w.date,
+            w.exercise,
+            w.weight,
+            w.sets,
+            w.reps,
+            w.notes,
+            w.tags,
+            w.id  # id is used for future delete/edit functionality
+        ]
+        for w in workouts
+    ]
+
     return render_template_string(SEARCH_TEMPLATE, rows=rows, query=query)
+
 
 @app.route("/review", methods=["POST"])
 def review():
