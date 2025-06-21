@@ -217,16 +217,17 @@ SEARCH_TEMPLATE = """
                 }
             });
 
-            // Live search filtering
+            // Live search filtering (matches like Ctrl+F)
             const searchInput = document.getElementById("query");
             if (searchInput) {
                 searchInput.addEventListener("input", function() {
-                    const filter = searchInput.value.toLowerCase();
+                    const filter = searchInput.value.toLowerCase().trim();
                     document.querySelectorAll("table tr").forEach((row, i) => {
                         if (i === 0) return; // skip header row
-                        const rowText = Array.from(row.querySelectorAll("td"))
-                            .map(td => td.textContent.toLowerCase()).join(" ");
-                        row.style.display = rowText.includes(filter) ? "" : "none";
+                        // Match against ALL cell values, including hidden/edited content
+                        const combined = Array.from(row.querySelectorAll("input[type='text']"))
+                            .map(inp => (inp.value || inp.textContent || "").toLowerCase()).join(" ");
+                        row.style.display = combined.includes(filter) ? "" : "none";
                     });
                 });
             }
