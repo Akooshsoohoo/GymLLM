@@ -286,7 +286,6 @@ def home():
 
 @app.route("/search", methods=["GET", "POST"])
 def search():
-    # Only show workouts for logged-in user
     user_email = None
     if google.authorized:
         try:
@@ -298,16 +297,12 @@ def search():
     if not user_email:
         return redirect(url_for("login"))
 
-    query = request.values.get("query", "").lower()
-
-    # Get all workouts for user
+    # No more query filtering—just send all workouts
     workouts = Workout.query.filter_by(user_email=user_email).all()
-    # Convert to list-of-lists for table
     rows = [
         [w.date, w.exercise, w.weight, w.sets, w.reps, w.notes, w.tags]
         for w in workouts
     ]
-    columns = ["date", "exercise", "weight", "sets", "reps", "notes", "tags"]
 
     if request.method == "POST":
         num_rows = int(request.form.get("num_rows", 0))
@@ -315,9 +310,6 @@ def search():
         new_data = []
         ids_to_delete = []
         for i in range(num_rows):
-            # Find the original workout by (date, exercise, weight, sets, reps, notes, tags)
-            # For safety, match by ID in future (add to table if not already there)
-            # Here, we just update in-order
             row = []
             for j in range(num_cols):
                 row.append(request.form.get(f"cell-{i}-{j}", ""))
@@ -325,24 +317,17 @@ def search():
                 ids_to_delete.append(i)
             else:
                 new_data.append(row)
-        # Delete marked
         for idx in sorted(ids_to_delete, reverse=True):
             w = workouts[idx]
             db.session.delete(w)
         db.session.commit()
-        # Update the rest (naive: overwrite all except id/email)
         for idx, row in enumerate(new_data):
             w = workouts[idx]
             w.date, w.exercise, w.weight, w.sets, w.reps, w.notes, w.tags = row
         db.session.commit()
-        return redirect(url_for("search", query=query))
+        return redirect(url_for("search"))
 
-    # Filter by query (in any col)
-    if query:
-        rows = [
-            r for r in rows if query in " ".join([str(x).lower() for x in r])
-        ]
-    return render_template_string(SEARCH_TEMPLATE, rows=rows, query=query)
+    return render_template_string(SEARCH_TEMPLATE, rows=rows)
 
 @app.route("/review", methods=["POST"])
 def review():
