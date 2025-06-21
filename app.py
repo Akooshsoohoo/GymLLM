@@ -197,7 +197,7 @@ SEARCH_TEMPLATE = """
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             let changed = false;
-            const inputs = document.querySelectorAll("form[action='/search'] input[type='text']");
+            const inputs = document.querySelectorAll("form[action='/search'] input[type='text'], form[action='/search'] input[type='checkbox']");
             const saveButton = document.querySelector("form[action='/search'] input[type='submit']");
             const form = document.querySelector("form[action='/search']");
             saveButton.style.display = "none";
