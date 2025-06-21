@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<title>GymLLM Workout Logger</title>
+<style>
+    .topright { position: absolute; top: 16px; right: 24px; }
+</style>
+</head>
+<body>
+    <div class="topright">
+        {% if user_email %}
+            <span style="margin-right:10px;">{{ user_email }}</span>
+            <a href="/logout">Logout</a>
+        {% else %}
+            <a href="/login">Create Account / Login</a>
+        {% endif %}
+    </div>
+    <div class="nav">
+        <a href="/search">Search/Filter Log</a>
+    </div>
+    <h1>GymLLM</h1>
+    <form method="post" action="/review">
+        <label for="workout">Workout:</label><br>
+        <textarea id="workout" name="workout" rows="4" cols="50" placeholder="e.g. bench 185 for 5x5, lat pulldowns 3x10, etc."></textarea><br>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>

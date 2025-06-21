@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<title>Review & Confirm Workout</title>
+</head>
+<body>
+    <div class="nav">
+        <a href="/">Log Workout</a>
+        <a href="/search">Search/Filter Log</a>
+    </div>
+    <h1>Review & Confirm Workout</h1>
+    {% if error %}
+        <div class="status">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/review">
+        <label for="workout">Edit your original workout prompt:</label><br>
+        <textarea id="workout" name="workout" rows="4" cols="50">{{ workout_text }}</textarea><br>
+        <input type="submit" value="Re-Parse & Review">
+    </form>
+    {% if pretty_json %}
+        <h2>LLM Parsed Output:</h2>
+        <pre>{{ pretty_json }}</pre>
+        <form method="post" action="/confirm">
+            <input type="hidden" name="workout_text" value="{{ workout_text }}">
+            <input type="hidden" name="parsed_output" value="{{ parsed_output }}">
+            <button type="submit">Approve & Save to Log</button>
+        </form>
+    {% endif %}
+</body>
+</html>

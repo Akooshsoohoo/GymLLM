@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workout Saved!</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="nav">
+        <a href="/">Log Another</a>
+        <a href="/search">Search Log</a>
+    </div>
+    <h1>Workout Saved!</h1>
+    <div class="status">
+        Your workout has been successfully logged.
+    </div>
+    <h2>What You Just Logged:</h2>
+    <pre>{{ pretty_json }}</pre>
+</body>
+</html>

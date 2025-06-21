@@ -1,27 +1,7 @@
-from dotenv import load_dotenv
-load_dotenv()  # Load .env file so we get your API key
-from openai import OpenAI
-import csv
+import re
 import json
-import os
 from datetime import datetime, timedelta
-import pandas as pd  # For tag matching
-import re  # For extracting dates from input
 
-# --------- Load canonical tag data and build exercise list ---------
-
-# Load canonical tag DataFrame from CSV
-def load_tagged_exercise_list(path="taggedExerciseList.csv"):
-    df = pd.read_csv(path)
-    df["exercise"] = df["exercise"].str.lower().str.strip()
-    return df
-
-tag_df = load_tagged_exercise_list()
-
-# Build the exerciseListText string for system prompt
-exerciseListText = ", ".join(tag_df["exercise"].tolist())
-
-# --------- Core Parsing Function (used in both CLI and web app) ---------
 
 def parse_workout_input(user_input, client, exerciseListText):
     """
@@ -86,15 +66,6 @@ def find_best_match(raw_name, tag_df):
     generated_tags = tag_response.choices[0].message.content.strip()
     return raw_name, generated_tags
 
-# --------- Ensure the workout log CSV exists ---------
-
-if not os.path.exists("workoutLog.csv"):
-    with open("workoutLog.csv", mode="w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(["date", "exercise", "weight", "sets", "reps", "notes", "tags"])
-
-# --------- Extract a date from user input text ---------
-
 def extract_date(user_input):
     lowered = user_input.lower()
     today = datetime.now()
@@ -121,52 +92,3 @@ def extract_date(user_input):
 
     # Default: today
     return today
-
-# --------- Optional CLI mode for standalone use ---------
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-if __name__ == "__main__":
-    # This block only runs if you execute main.py directly (not when imported by Flask)
-
-    messages = [{"role": "system", "content": parse_workout_input.__doc__}]
-    userInput = input("Describe your workout today: ")
-    dateObj = extract_date(userInput)
-    dateStr = dateObj.strftime("%Y-%m-%d")
-    messages.append({"role": "user", "content": userInput})
-
-    while True:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages
-        )
-
-        reply = response.choices[0].message.content.strip()
-        print("\nGPT Response:\n")
-        print(reply)
-
-        try:
-            cleanReply = reply.removeprefix("```json").removesuffix("```").strip()
-            parsedData = json.loads(cleanReply)
-            break
-        except json.JSONDecodeError:
-            clarification = input("\nClarify: ")
-            messages.append({"role": "assistant", "content": reply})
-            messages.append({"role": "user", "content": clarification})
-
-    with open("workoutLog.csv", mode="a", newline="") as file:
-        writer = csv.writer(file)
-        for entry in parsedData:
-            matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df)
-            entry["exercise"] = matched_name
-            entry["tags"] = tags
-
-            writer.writerow([
-                dateStr,
-                entry.get("exercise", ""),
-                entry.get("weight", ""),
-                entry.get("sets", ""),
-                entry.get("reps", ""),
-                entry.get("notes", ""),
-                entry.get("tags", "")
-            ])

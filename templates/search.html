@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<title>Search Workout Log</title>
+<style>
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #bbb; padding: 8px; text-align: left; font-size: 1rem; }
+    th { background: #e0e9f3; font-weight: bold; }
+    input[type="text"] { width: 100%; box-sizing: border-box; font-size: 1rem; padding: 5px 4px; border: 1px solid #d2d2d2; border-radius: 5px; background: #f9f9fc; }
+    input[type="submit"], button { margin-top: 10px; padding: 8px 18px; font-size: 1rem; background: #2288c7; color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
+    input[type="submit"]:hover, button:hover { background: #1e6ea3; }
+    body { font-family: "Segoe UI", Arial, sans-serif; }
+    .nav, a { font-size: 1rem; }
+</style>
+</head>
+<body>
+    <h1>Search Your Workout Log</h1>
+    <!-- Live search bar (not a form) -->
+    <label for="query">Search:</label>
+    <input type="text" id="query" name="query" style="width:60%;" autocomplete="off">
+
+    <form method="post" action="/search">
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Exercise</th>
+                <th>Weight</th>
+                <th>Sets</th>
+                <th>Reps</th>
+                <th>Notes</th>
+                <th>Tags</th>
+                <th>Delete</th>
+            </tr>
+            {% for i in range(rows|length) %}
+            <tr>
+                {% for j in range(rows[i]|length) %}
+                <td>
+                    {%- set col_name = ['date', 'exercise', 'weight', 'sets', 'reps', 'notes', 'tags'][j] -%}
+                    <input type="text" name="cell-{{i}}-{{j}}" value="{{ rows[i][j] }}"
+                        {% if col_name in ['weight', 'sets', 'reps'] %}class="numonly" {% elif col_name == 'date' %}class="dateonly"{% endif %}>
+                </td>
+                {% endfor %}
+                <td style="text-align: center;">
+                    <input type="checkbox" name="delete-{{i}}">
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        <input type="hidden" name="num_rows" value="{{ rows|length }}">
+        <input type="hidden" name="num_cols" value="{{ rows[0]|length if rows else 7 }}">
+        <input type="submit" value="Save Changes">
+    </form>
+    <br>
+    <a href="/">Back to Log Input</a>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let changed = false;
+            // Show save button if text or checkbox changes
+            const inputs = document.querySelectorAll("form[action='/search'] input[type='text'], form[action='/search'] input[type='checkbox']");
+            const saveButton = document.querySelector("form[action='/search'] input[type='submit']");
+            const form = document.querySelector("form[action='/search']");
+            saveButton.style.display = "none";
+            inputs.forEach(input => {
+                input.addEventListener("input", () => {
+                    if (!changed) {
+                        changed = true;
+                        saveButton.style.display = "inline-block";
+                    }
+                });
+            });
+            form.addEventListener("submit", () => { changed = false; });
+            window.addEventListener("beforeunload", function (e) {
+                if (changed) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+
+            // Live search filtering (matches like Ctrl+F)
+            const searchInput = document.getElementById("query");
+            if (searchInput) {
+                searchInput.addEventListener("input", function() {
+                    const filter = searchInput.value.toLowerCase().trim();
+                    document.querySelectorAll("table tr").forEach((row, i) => {
+                        if (i === 0) return; // skip header row
+                        // Match against ALL input values in the row
+                        const combined = Array.from(row.querySelectorAll("input[type='text']"))
+                            .map(inp => (inp.value || inp.textContent || "").toLowerCase()).join(" ");
+                        row.style.display = combined.includes(filter) ? "" : "none";
+                    });
+                });
+            }
+
+            // Restrict input for numeric-only columns
+            document.querySelectorAll('.numonly').forEach(input => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9, .x]/gi, '');
+                });
+            });
+            // Restrict input for date columns (YYYY-MM-DD)
+            document.querySelectorAll('.dateonly').forEach(input => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9-]/g, '');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
