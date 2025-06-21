@@ -159,7 +159,7 @@ SEARCH_TEMPLATE = """
 <body>
     <h1>Search Your Workout Log</h1>
     <!-- Live search bar (not a form) -->
-    <label for="query">Search (name or tag):</label>
+    <label for="query">Search:</label>
     <input type="text" id="query" name="query" style="width:60%;" autocomplete="off">
 
     <form method="post" action="/search">
