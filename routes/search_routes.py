@@ -1,7 +1,6 @@
-from flask import Blueprint, render_template_string, redirect, url_for, request
+from flask import Blueprint, render_template, redirect, url_for, request
 from flask_dance.contrib.google import google
 from models.models import db, Workout
-from app import SEARCH_TEMPLATE
 
 search_bp = Blueprint('search_bp', __name__)
 
@@ -47,4 +46,4 @@ def search():
         db.session.commit()
         return redirect(url_for("search_bp.search"))
 
-    return render_template_string(SEARCH_TEMPLATE, rows=rows)
+    return render_template("search.html", rows=rows)

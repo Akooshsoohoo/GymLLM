@@ -1,9 +1,8 @@
-from flask import Blueprint, render_template_string, request
+from flask import Blueprint, render_template, request
 from flask_dance.contrib.google import google
 from models.models import db, Workout
 from utils import find_best_match
 from utils.taglist import tag_df
-from app import SAVED_TEMPLATE
 import json
 from datetime import datetime
 
@@ -43,7 +42,7 @@ def confirm():
         db.session.add(workout)
     db.session.commit()
     pretty_json = json.dumps(parsed_data, indent=2)
-    return render_template_string(
-        SAVED_TEMPLATE,
+    return render_template(
+        "saved.html",
         pretty_json=pretty_json
     )

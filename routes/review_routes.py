@@ -1,8 +1,7 @@
-from flask import Blueprint, render_template_string, request
+from flask import Blueprint, render_template, request
 import json
 from utils import parse_workout_input
 from utils.taglist import exerciseListText
-from app import REVIEW_TEMPLATE
 
 review_bp = Blueprint('review_bp', __name__)
 
@@ -20,7 +19,7 @@ def review():
             error = f"LLM responded with: {parsed_output}"
         else:
             error = "Could not parse the workout. LLM responded with a question or invalid format."
-    return render_template_string(REVIEW_TEMPLATE,
+    return render_template("review.html",
         workout_text=workout_text,
         pretty_json=pretty_json,
         error=error,
