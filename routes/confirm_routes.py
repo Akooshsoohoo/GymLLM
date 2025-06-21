@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request
 from flask_dance.contrib.google import google
 from models.models import db, Workout
-from utils import find_best_match
+from utils.utils import find_best_match
 from utils.taglist import tag_df
 import json
 from datetime import datetime
