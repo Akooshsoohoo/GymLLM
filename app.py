@@ -178,7 +178,9 @@ SEARCH_TEMPLATE = """
             <tr>
                 {% for j in range(rows[i]|length) %}
                 <td>
-                    <input type="text" name="cell-{{i}}-{{j}}" value="{{ rows[i][j] }}">
+                    {%- set col_name = ['date', 'exercise', 'weight', 'sets', 'reps', 'notes', 'tags'][j] -%}
+                    <input type="text" name="cell-{{i}}-{{j}}" value="{{ rows[i][j] }}"
+                        {% if col_name in ['weight', 'sets', 'reps'] %}class="numonly" {% elif col_name == 'date' %}class="dateonly"{% endif %}>
                 </td>
                 {% endfor %}
                 <td style="text-align: center;">
@@ -224,18 +226,33 @@ SEARCH_TEMPLATE = """
                     const filter = searchInput.value.toLowerCase().trim();
                     document.querySelectorAll("table tr").forEach((row, i) => {
                         if (i === 0) return; // skip header row
-                        // Match against ALL cell values, including hidden/edited content
+                        // Match against ALL input values in the row
                         const combined = Array.from(row.querySelectorAll("input[type='text']"))
                             .map(inp => (inp.value || inp.textContent || "").toLowerCase()).join(" ");
                         row.style.display = combined.includes(filter) ? "" : "none";
                     });
                 });
             }
+
+            // Restrict input for numeric-only columns
+            document.querySelectorAll('.numonly').forEach(input => {
+                input.addEventListener('input', function() {
+                    // Allow digits, commas, spaces, lowercase x, periods
+                    this.value = this.value.replace(/[^0-9, .x]/gi, '');
+                });
+            });
+            // Restrict input for date columns (YYYY-MM-DD)
+            document.querySelectorAll('.dateonly').forEach(input => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9-]/g, '');
+                });
+            });
         });
     </script>
 </body>
 </html>
 """
+
 
 # --- ROUTES ---
 
