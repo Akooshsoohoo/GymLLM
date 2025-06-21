@@ -158,11 +158,10 @@ SEARCH_TEMPLATE = """
 </head>
 <body>
     <h1>Search Your Workout Log</h1>
-    <form method="get" style="margin-bottom: 16px;">
-        <label for="query">Search (name or tag):</label>
-        <input type="text" id="query" name="query" value="{{ query|default('') }}" style="width:60%;">
-        <input type="submit" value="Search">
-    </form>
+    <!-- Live search bar (not a form) -->
+    <label for="query">Search (name or tag):</label>
+    <input type="text" id="query" name="query" style="width:60%;" autocomplete="off">
+
     <form method="post" action="/search">
         <table>
             <tr>
@@ -197,6 +196,7 @@ SEARCH_TEMPLATE = """
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             let changed = false;
+            // Show save button if text or checkbox changes
             const inputs = document.querySelectorAll("form[action='/search'] input[type='text'], form[action='/search'] input[type='checkbox']");
             const saveButton = document.querySelector("form[action='/search'] input[type='submit']");
             const form = document.querySelector("form[action='/search']");
@@ -216,6 +216,20 @@ SEARCH_TEMPLATE = """
                     e.returnValue = '';
                 }
             });
+
+            // Live search filtering
+            const searchInput = document.getElementById("query");
+            if (searchInput) {
+                searchInput.addEventListener("input", function() {
+                    const filter = searchInput.value.toLowerCase();
+                    document.querySelectorAll("table tr").forEach((row, i) => {
+                        if (i === 0) return; // skip header row
+                        const rowText = Array.from(row.querySelectorAll("td"))
+                            .map(td => td.textContent.toLowerCase()).join(" ");
+                        row.style.display = rowText.includes(filter) ? "" : "none";
+                    });
+                });
+            }
         });
     </script>
 </body>
