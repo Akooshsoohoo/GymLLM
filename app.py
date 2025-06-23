@@ -214,29 +214,107 @@ def welcome():
         <meta charset="UTF-8">
         <title>GymLLM | Welcome</title>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
         <style>
-            body {
+            html, body {
+                height: 100%;
                 margin: 0;
+                padding: 0;
+            }
+            body {
+                font-family: 'Inter', sans-serif;
                 background: #181824;
-                color: white;
-                font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+                color: #f4f4ff;
                 min-height: 100vh;
-                height: 100vh;
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 overflow: hidden;
                 position: relative;
             }
-            /* rest unchanged */
+            .login-box {
+                z-index: 2;
+                text-align: center;
+                background: rgba(30, 20, 54, 0.77);
+                padding: 2.2rem 2.6rem 2.5rem 2.6rem;
+                border-radius: 1.4rem;
+                box-shadow: 0 8px 32px #00000040;
+                backdrop-filter: blur(3px);
+            }
+            h1 {
+                font-size: 3.1rem;
+                font-family: 'Inter', sans-serif;
+                letter-spacing: 1px;
+                color: #b48eff;
+                margin-bottom: 0.4rem;
+                font-weight: 700;
+            }
+            .login-box p {
+                font-size: 1.29rem;
+                margin-bottom: 1.6rem;
+                color: #dfd3ff;
+                opacity: 0.9;
+                font-family: 'Inter', sans-serif;
+            }
+            .login-button {
+                padding: 12px 32px;
+                background: linear-gradient(90deg, #7f5af0, #b48eff 96%);
+                border: none;
+                color: white;
+                font-size: 1.18rem;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+                letter-spacing: 0.6px;
+                transition: background 0.3s;
+                box-shadow: 0 2px 16px #7f5af022;
+                font-family: 'Inter', sans-serif;
+            }
+            .login-button:hover {
+                background: linear-gradient(90deg, #6847d2 70%, #b48eff 100%);
+            }
+            .welcome-bg {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 0;
+                pointer-events: none;
+            }
         </style>
     </head>
     <body>
-        <!-- html body unchanged -->
+        <div class="welcome-bg">
+            <svg width="100vw" height="100vh" style="position:absolute;top:0;left:0;" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <radialGradient id="grad1" cx="50%" cy="50%" r="70%">
+                    <stop offset="0%" stop-color="#7f5af099"/>
+                    <stop offset="100%" stop-color="transparent"/>
+                  </radialGradient>
+                  <radialGradient id="grad2" cx="80%" cy="25%" r="50%">
+                    <stop offset="0%" stop-color="#b48eff88"/>
+                    <stop offset="100%" stop-color="transparent"/>
+                  </radialGradient>
+                </defs>
+                <ellipse id="blob1" cx="22%" cy="55%" rx="220" ry="140" fill="url(#grad1)">
+                  <animate attributeName="cx" values="22%;32%;22%" dur="16s" repeatCount="indefinite"/>
+                  <animate attributeName="cy" values="55%;62%;55%" dur="19s" repeatCount="indefinite"/>
+                </ellipse>
+                <ellipse id="blob2" cx="75%" cy="25%" rx="130" ry="110" fill="url(#grad2)">
+                  <animate attributeName="cx" values="75%;70%;75%" dur="17s" repeatCount="indefinite"/>
+                  <animate attributeName="cy" values="25%;35%;25%" dur="22s" repeatCount="indefinite"/>
+                </ellipse>
+            </svg>
+        </div>
+        <div class="login-box">
+            <h1>GymLLM</h1>
+            <p>Log your workouts with simple, natural language.</p>
+            <a href="/login"><button class="login-button">Log in with Google</button></a>
+        </div>
     </body>
     </html>
     """)
+
 
 
 
