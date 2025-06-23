@@ -8,6 +8,7 @@ body {
     border-radius: 10px;
     box-shadow: 0 8px 30px 0 #00000040;
 }
+
 .nav {
     margin-bottom: 28px; 
     padding-bottom: 8px;
@@ -25,15 +26,17 @@ body {
     color: #d8cfff;
     text-decoration: underline;
 }
-h1 {
-    color: #b48eff;
-    margin-top: 0.1em;
-}
+
+h1 { color: #b48eff; margin-top: 0.1em; }
+
 form { margin-bottom: 18px; }
 label { font-weight: bold; }
-/* Make ALL text fields dark, even in tables */
-textarea, input[type="text"], table input[type="text"] {
-    width: 100%; 
+
+/* make all text fields dark */
+textarea,
+input[type="text"],
+table input[type="text"] {
+    width: 100%;
     font-size: 1.08em;
     padding: 8px 10px;
     margin-top: 3px;
@@ -46,16 +49,21 @@ textarea, input[type="text"], table input[type="text"] {
     min-height: 38px;
     box-sizing: border-box;
 }
-textarea::placeholder, input::placeholder, table input::placeholder {
-    color: #999;
-}
-textarea:focus, input[type="text"]:focus, table input[type="text"]:focus {
+textarea::placeholder,
+input::placeholder,
+table input::placeholder { color: #999; }
+
+textarea:focus,
+input[type="text"]:focus,
+table input[type="text"]:focus {
     outline: 2px solid #b48eff;
     box-shadow: 0 0 6px #7f5af088;
 }
-input[type="submit"], button {
+
+input[type="submit"],
+button {
     padding: 7px 22px;
-    background: linear-gradient(90deg,#7f5af0,#9a85f4);
+    background: linear-gradient(90deg, #7f5af0, #9a85f4);
     color: #fff;
     border: none;
     border-radius: 7px;
@@ -66,18 +74,23 @@ input[type="submit"], button {
     box-shadow: 0 2px 6px #00000060;
     transition: background 0.18s;
 }
-input[type="submit"]:hover, button:hover {
-    background: linear-gradient(90deg,#6847d2,#9a85f4);
+input[type="submit"]:hover,
+button:hover {
+    background: linear-gradient(90deg, #6847d2, #9a85f4);
 }
-.status { 
-    margin: 14px 0 18px 0; 
-    padding: 12px; 
-    background: #2a2035; 
-    border-left: 5px solid #b48eff; 
+
+/* call-out boxes */
+.status {
+    margin: 14px 0 18px 0;
+    padding: 12px;
+    background: #2a2035;
+    border-left: 5px solid #b48eff;
     border-radius: 5px;
     color: #dfd3ff;
     font-size: 1.08em;
 }
+
+/* tables */
 table {
     border-collapse: collapse;
     width: 100%;
@@ -85,7 +98,8 @@ table {
     background: #1f1f28;
     box-shadow: 0 1px 6px #00000030;
 }
-th, td {
+th,
+td {
     padding: 10px 8px;
     border: 1px solid #333;
     text-align: left;
@@ -98,7 +112,8 @@ th {
     letter-spacing: 0.5px;
 }
 tr:nth-child(even) { background: #232330; }
-tr:hover td { background: #2c2c3a; }
+tr:hover td         { background: #2c2c3a; }
+
 pre {
     background: #232330;
     padding: 12px;
@@ -108,18 +123,22 @@ pre {
     overflow-x: auto;
     color: #ddd;
 }
+
 .actions {
     margin: 20px 0 10px 0;
     display: flex;
     gap: 14px;
     align-items: center;
 }
+
+/* mobile tweaks */
 @media (max-width: 600px) {
-    body { padding: 4vw 1vw; max-width: 98vw; }
-    h1 { font-size: 1.34em; }
-    table, th, td { font-size: 0.98em; }
+    body              { padding: 4vw 1vw; max-width: 98vw; }
+    h1                { font-size: 1.34em; }
+    table, th, td     { font-size: 0.98em; }
 }
-/* Welcome animated background (optional override) */
+
+/* animated blobs on /welcome */
 .welcome-bg {
     position: fixed;
     top: 0; left: 0;
