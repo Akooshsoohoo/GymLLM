@@ -362,14 +362,17 @@ def oauth_success():
 
 @app.route("/", methods=["GET"])
 def home():
+    if not google.authorized:
+        return redirect(url_for("welcome"))
+
     user_email = None
-    if google.authorized:
-        try:
-            resp = google.get("/oauth2/v2/userinfo")
-            if resp.ok:
-                user_email = resp.json().get("email")
-        except Exception:
-            pass
+    try:
+        resp = google.get("/oauth2/v2/userinfo")
+        if resp.ok:
+            user_email = resp.json().get("email")
+    except Exception:
+        pass
+
     return render_template_string(
         HTML_TEMPLATE,
         submitted=False,
