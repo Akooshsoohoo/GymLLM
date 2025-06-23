@@ -256,6 +256,81 @@ SEARCH_TEMPLATE = """
 
 # --- ROUTES ---
 
+@app.route("/welcome")
+def welcome():
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>GymLLM | Welcome</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <style>
+            body {
+                margin: 0;
+                background: linear-gradient(120deg, #1f1f2e, #181824);
+                color: white;
+                font-family: 'Segoe UI', sans-serif;
+                height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                overflow: hidden;
+                position: relative;
+            }
+            h1 {
+                font-size: 3rem;
+                margin-bottom: 0.5rem;
+            }
+            .login-box {
+                z-index: 1;
+                text-align: center;
+            }
+            .login-box p {
+                font-size: 1.25rem;
+                margin-bottom: 1.5rem;
+            }
+            .login-button {
+                padding: 12px 28px;
+                background: #7f5af0;
+                border: none;
+                color: white;
+                font-size: 1.1rem;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: background 0.3s ease;
+            }
+            .login-button:hover {
+                background: #6847d2;
+            }
+            .bg-animation {
+                position: absolute;
+                top: 0; left: 0;
+                width: 100%;
+                height: 100%;
+                background: radial-gradient(#7f5af033 1px, transparent 1px);
+                background-size: 40px 40px;
+                animation: drift 20s linear infinite;
+                opacity: 0.1;
+            }
+            @keyframes drift {
+                from { background-position: 0 0; }
+                to { background-position: 1000px 1000px; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="bg-animation"></div>
+        <div class="login-box">
+            <h1>GymLLM</h1>
+            <p>Log your workouts. Just type it.</p>
+            <a href="/login"><button class="login-button">Log in with Google</button></a>
+        </div>
+    </body>
+    </html>
+    """)
+
+
 @app.before_request
 def _fix_google_token_expires():
     token = google_bp.token
