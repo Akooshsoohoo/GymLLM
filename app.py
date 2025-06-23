@@ -51,6 +51,7 @@ REVIEW_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <title>Review & Confirm Workout</title>
 </head>
@@ -86,6 +87,7 @@ SAVED_TEMPLATE = """
 <html>
 <head>
     <title>Workout Saved!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -107,6 +109,7 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <title>GymLLM Workout Logger</title>
 <style>
@@ -143,6 +146,7 @@ SEARCH_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <title>Search Workout Log</title>
 <style>
@@ -263,6 +267,7 @@ def welcome():
     <head>
         <meta charset="UTF-8">
         <title>GymLLM | Welcome</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
         <style>
             body {

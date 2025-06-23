@@ -1,5 +1,5 @@
 body { 
-    font-family: 'Segoe UI', Arial, sans-serif; 
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
     background: #1a1a1f;
     color: #eee;
     max-width: 750px; 
@@ -8,7 +8,6 @@ body {
     border-radius: 10px;
     box-shadow: 0 8px 30px 0 #00000040;
 }
-
 .nav {
     margin-bottom: 28px; 
     padding-bottom: 8px;
@@ -26,16 +25,14 @@ body {
     color: #d8cfff;
     text-decoration: underline;
 }
-
 h1 {
     color: #b48eff;
     margin-top: 0.1em;
 }
-
 form { margin-bottom: 18px; }
 label { font-weight: bold; }
-
-textarea, input[type="text"] {
+/* Make ALL text fields dark, even in tables */
+textarea, input[type="text"], table input[type="text"] {
     width: 100%; 
     font-size: 1.08em;
     padding: 8px 10px;
@@ -43,15 +40,19 @@ textarea, input[type="text"] {
     margin-bottom: 14px;
     border-radius: 6px;
     border: 1px solid #444;
-    background: #2a2a33;
-    color: #f4f4f4;
+    background: #2a2a33 !important;
+    color: #f4f4f4 !important;
     resize: vertical;
     min-height: 38px;
+    box-sizing: border-box;
 }
-textarea::placeholder, input::placeholder {
+textarea::placeholder, input::placeholder, table input::placeholder {
     color: #999;
 }
-
+textarea:focus, input[type="text"]:focus, table input[type="text"]:focus {
+    outline: 2px solid #b48eff;
+    box-shadow: 0 0 6px #7f5af088;
+}
 input[type="submit"], button {
     padding: 7px 22px;
     background: linear-gradient(90deg,#7f5af0,#9a85f4);
@@ -68,7 +69,6 @@ input[type="submit"], button {
 input[type="submit"]:hover, button:hover {
     background: linear-gradient(90deg,#6847d2,#9a85f4);
 }
-
 .status { 
     margin: 14px 0 18px 0; 
     padding: 12px; 
@@ -78,7 +78,6 @@ input[type="submit"]:hover, button:hover {
     color: #dfd3ff;
     font-size: 1.08em;
 }
-
 table {
     border-collapse: collapse;
     width: 100%;
@@ -100,7 +99,6 @@ th {
 }
 tr:nth-child(even) { background: #232330; }
 tr:hover td { background: #2c2c3a; }
-
 pre {
     background: #232330;
     padding: 12px;
@@ -110,16 +108,24 @@ pre {
     overflow-x: auto;
     color: #ddd;
 }
-
 .actions {
     margin: 20px 0 10px 0;
     display: flex;
     gap: 14px;
     align-items: center;
 }
-
 @media (max-width: 600px) {
     body { padding: 4vw 1vw; max-width: 98vw; }
     h1 { font-size: 1.34em; }
     table, th, td { font-size: 0.98em; }
+}
+/* Welcome animated background (optional override) */
+.welcome-bg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
 }
