@@ -138,6 +138,12 @@ HTML_TEMPLATE = """
         <textarea id="workout" name="workout" rows="4" cols="50" placeholder="e.g. bench 185 for 5x5, lat pulldowns 3x10, etc."></textarea><br>
         <input type="submit" value="Submit">
     </form>
+    <script>
+  // check for 'openai_api_key' in localStorage, redirect if missing
+  if (!localStorage.getItem("openai_api_key")) {
+      window.location.href = "/apikey";
+  }
+</script>
 </body>
 </html>
 """
@@ -363,12 +369,35 @@ def apikey_config():
             <a href="/search">Search/Filter Log</a>
         </div>
         <h1>Configure OpenAI API Key</h1>
-        <div class="status">
-            (This page is blank for now. You’ll add an input box and save logic next.)
-        </div>
+        <ol>
+            <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#b48eff;font-weight:600;">openai.com/api-keys</a></li>
+            <li>Log in and copy your API key</li>
+            <li>Paste it below and click "Save"</li>
+        </ol>
+        <input type="password" id="apikey" placeholder="Paste your OpenAI API key" style="width: 340px;"/>
+        <button id="savekey">Save</button>
+        <div id="status" class="status" style="display:none;"></div>
+        <script>
+          document.getElementById('savekey').onclick = function() {
+            var key = document.getElementById('apikey').value.trim();
+            if (key.length < 20) {
+              document.getElementById('status').style.display = 'block';
+              document.getElementById('status').innerText = "Please enter a valid API key.";
+              return;
+            }
+            localStorage.setItem('openai_api_key', key);
+            document.getElementById('status').style.display = 'block';
+            document.getElementById('status').innerText = "API key saved in your browser! You can now use GymLLM.";
+            setTimeout(function() { window.location.href = "/"; }, 800);
+          }
+        </script>
+        <p style="margin-top: 28px; color:#aaa; font-size:0.98em;">
+            <strong>Privacy:</strong> Your API key is stored only in your browser and never sent to our server.
+        </p>
     </body>
     </html>
     """)
+
 
 @app.route("/", methods=["GET"])
 def home():
