@@ -362,34 +362,87 @@ def apikey_config():
         <title>Configure API Key | GymLLM</title>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <style>
+            .disabled { opacity: 0.5; cursor: not-allowed !important; }
+            #status-box {
+                margin-top: 18px;
+                display: none;
+                background: #2a2035;
+                border-left: 6px solid #b48eff;
+                border-radius: 5px;
+                color: #dfd3ff;
+                padding: 13px 18px;
+                font-size: 1.08em;
+                font-weight: 500;
+                max-width: 480px;
+            }
+        </style>
     </head>
     <body>
-        <div class="nav">
-            <a href="/">Log Workout</a>
-            <a href="/search">Search/Filter Log</a>
+        <div class="nav" id="nav" style="display:none;">
+            <a href="/" id="log-link">Log Workout</a>
+            <a href="/search" id="search-link">Search/Filter Log</a>
         </div>
         <h1>Configure OpenAI API Key</h1>
         <ol>
             <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#b48eff;font-weight:600;">openai.com/api-keys</a></li>
-            <li>Log in and copy your API key</li>
-            <li>Paste it below and click "Save"</li>
+            <li>Copy your API key (starts with <b>sk-</b>)</li>
+            <li>Paste it below to enable GymLLM</li>
         </ol>
         <input type="password" id="apikey" placeholder="Paste your OpenAI API key" style="width: 340px;"/>
-        <button id="savekey">Save</button>
-        <div id="status" class="status" style="display:none;"></div>
+        <button id="savekey" class="disabled" disabled>Save</button>
+        <div id="status-box"></div>
         <script>
-          document.getElementById('savekey').onclick = function() {
+        // Utility to check for a valid OpenAI key
+        function validKey(k) {
+            return /^sk-[a-zA-Z0-9_]{44,}$/.test(k.trim());
+        }
+
+        function showNav() {
+            document.getElementById('nav').style.display = 'block';
+        }
+        function hideNav() {
+            document.getElementById('nav').style.display = 'none';
+        }
+
+        // On page load: If key is already set, show nav and 'good to go'
+        if (localStorage.getItem('openai_api_key') && validKey(localStorage.getItem('openai_api_key'))) {
+            showNav();
+            document.getElementById('status-box').style.display = 'block';
+            document.getElementById('status-box').style.borderLeft = '6px solid #41d174';
+            document.getElementById('status-box').style.color = '#c1ffd1';
+            document.getElementById('status-box').innerHTML = "✅ You're good to go! <b>Click Log Workout to start.</b>";
+        }
+
+        document.getElementById('apikey').addEventListener('input', function() {
+            var key = this.value.trim();
+            var btn = document.getElementById('savekey');
+            if (validKey(key)) {
+                btn.disabled = false;
+                btn.classList.remove('disabled');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('disabled');
+            }
+        });
+
+        document.getElementById('savekey').onclick = function() {
             var key = document.getElementById('apikey').value.trim();
-            if (key.length < 20) {
-              document.getElementById('status').style.display = 'block';
-              document.getElementById('status').innerText = "Please enter a valid API key.";
-              return;
+            var status = document.getElementById('status-box');
+            if (!validKey(key)) {
+                status.style.display = 'block';
+                status.style.borderLeft = '6px solid #e64b4b';
+                status.style.color = '#ffd1d1';
+                status.innerHTML = "❌ Invalid API key. It should start with <b>sk-</b> and be at least 48 characters.";
+                return;
             }
             localStorage.setItem('openai_api_key', key);
-            document.getElementById('status').style.display = 'block';
-            document.getElementById('status').innerText = "API key saved in your browser! You can now use GymLLM.";
-            setTimeout(function() { window.location.href = "/"; }, 800);
-          }
+            status.style.display = 'block';
+            status.style.borderLeft = '6px solid #41d174';
+            status.style.color = '#c1ffd1';
+            status.innerHTML = "✅ API key saved! <b>You're good to go. Click Log Workout to start.</b>";
+            showNav();
+        }
         </script>
         <p style="margin-top: 28px; color:#aaa; font-size:0.98em;">
             <strong>Privacy:</strong> Your API key is stored only in your browser and never sent to our server.
@@ -397,6 +450,7 @@ def apikey_config():
     </body>
     </html>
     """)
+
 
 
 @app.route("/", methods=["GET"])
