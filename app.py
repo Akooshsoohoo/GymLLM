@@ -347,6 +347,29 @@ def logout():
 def oauth_success():
     return redirect(url_for("home"))
 
+@app.route("/apikey", methods=["GET"])
+def apikey_config():
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Configure API Key | GymLLM</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="nav">
+            <a href="/">Log Workout</a>
+            <a href="/search">Search/Filter Log</a>
+        </div>
+        <h1>Configure OpenAI API Key</h1>
+        <div class="status">
+            (This page is blank for now. You’ll add an input box and save logic next.)
+        </div>
+    </body>
+    </html>
+    """)
+
 @app.route("/", methods=["GET"])
 def home():
     if not google.authorized:
