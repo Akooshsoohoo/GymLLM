@@ -376,6 +376,8 @@ def apikey_config():
                 font-weight: 500;
                 max-width: 480px;
             }
+            .step-list li { margin-bottom: 0.7em; }
+            #apikey { letter-spacing: 0.04em; }
         </style>
     </head>
     <body>
@@ -384,63 +386,83 @@ def apikey_config():
             <a href="/search" id="search-link">Search/Filter Log</a>
         </div>
         <h1>Configure OpenAI API Key</h1>
-        <ol>
-            <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#b48eff;font-weight:600;">openai.com/api-keys</a></li>
-            <li>Copy your API key (starts with <b>sk-</b>)</li>
-            <li>Paste it below to enable GymLLM</li>
+        <ol class="step-list">
+            <li>
+                Go to 
+                <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#b48eff;font-weight:600;">
+                    openai.com/api-keys
+                </a>
+            </li>
+            <li>
+                Click <b>+ Create new secret key</b>
+                <ul style="margin:6px 0 0 18px;font-size:0.98em;color:#ccc;">
+                    <li>For Name, enter <b>GymLLM</b> (or any name you want)</li>
+                    <li>Click <b>Create secret key</b></li>
+                </ul>
+            </li>
+            <li>
+                Copy the new API key (starts with <b>sk-</b>).
+            </li>
+            <li>
+                Paste it below and click <b>Save</b>.
+            </li>
         </ol>
-        <input type="password" id="apikey" placeholder="Paste your OpenAI API key" style="width: 340px;"/>
+        <input type="text" id="apikey" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your OpenAI API key (starts with sk-)" style="width: 340px;"/>
         <button id="savekey" class="disabled" disabled>Save</button>
         <div id="status-box"></div>
         <script>
-        // Utility to check for a valid OpenAI key
         function validKey(k) {
+            // OpenAI keys are typically 48-56 chars, but we'll use 48 as lower bound for now
             return /^sk-[a-zA-Z0-9_]{44,}$/.test(k.trim());
         }
-
         function showNav() {
             document.getElementById('nav').style.display = 'block';
         }
         function hideNav() {
             document.getElementById('nav').style.display = 'none';
         }
-
-        // On page load: If key is already set, show nav and 'good to go'
-        if (localStorage.getItem('openai_api_key') && validKey(localStorage.getItem('openai_api_key'))) {
-            showNav();
-            document.getElementById('status-box').style.display = 'block';
-            document.getElementById('status-box').style.borderLeft = '6px solid #41d174';
-            document.getElementById('status-box').style.color = '#c1ffd1';
-            document.getElementById('status-box').innerHTML = "✅ You're good to go! <b>Click Log Workout to start.</b>";
+        // Helper to show status
+        function showStatus(msg, color, border) {
+            var status = document.getElementById('status-box');
+            status.style.display = 'block';
+            status.style.color = color;
+            status.style.borderLeft = '6px solid ' + border;
+            status.innerHTML = msg;
         }
-
+        // On load: check if already saved, show nav and good-to-go
+        window.addEventListener('DOMContentLoaded', function() {
+            var key = localStorage.getItem('openai_api_key');
+            if (key && validKey(key)) {
+                showNav();
+                showStatus("✅ You're good to go! <b>Click Log Workout to start.</b>", "#c1ffd1", "#41d174");
+            }
+        });
         document.getElementById('apikey').addEventListener('input', function() {
             var key = this.value.trim();
             var btn = document.getElementById('savekey');
+            var status = document.getElementById('status-box');
             if (validKey(key)) {
                 btn.disabled = false;
                 btn.classList.remove('disabled');
+                status.style.display = 'none';
             } else {
                 btn.disabled = true;
                 btn.classList.add('disabled');
+                if (key.length > 0) {
+                    showStatus("❌ Invalid API key. It must start with <b>sk-</b> and be at least 48 characters.", "#ffd1d1", "#e64b4b");
+                } else {
+                    status.style.display = 'none';
+                }
             }
         });
-
         document.getElementById('savekey').onclick = function() {
             var key = document.getElementById('apikey').value.trim();
-            var status = document.getElementById('status-box');
             if (!validKey(key)) {
-                status.style.display = 'block';
-                status.style.borderLeft = '6px solid #e64b4b';
-                status.style.color = '#ffd1d1';
-                status.innerHTML = "❌ Invalid API key. It should start with <b>sk-</b> and be at least 48 characters.";
+                showStatus("❌ Invalid API key. It must start with <b>sk-</b> and be at least 48 characters.", "#ffd1d1", "#e64b4b");
                 return;
             }
             localStorage.setItem('openai_api_key', key);
-            status.style.display = 'block';
-            status.style.borderLeft = '6px solid #41d174';
-            status.style.color = '#c1ffd1';
-            status.innerHTML = "✅ API key saved! <b>You're good to go. Click Log Workout to start.</b>";
+            showStatus("✅ API key saved! <b>You're good to go. Click Log Workout to start.</b>", "#c1ffd1", "#41d174");
             showNav();
         }
         </script>
