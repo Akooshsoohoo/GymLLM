@@ -7,13 +7,59 @@ body {
     padding: 24px 18px 32px 18px;
     border-radius: 10px;
     box-shadow: 0 8px 30px 0 #00000040;
+    position: relative;
+    min-height: 96vh;
 }
+
+/* --- Account Bar (top right user/email/logout) --- */
+.account-bar {
+    position: absolute;
+    top: 18px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    background: #232035;
+    border-radius: 1.7em;
+    padding: 6px 18px 6px 16px;
+    box-shadow: 0 2px 12px #00000045;
+    z-index: 100;
+}
+.account-email {
+    font-size: 1.07em;
+    color: #cdbfff;
+    margin-right: 16px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.logout-btn {
+    color: #fff;
+    background: linear-gradient(90deg,#7f5af0,#b48eff 85%);
+    padding: 6px 16px;
+    border: none;
+    border-radius: 1.1em;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 1.06em;
+    transition: background 0.17s, color 0.17s;
+    box-shadow: 0 1px 5px #00000040;
+    margin-left: 4px;
+    outline: none;
+}
+.logout-btn:hover, .logout-btn:focus {
+    background: linear-gradient(90deg,#6847d2,#b48eff);
+    color: #e0e0ff;
+}
+
+/* --- End Account Bar --- */
 
 .nav {
     margin-bottom: 28px; 
     padding-bottom: 8px;
     border-bottom: 2px solid #3c3f52;
     font-size: 1.06em;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 .nav a {
     color: #b48eff; 
@@ -21,10 +67,13 @@ body {
     margin-right: 24px; 
     font-weight: 600;
     transition: color 0.2s;
+    border-radius: 6px;
+    padding: 3px 9px;
 }
-.nav a:hover {
+.nav a:hover, .nav a:focus {
     color: #d8cfff;
     text-decoration: underline;
+    background: #222137;
 }
 
 h1 { color: #b48eff; margin-top: 0.1em; }
@@ -73,9 +122,12 @@ button {
     margin-right: 10px;
     box-shadow: 0 2px 6px #00000060;
     transition: background 0.18s;
+    outline: none;
 }
 input[type="submit"]:hover,
-button:hover {
+button:hover,
+input[type="submit"]:focus,
+button:focus {
     background: linear-gradient(90deg, #6847d2, #9a85f4);
 }
 
@@ -136,9 +188,16 @@ pre {
     body              { padding: 4vw 1vw; max-width: 98vw; }
     h1                { font-size: 1.34em; }
     table, th, td     { font-size: 0.98em; }
+    .account-bar {
+        position: static;
+        margin: 8px 0 18px 0;
+        justify-content: flex-start;
+        padding: 6px 10px 6px 12px;
+        width: auto;
+    }
+    .account-email { font-size: 1em; margin-right: 10px;}
 }
 
-/* animated blobs on /welcome */
 .welcome-bg {
     position: fixed;
     top: 0; left: 0;
