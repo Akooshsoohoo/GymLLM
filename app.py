@@ -412,8 +412,7 @@ def apikey_config():
         <div id="status-box"></div>
         <script>
         function validKey(k) {
-            // OpenAI keys are typically 48-56 chars, but we'll use 48 as lower bound for now
-            return /^sk-[a-zA-Z0-9_]{44,}$/.test(k.trim());
+            return /^sk-[A-Za-z0-9\-._]{20,}$/.test(k.trim());
         }
         function showNav() {
             document.getElementById('nav').style.display = 'block';
