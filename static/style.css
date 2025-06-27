@@ -13,43 +13,46 @@ body {
 
 /* --- Account Bar (top right user/email/logout) --- */
 .account-bar {
-    position: absolute;
-    top: 14px;
+    position: fixed;
+    top: 10px;
     right: 18px;
     display: flex;
     align-items: center;
     background: #232035;
-    border-radius: 1em;         /* smaller radius */
-    padding: 4px 10px 4px 10px; /* tighter padding */
+    border-radius: 0.85em;
+    padding: 3px 10px 3px 10px;
     box-shadow: 0 1px 6px #00000030;
     z-index: 100;
-    min-height: unset;          /* remove min height if set elsewhere */
+    min-height: 30px;
 }
 .account-email {
-    font-size: 0.96em;         /* a little smaller */
+    font-size: 0.97em;
     color: #cdbfff;
     margin-right: 10px;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0.01em;
+    line-height: 1.2;
 }
 .logout-btn {
     color: #fff;
     background: linear-gradient(90deg,#7f5af0,#b48eff 85%);
-    padding: 4px 12px;
+    padding: 3px 12px;
     border: none;
-    border-radius: 0.9em;
-    font-weight: 500;
+    border-radius: 1em;
+    font-weight: 600;
     text-decoration: none;
     font-size: 0.98em;
-    transition: background 0.16s, color 0.16s;
-    box-shadow: 0 1px 5px #00000030;
+    transition: background 0.17s, color 0.17s;
+    box-shadow: 0 1px 4px #00000020;
     margin-left: 2px;
     outline: none;
+    line-height: 1.2;
 }
 .logout-btn:hover, .logout-btn:focus {
     background: linear-gradient(90deg,#6847d2,#b48eff);
     color: #e0e0ff;
 }
+
 /* --- End Account Bar --- */
 
 .nav {
@@ -81,6 +84,7 @@ h1 { color: #b48eff; margin-top: 0.1em; }
 form { margin-bottom: 18px; }
 label { font-weight: bold; }
 
+/* make all text fields dark */
 textarea,
 input[type="text"],
 table input[type="text"] {
@@ -130,6 +134,7 @@ button:focus {
     background: linear-gradient(90deg, #6847d2, #9a85f4);
 }
 
+/* call-out boxes */
 .status {
     margin: 14px 0 18px 0;
     padding: 12px;
@@ -140,6 +145,7 @@ button:focus {
     font-size: 1.08em;
 }
 
+/* tables */
 table {
     border-collapse: collapse;
     width: 100%;
@@ -180,6 +186,7 @@ pre {
     align-items: center;
 }
 
+/* mobile tweaks */
 @media (max-width: 600px) {
     body              { padding: 4vw 1vw; max-width: 98vw; }
     h1                { font-size: 1.34em; }
@@ -188,10 +195,11 @@ pre {
         position: static;
         margin: 8px 0 18px 0;
         justify-content: flex-start;
-        padding: 6px 10px 6px 12px;
+        padding: 4px 10px 4px 10px;
         width: auto;
+        min-height: unset;
     }
-    .account-email { font-size: 1em; margin-right: 10px;}
+    .account-email { font-size: 0.97em; margin-right: 10px;}
 }
 
 .welcome-bg {
