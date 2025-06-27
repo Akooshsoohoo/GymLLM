@@ -13,7 +13,7 @@ body {
 
 /* --- Account Bar (top right user/email/logout) --- */
 .account-bar {
-    position: absolute;
+    position: fixed;
     top: 18px;
     right: 30px;
     display: flex;
@@ -22,7 +22,7 @@ body {
     border-radius: 1.7em;
     padding: 6px 18px 6px 16px;
     box-shadow: 0 2px 12px #00000045;
-    z-index: 100;
+    z-index: 10000;
 }
 .account-email {
     font-size: 1.07em;
@@ -49,7 +49,6 @@ body {
     background: linear-gradient(90deg,#6847d2,#b48eff);
     color: #e0e0ff;
 }
-
 /* --- End Account Bar --- */
 
 .nav {
@@ -81,7 +80,6 @@ h1 { color: #b48eff; margin-top: 0.1em; }
 form { margin-bottom: 18px; }
 label { font-weight: bold; }
 
-/* make all text fields dark */
 textarea,
 input[type="text"],
 table input[type="text"] {
@@ -131,7 +129,6 @@ button:focus {
     background: linear-gradient(90deg, #6847d2, #9a85f4);
 }
 
-/* call-out boxes */
 .status {
     margin: 14px 0 18px 0;
     padding: 12px;
@@ -142,7 +139,6 @@ button:focus {
     font-size: 1.08em;
 }
 
-/* tables */
 table {
     border-collapse: collapse;
     width: 100%;
@@ -183,7 +179,6 @@ pre {
     align-items: center;
 }
 
-/* mobile tweaks */
 @media (max-width: 600px) {
     body              { padding: 4vw 1vw; max-width: 98vw; }
     h1                { font-size: 1.34em; }
