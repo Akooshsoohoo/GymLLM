@@ -369,6 +369,14 @@ def oauth_success():
 
 @app.route("/apikey", methods=["GET"])
 def apikey_config():
+    user_email = None
+    if google.authorized:
+        try:
+            resp = google.get("/oauth2/v2/userinfo")
+            if resp.ok:
+                user_email = resp.json().get("email")
+        except Exception:
+            pass
     return render_template_string("""
     <!DOCTYPE html>
     <html>
@@ -395,6 +403,12 @@ def apikey_config():
         </style>
     </head>
     <body>
+        {% if user_email %}
+        <div class="account-bar">
+            <span class="account-email">{{ user_email }}</span>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+        {% endif %}
         <div class="nav" id="nav" style="display:none;">
             <a href="/" id="log-link">Log Workout</a>
             <a href="/search" id="search-link">Search/Filter Log</a>
@@ -426,7 +440,7 @@ def apikey_config():
         <div id="status-box"></div>
         <script>
         function validKey(k) {
-            return /^sk-[A-Za-z0-9\-._]{20,}$/.test(k.trim());
+            return /^sk-[A-Za-z0-9\\-._]{20,}$/.test(k.trim());
         }
         function showNav() {
             document.getElementById('nav').style.display = 'block';
@@ -484,7 +498,8 @@ def apikey_config():
         </p>
     </body>
     </html>
-    """)
+    """, user_email=user_email)
+
 
 
 
@@ -523,7 +538,6 @@ def search():
     if not user_email:
         return redirect(url_for("login"))
 
-    # No more query filtering—just send all workouts
     workouts = Workout.query.filter_by(user_email=user_email).all()
     rows = [
         [w.date, w.exercise, w.weight, w.sets, w.reps, w.notes, w.tags]
@@ -553,7 +567,8 @@ def search():
         db.session.commit()
         return redirect(url_for("search"))
 
-    return render_template_string(SEARCH_TEMPLATE, rows=rows)
+    # ADD user_email=user_email
+    return render_template_string(SEARCH_TEMPLATE, rows=rows, user_email=user_email)
 
 @app.route("/review", methods=["POST"])
 def review():
@@ -565,16 +580,25 @@ def review():
         error = None
     except Exception:
         pretty_json = None
-        # Show the actual model output if it's a question or short text
         if parsed_output and "?" in parsed_output and len(parsed_output) < 150:
             error = f"LLM responded with: {parsed_output}"
     else:
         error = "Could not parse the workout. LLM responded with a question or invalid format."
+    # GET user_email
+    user_email = None
+    if google.authorized:
+        try:
+            resp = google.get("/oauth2/v2/userinfo")
+            if resp.ok:
+                user_email = resp.json().get("email")
+        except Exception:
+            pass
     return render_template_string(REVIEW_TEMPLATE,
         workout_text=workout_text,
         pretty_json=pretty_json,
         error=error,
-        parsed_output=parsed_output
+        parsed_output=parsed_output,
+        user_email=user_email 
     )
 
 @app.route("/confirm", methods=["POST"])
@@ -613,7 +637,8 @@ def confirm():
     pretty_json = json.dumps(parsed_data, indent=2)
     return render_template_string(
         SAVED_TEMPLATE,
-        pretty_json=pretty_json
+        pretty_json=pretty_json,
+        user_email=user_email  
     )
 
 if __name__ == "__main__":
