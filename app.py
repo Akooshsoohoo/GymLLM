@@ -56,9 +56,16 @@ REVIEW_TEMPLATE = """
 <title>Review & Confirm Workout</title>
 </head>
 <body>
+    {% if user_email %}
+    <div class="account-bar">
+        <span class="account-email">{{ user_email }}</span>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+    {% endif %}
     <div class="nav">
         <a href="/">Log Workout</a>
         <a href="/search">Search/Filter Log</a>
+        <a href="/apikey">API Key Config</a>
     </div>
     <h1>Review & Confirm Workout</h1>
     {% if error %}
@@ -91,9 +98,16 @@ SAVED_TEMPLATE = """
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    {% if user_email %}
+    <div class="account-bar">
+        <span class="account-email">{{ user_email }}</span>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+    {% endif %}
     <div class="nav">
         <a href="/">Log Another</a>
-        <a href="/search">Search Log</a>
+        <a href="/search">Search/Filter Log</a>
+        <a href="/apikey">API Key Config</a>
     </div>
     <h1>Workout Saved!</h1>
     <div class="status">
@@ -105,6 +119,7 @@ SAVED_TEMPLATE = """
 </html>
 """
 
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -112,25 +127,18 @@ HTML_TEMPLATE = """
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <title>GymLLM Workout Logger</title>
-<style>
-    .topright {
-        position: absolute;
-        top: 16px;
-        right: 24px;
-    }
-</style>
 </head>
 <body>
-    <div class="topright">
-        {% if user_email %}
-            <span style="margin-right:10px;">{{ user_email }}</span>
-            <a href="/logout">Logout</a>
-        {% else %}
-            <a href="/login">Create Account / Login</a>
-        {% endif %}
+    {% if user_email %}
+    <div class="account-bar">
+        <span class="account-email">{{ user_email }}</span>
+        <a href="/logout" class="logout-btn">Logout</a>
     </div>
+    {% endif %}
     <div class="nav">
+        <a href="/">Log Workout</a>
         <a href="/search">Search/Filter Log</a>
+        <a href="/apikey">API Key Config</a>
     </div>
     <h1>GymLLM</h1>
     <form method="post" action="/review">
@@ -139,11 +147,10 @@ HTML_TEMPLATE = """
         <input type="submit" value="Submit">
     </form>
     <script>
-  // check for 'openai_api_key' in localStorage, redirect if missing
-  if (!localStorage.getItem("openai_api_key")) {
-      window.location.href = "/apikey";
-  }
-</script>
+        if (!localStorage.getItem("openai_api_key")) {
+            window.location.href = "/apikey";
+        }
+    </script>
 </body>
 </html>
 """
@@ -167,8 +174,18 @@ SEARCH_TEMPLATE = """
 </style>
 </head>
 <body>
+    {% if user_email %}
+    <div class="account-bar">
+        <span class="account-email">{{ user_email }}</span>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+    {% endif %}
+    <div class="nav">
+        <a href="/">Log Workout</a>
+        <a href="/search">Search/Filter Log</a>
+        <a href="/apikey">API Key Config</a>
+    </div>
     <h1>Search Your Workout Log</h1>
-    <!-- Live search bar (not a form) -->
     <label for="query">Search:</label>
     <input type="text" id="query" name="query" style="width:60%;" autocomplete="off">
 
@@ -203,9 +220,6 @@ SEARCH_TEMPLATE = """
         <input type="hidden" name="num_cols" value="{{ rows[0]|length if rows else 7 }}">
         <input type="submit" value="Save Changes">
     </form>
-    <br>
-    <a href="/">Back to Log Input</a>
-    <!-- [JS unchanged] -->
 </body>
 </html>
 """
