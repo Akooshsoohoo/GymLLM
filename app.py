@@ -576,6 +576,13 @@ def search():
 @app.route("/review", methods=["POST"])
 def review():
     workout_text = request.form.get("workout", "")
+user_api_key = request.form.get("user_api_key", "").strip()
+if not user_api_key or not user_api_key.startswith("sk-"):
+    error = "OpenAI API key is missing or invalid. Please re-enter it on the API Key Config page."
+    pretty_json = None
+    parsed_output = None
+else:
+    client = OpenAI(api_key=user_api_key)
     parsed_output = parse_workout_input(workout_text, client, exerciseListText)
     try:
         parsed_data = json.loads(parsed_output)
@@ -585,8 +592,8 @@ def review():
         pretty_json = None
         if parsed_output and "?" in parsed_output and len(parsed_output) < 150:
             error = f"LLM responded with: {parsed_output}"
-    else:
-        error = "Could not parse the workout. LLM responded with a question or invalid format."
+        else:
+            error = "Could not parse the workout. LLM responded with a question or invalid format."
     # GET user_email
     user_email = None
     if google.authorized:
