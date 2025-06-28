@@ -144,9 +144,12 @@ HTML_TEMPLATE = """
     <form method="post" action="/review">
         <label for="workout">Workout:</label><br>
         <textarea id="workout" name="workout" rows="4" cols="50" placeholder="e.g. bench 185 for 5x5, lat pulldowns 3x10, etc."></textarea><br>
+        <input type="hidden" id="user_api_key" name="user_api_key" value="">
         <input type="submit" value="Submit">
     </form>
     <script>
+    document.getElementById('user_api_key').value = localStorage.getItem('openai_api_key') || '';
+    </script>
         if (!localStorage.getItem("openai_api_key")) {
             window.location.href = "/apikey";
         }
