@@ -74,8 +74,12 @@ REVIEW_TEMPLATE = """
     <form method="post" action="/review">
         <label for="workout">Edit your original workout prompt:</label><br>
         <textarea id="workout" name="workout" rows="4" cols="50">{{ workout_text }}</textarea><br>
+        <input type="hidden" id="user_api_key" name="user_api_key" value="">
         <input type="submit" value="Re-Parse & Review">
     </form>
+    <script>
+    document.getElementById('user_api_key').value = localStorage.getItem('openai_api_key') || '';
+    </script>
     {% if pretty_json %}
         <h2>LLM Parsed Output:</h2>
         <pre>{{ pretty_json }}</pre>
@@ -88,6 +92,7 @@ REVIEW_TEMPLATE = """
 </body>
 </html>
 """
+
 
 SAVED_TEMPLATE = """
 <!DOCTYPE html>
@@ -576,24 +581,26 @@ def search():
 @app.route("/review", methods=["POST"])
 def review():
     workout_text = request.form.get("workout", "")
-user_api_key = request.form.get("user_api_key", "").strip()
-if not user_api_key or not user_api_key.startswith("sk-"):
-    error = "OpenAI API key is missing or invalid. Please re-enter it on the API Key Config page."
-    pretty_json = None
-    parsed_output = None
-else:
-    client = OpenAI(api_key=user_api_key)
-    parsed_output = parse_workout_input(workout_text, client, exerciseListText)
-    try:
-        parsed_data = json.loads(parsed_output)
-        pretty_json = json.dumps(parsed_data, indent=2)
-        error = None
-    except Exception:
+    user_api_key = request.form.get("user_api_key", "").strip()
+    
+    if not user_api_key or not user_api_key.startswith("sk-"):
+        error = "OpenAI API key is missing or invalid. Please re-enter it on the API Key Config page."
         pretty_json = None
-        if parsed_output and "?" in parsed_output and len(parsed_output) < 150:
-            error = f"LLM responded with: {parsed_output}"
-        else:
-            error = "Could not parse the workout. LLM responded with a question or invalid format."
+        parsed_output = None
+    else:
+        client = OpenAI(api_key=user_api_key)
+        parsed_output = parse_workout_input(workout_text, client, exerciseListText)
+        try:
+            parsed_data = json.loads(parsed_output)
+            pretty_json = json.dumps(parsed_data, indent=2)
+            error = None
+        except Exception:
+            pretty_json = None
+            if parsed_output and "?" in parsed_output and len(parsed_output) < 150:
+                error = f"LLM responded with: {parsed_output}"
+            else:
+                error = "Could not parse the workout. LLM responded with a question or invalid format."
+    
     # GET user_email
     user_email = None
     if google.authorized:
@@ -603,13 +610,16 @@ else:
                 user_email = resp.json().get("email")
         except Exception:
             pass
-    return render_template_string(REVIEW_TEMPLATE,
+    
+    return render_template_string(
+        REVIEW_TEMPLATE,
         workout_text=workout_text,
         pretty_json=pretty_json,
         error=error,
         parsed_output=parsed_output,
         user_email=user_email 
     )
+
 
 @app.route("/confirm", methods=["POST"])
 def confirm():
