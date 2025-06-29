@@ -1,5 +1,3 @@
-import openai
-from openai import OpenAI, error as openai_error
 from dotenv import load_dotenv
 load_dotenv()  # Load .env file so we get your API key
 from openai import OpenAI
