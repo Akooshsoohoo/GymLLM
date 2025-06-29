@@ -590,25 +590,25 @@ def review():
     if not user_api_key or not user_api_key.startswith("sk-"):
         error = "OpenAI API key is missing or invalid. Please re-enter it on the API Key Config page."
     else:
-        openai.api_key = user_api_key
-        client = OpenAI(api_key=user_api_key)
         try:
+            openai.api_key = user_api_key
+            client = OpenAI(api_key=user_api_key)
             parsed_output = parse_workout_input(workout_text, client, exerciseListText)
             parsed_data = json.loads(parsed_output)
             pretty_json = json.dumps(parsed_data, indent=2)
-        except openai.error.AuthenticationError:
+        except openai_error.AuthenticationError:
             error = "Your OpenAI API key is invalid. Please check your API Key Config page."
-        except openai.error.RateLimitError:
+        except openai_error.RateLimitError:
             error = "You have run out of OpenAI credits or are being rate-limited. Please check your OpenAI usage."
         except Exception as e:
-            # Catch-all for any other LLM/parsing errors
-            # Optionally, inspect `parsed_output` as before:
-            if parsed_output and "?" in parsed_output and len(parsed_output) < 150:
-                error = f"LLM responded with: {parsed_output}"
+            # This will catch *any* other error (network, key revoked, etc)
+            if hasattr(e, 'message'):
+                error_detail = str(e.message)
             else:
-                error = f"Could not parse the workout or there was a problem communicating with OpenAI. Details: {str(e)}"
+                error_detail = str(e)
+            error = f"Could not parse the workout or there was a problem communicating with OpenAI. Details: {error_detail}"
 
-    # GET user_email
+    # GET user_email as before...
     user_email = None
     if google.authorized:
         try:
