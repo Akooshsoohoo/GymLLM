@@ -12,8 +12,6 @@ import pandas as pd
 import openai
 from datetime import datetime
 from openai import OpenAI
-from openai import OpenAI, error as openai_error
-
 
 from main import parse_workout_input, exerciseListText, find_best_match, tag_df
 
