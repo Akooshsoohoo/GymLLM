@@ -582,25 +582,31 @@ def search():
 def review():
     workout_text = request.form.get("workout", "")
     user_api_key = request.form.get("user_api_key", "").strip()
-    
+
+    pretty_json = None
+    parsed_output = None
+    error = None
+
     if not user_api_key or not user_api_key.startswith("sk-"):
         error = "OpenAI API key is missing or invalid. Please re-enter it on the API Key Config page."
-        pretty_json = None
-        parsed_output = None
     else:
-        openai.api_key = user_api_key      #makes main.py use the right key
-        client = OpenAI(api_key=user_api_key)       
-        parsed_output = parse_workout_input(workout_text, client, exerciseListText)
+        openai.api_key = user_api_key
+        client = OpenAI(api_key=user_api_key)
         try:
+            parsed_output = parse_workout_input(workout_text, client, exerciseListText)
             parsed_data = json.loads(parsed_output)
             pretty_json = json.dumps(parsed_data, indent=2)
-            error = None
-        except Exception:
-            pretty_json = None
+        except openai.error.AuthenticationError:
+            error = "Your OpenAI API key is invalid. Please check your API Key Config page."
+        except openai.error.RateLimitError:
+            error = "You have run out of OpenAI credits or are being rate-limited. Please check your OpenAI usage."
+        except Exception as e:
+            # Catch-all for any other LLM/parsing errors
+            # Optionally, inspect `parsed_output` as before:
             if parsed_output and "?" in parsed_output and len(parsed_output) < 150:
                 error = f"LLM responded with: {parsed_output}"
             else:
-                error = "Could not parse the workout. LLM responded with a question or invalid format."
+                error = f"Could not parse the workout or there was a problem communicating with OpenAI. Details: {str(e)}"
 
     # GET user_email
     user_email = None
@@ -611,15 +617,16 @@ def review():
                 user_email = resp.json().get("email")
         except Exception:
             pass
-    
+
     return render_template_string(
         REVIEW_TEMPLATE,
         workout_text=workout_text,
         pretty_json=pretty_json,
         error=error,
         parsed_output=parsed_output,
-        user_email=user_email 
+        user_email=user_email
     )
+
 
 
 @app.route("/confirm", methods=["POST"])
