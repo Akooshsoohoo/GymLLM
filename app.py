@@ -158,6 +158,7 @@ HTML_TEMPLATE = """
         window.location.href = "/apikey";
     }
     </script>
+
 </body>
 </html>
 """
@@ -600,7 +601,7 @@ def review():
                 error = f"LLM responded with: {parsed_output}"
             else:
                 error = "Could not parse the workout. LLM responded with a question or invalid format."
-    
+
     # GET user_email
     user_email = None
     if google.authorized:
