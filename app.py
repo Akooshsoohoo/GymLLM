@@ -12,7 +12,7 @@ import pandas as pd
 import openai
 from datetime import datetime
 from openai import OpenAI
-
+from openai import AuthenticationError, RateLimitError
 from main import parse_workout_input, exerciseListText, find_best_match, tag_df
 
 app = Flask(__name__)
@@ -596,17 +596,23 @@ def review():
             parsed_output = parse_workout_input(workout_text, client, exerciseListText)
             parsed_data = json.loads(parsed_output)
             pretty_json = json.dumps(parsed_data, indent=2)
-        except openai_error.AuthenticationError:
-            error = "Your OpenAI API key is invalid. Please check your API Key Config page."
-        except openai_error.RateLimitError:
-            error = "You have run out of OpenAI credits or are being rate-limited. Please check your OpenAI usage."
+        except AuthenticationError:
+            error = (
+                "Your OpenAI API key looks invalid or revoked. "
+                "Head back to <b>API Key Config</b>, paste a fresh key, and re-try."
+            )
+        except RateLimitError:
+            error = (
+                "OpenAI is rate-limiting you or you’re out of credits. "
+                "Give it a minute or check your usage dashboard."
+            )
         except Exception as e:
             # This will catch *any* other error (network, key revoked, etc)
-            if hasattr(e, 'message'):
-                error_detail = str(e.message)
-            else:
-                error_detail = str(e)
-            error = f"Could not parse the workout or there was a problem communicating with OpenAI. Details: {error_detail}"
+            error_detail = str(e) if not hasattr(e, 'message') else str(e.message)
+            error = (
+                "Could not parse the workout or there was a problem communicating with OpenAI. "
+                f"Details: {error_detail}"
+            )
 
     # GET user_email as before...
     user_email = None
