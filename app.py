@@ -9,12 +9,11 @@ from flask_sqlalchemy import SQLAlchemy
 
 import json
 import pandas as pd
+import openai
 from datetime import datetime
 from openai import OpenAI
 
 from main import parse_workout_input, exerciseListText, find_best_match, tag_df
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")
@@ -153,11 +152,11 @@ HTML_TEMPLATE = """
         <input type="submit" value="Submit">
     </form>
     <script>
-    document.getElementById('user_api_key').value = localStorage.getItem('openai_api_key') || '';
-    </script>
-        if (!localStorage.getItem("openai_api_key")) {
-            window.location.href = "/apikey";
-        }
+    const key = localStorage.getItem('openai_api_key');
+    document.getElementById('user_api_key').value = key || '';
+    if (!key) {
+        window.location.href = "/apikey";
+    }
     </script>
 </body>
 </html>
@@ -588,7 +587,8 @@ def review():
         pretty_json = None
         parsed_output = None
     else:
-        client = OpenAI(api_key=user_api_key)
+        openai.api_key = user_api_key      #makes main.py use the right key
+        client = OpenAI(api_key=user_api_key)       
         parsed_output = parse_workout_input(workout_text, client, exerciseListText)
         try:
             parsed_data = json.loads(parsed_output)
