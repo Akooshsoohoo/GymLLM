@@ -184,16 +184,6 @@ SEARCH_TEMPLATE = """
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <title>Search Workout Log</title>
-<style>
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 1rem; }
-    th { background: #302f41; color: #d4bfff; font-weight: bold; }
-    input[type="text"] { width: 100%; box-sizing: border-box; font-size: 1rem; padding: 5px 4px; border: 1px solid #444; border-radius: 5px; background: #2a2a33; color:#f4f4f4; }
-    input[type="submit"], button { margin-top: 10px; padding: 8px 18px; font-size: 1rem; background: linear-gradient(90deg,#7f5af0,#9a85f4); color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
-    input[type="submit"]:hover, button:hover { background: linear-gradient(90deg,#6847d2,#9a85f4); }
-    body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; }
-    .nav, a { font-size: 1rem; }
-</style>
 </head>
 <body>
     {% if user_email %}
@@ -208,8 +198,10 @@ SEARCH_TEMPLATE = """
         <a href="/apikey">API Key Config</a>
     </div>
     <h1>Search Your Workout Log</h1>
-    <label for="query">Search:</label>
-    <input type="text" id="query" name="query" style="width:60%;" autocomplete="off" placeholder="Filter by exercise, date, tag...">
+    <div style="margin-bottom:16px;">
+        <label for="query">Search:</label>
+        <input type="text" id="query" name="query" style="width:100%;" autocomplete="off" placeholder="Filter by exercise, date, tag...">
+    </div>
 
     <script>
     document.getElementById('query').addEventListener('input', function() {
@@ -436,7 +428,7 @@ def apikey_config():
                 padding: 13px 18px;
                 font-size: 1.08em;
                 font-weight: 500;
-                max-width: 480px;
+                max-width: 560px;
             }
             .step-list li { margin-bottom: 0.7em; }
             #apikey { letter-spacing: 0.04em; }
@@ -466,7 +458,7 @@ def apikey_config():
                 <li>Click <b>+ Create new secret key</b>, name it <b>GymLLM</b>, click <b>Create</b></li>
                 <li>Copy the key (starts with <b>sk-</b>) and paste it below</li>
             </ol>
-            <input type="text" id="apikey" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your OpenAI API key (starts with sk-)" style="width: 340px;"/>
+            <input type="text" id="apikey" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your OpenAI API key (starts with sk-)" style="width:100%; max-width:480px;"/>
             <button id="savekey" class="disabled" disabled>Save</button>
         </div>
 
@@ -477,7 +469,7 @@ def apikey_config():
                 <li>Make sure Ollama is running, then click <b>Use Local LLM</b> below</li>
             </ol>
             <label style="display:block;margin-bottom:6px;">Model name:</label>
-            <input type="text" id="local-model-input" autocomplete="off" placeholder="e.g. llama3.2, mistral, phi3" style="width:240px;" value="llama3.2"/>
+            <input type="text" id="local-model-input" autocomplete="off" placeholder="e.g. llama3.2, mistral, phi3" style="width:100%; max-width:280px;" value="llama3.2"/>
             <button id="save-local" style="margin-left:8px;">Use Local LLM</button>
         </div>
 
