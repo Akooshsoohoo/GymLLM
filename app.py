@@ -197,10 +197,21 @@ SEARCH_TEMPLATE = """
     </div>
     <h1>Search Your Workout Log</h1>
     <label for="query">Search:</label>
-    <input type="text" id="query" name="query" style="width:60%;" autocomplete="off">
+    <input type="text" id="query" name="query" style="width:60%;" autocomplete="off" placeholder="Filter by exercise, date, tag...">
+
+    <script>
+    document.getElementById('query').addEventListener('input', function() {
+        var q = this.value.toLowerCase();
+        var rows = document.querySelectorAll('#workout-table tbody tr');
+        rows.forEach(function(row) {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    });
+    </script>
 
     <form method="post" action="/search">
-        <table>
+        <table id="workout-table">
+            <thead>
             <tr>
                 <th>Date</th>
                 <th>Exercise</th>
@@ -211,6 +222,8 @@ SEARCH_TEMPLATE = """
                 <th>Tags</th>
                 <th>Delete</th>
             </tr>
+            </thead>
+            <tbody>
             {% for i in range(rows|length) %}
             <tr>
                 {% for j in range(rows[i]|length) %}
@@ -225,6 +238,7 @@ SEARCH_TEMPLATE = """
                 </td>
             </tr>
             {% endfor %}
+            </tbody>
         </table>
         <input type="hidden" name="num_rows" value="{{ rows|length }}">
         <input type="hidden" name="num_cols" value="{{ rows[0]|length if rows else 7 }}">
