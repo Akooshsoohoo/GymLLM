@@ -76,10 +76,14 @@ REVIEW_TEMPLATE = """
         <label for="workout">Edit your original workout prompt:</label><br>
         <textarea id="workout" name="workout" rows="4" cols="50">{{ workout_text }}</textarea><br>
         <input type="hidden" id="user_api_key" name="user_api_key" value="">
+        <input type="hidden" id="llm_mode" name="llm_mode" value="">
+        <input type="hidden" id="local_model" name="local_model" value="">
         <input type="submit" value="Re-Parse & Review">
     </form>
     <script>
     document.getElementById('user_api_key').value = localStorage.getItem('openai_api_key') || '';
+    document.getElementById('llm_mode').value = localStorage.getItem('llm_mode') || 'openai';
+    document.getElementById('local_model').value = localStorage.getItem('local_model') || 'llama3.2';
     </script>
     {% if pretty_json %}
         <h2>LLM Parsed Output:</h2>
@@ -87,6 +91,9 @@ REVIEW_TEMPLATE = """
         <form method="post" action="/confirm">
             <input type="hidden" name="workout_text" value="{{ workout_text }}">
             <input type="hidden" name="parsed_output" value="{{ parsed_output }}">
+            <input type="hidden" name="llm_mode" value="{{ llm_mode }}">
+            <input type="hidden" name="local_model" value="{{ local_model }}">
+            <input type="hidden" name="user_api_key" value="{{ user_api_key_hidden }}">
             <button type="submit">Approve & Save to Log</button>
         </form>
     {% endif %}
@@ -151,12 +158,17 @@ HTML_TEMPLATE = """
         <label for="workout">Workout:</label><br>
         <textarea id="workout" name="workout" rows="4" cols="50" placeholder="e.g. bench 185 for 5x5, lat pulldowns 3x10, etc."></textarea><br>
         <input type="hidden" id="user_api_key" name="user_api_key" value="">
+        <input type="hidden" id="llm_mode" name="llm_mode" value="">
+        <input type="hidden" id="local_model" name="local_model" value="">
         <input type="submit" value="Submit">
     </form>
     <script>
     const key = localStorage.getItem('openai_api_key');
+    const mode = localStorage.getItem('llm_mode') || 'openai';
     document.getElementById('user_api_key').value = key || '';
-    if (!key) {
+    document.getElementById('llm_mode').value = mode;
+    document.getElementById('local_model').value = localStorage.getItem('local_model') || 'llama3.2';
+    if (mode !== 'local' && !key) {
         window.location.href = "/apikey";
     }
     </script>
@@ -441,30 +453,34 @@ def apikey_config():
             <a href="/" id="log-link">Log Workout</a>
             <a href="/search" id="search-link">Search/Filter Log</a>
         </div>
-        <h1>Configure OpenAI API Key</h1>
-        <ol class="step-list">
-            <li>
-                Go to 
-                <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#b48eff;font-weight:600;">
-                    openai.com/api-keys
-                </a>
-            </li>
-            <li>
-                Click <b>+ Create new secret key</b>
-                <ul style="margin:6px 0 0 18px;font-size:0.98em;color:#ccc;">
-                    <li>For Name, enter <b>GymLLM</b> (or any name you want)</li>
-                    <li>Click <b>Create secret key</b></li>
-                </ul>
-            </li>
-            <li>
-                Copy the new API key (starts with <b>sk-</b>).
-            </li>
-            <li>
-                Paste it below and click <b>Save</b>.
-            </li>
-        </ol>
-        <input type="text" id="apikey" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your OpenAI API key (starts with sk-)" style="width: 340px;"/>
-        <button id="savekey" class="disabled" disabled>Save</button>
+        <h1>Configure LLM</h1>
+
+        <div style="display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+            <button id="tab-openai" onclick="showTab('openai')" style="flex:1;min-width:140px;padding:10px 0;font-size:1rem;border-radius:8px;border:2px solid #7f5af0;background:#2a2035;color:#d4bfff;cursor:pointer;font-weight:600;">OpenAI API Key</button>
+            <button id="tab-local" onclick="showTab('local')" style="flex:1;min-width:140px;padding:10px 0;font-size:1rem;border-radius:8px;border:2px solid #444;background:#1e1e2e;color:#aaa;cursor:pointer;font-weight:600;">Local LLM (Ollama)</button>
+        </div>
+
+        <div id="panel-openai">
+            <ol class="step-list">
+                <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#b48eff;font-weight:600;">openai.com/api-keys</a></li>
+                <li>Click <b>+ Create new secret key</b>, name it <b>GymLLM</b>, click <b>Create</b></li>
+                <li>Copy the key (starts with <b>sk-</b>) and paste it below</li>
+            </ol>
+            <input type="text" id="apikey" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your OpenAI API key (starts with sk-)" style="width: 340px;"/>
+            <button id="savekey" class="disabled" disabled>Save</button>
+        </div>
+
+        <div id="panel-local" style="display:none;">
+            <ol class="step-list">
+                <li>Install <a href="https://ollama.com" target="_blank" style="color:#b48eff;font-weight:600;">Ollama</a> on your machine</li>
+                <li>Pull a model, e.g. <code style="background:#2a2035;padding:2px 6px;border-radius:4px;">ollama pull llama3.2</code></li>
+                <li>Make sure Ollama is running, then click <b>Use Local LLM</b> below</li>
+            </ol>
+            <label style="display:block;margin-bottom:6px;">Model name:</label>
+            <input type="text" id="local-model-input" autocomplete="off" placeholder="e.g. llama3.2, mistral, phi3" style="width:240px;" value="llama3.2"/>
+            <button id="save-local" style="margin-left:8px;">Use Local LLM</button>
+        </div>
+
         <div id="status-box"></div>
         <script>
         function validKey(k) {
@@ -473,53 +489,76 @@ def apikey_config():
         function showNav() {
             document.getElementById('nav').style.display = 'block';
         }
-        function hideNav() {
-            document.getElementById('nav').style.display = 'none';
-        }
-        // Helper to show status
         function showStatus(msg, color, border) {
-            var status = document.getElementById('status-box');
-            status.style.display = 'block';
-            status.style.color = color;
-            status.style.borderLeft = '6px solid ' + border;
-            status.innerHTML = msg;
+            var s = document.getElementById('status-box');
+            s.style.display = 'block';
+            s.style.color = color;
+            s.style.borderLeft = '6px solid ' + border;
+            s.innerHTML = msg;
         }
-        // On load: check if already saved, show nav and good-to-go
+        function showTab(tab) {
+            document.getElementById('panel-openai').style.display = tab === 'openai' ? '' : 'none';
+            document.getElementById('panel-local').style.display = tab === 'local' ? '' : 'none';
+            document.getElementById('tab-openai').style.borderColor = tab === 'openai' ? '#7f5af0' : '#444';
+            document.getElementById('tab-openai').style.color = tab === 'openai' ? '#d4bfff' : '#aaa';
+            document.getElementById('tab-openai').style.background = tab === 'openai' ? '#2a2035' : '#1e1e2e';
+            document.getElementById('tab-local').style.borderColor = tab === 'local' ? '#7f5af0' : '#444';
+            document.getElementById('tab-local').style.color = tab === 'local' ? '#d4bfff' : '#aaa';
+            document.getElementById('tab-local').style.background = tab === 'local' ? '#2a2035' : '#1e1e2e';
+            document.getElementById('status-box').style.display = 'none';
+        }
         window.addEventListener('DOMContentLoaded', function() {
-            var key = localStorage.getItem('openai_api_key');
-            if (key && validKey(key)) {
+            var mode = localStorage.getItem('llm_mode');
+            if (mode === 'local') {
+                showTab('local');
+                var m = localStorage.getItem('local_model') || 'llama3.2';
+                document.getElementById('local-model-input').value = m;
                 showNav();
-                showStatus("✅ You're good to go! <b>Click Log Workout to start.</b>", "#c1ffd1", "#41d174");
+                showStatus("✅ Using local LLM (<b>" + m + "</b>). <b>Click Log Workout to start.</b>", "#c1ffd1", "#41d174");
+            } else {
+                var key = localStorage.getItem('openai_api_key');
+                if (key && validKey(key)) {
+                    showNav();
+                    showStatus("✅ You're good to go! <b>Click Log Workout to start.</b>", "#c1ffd1", "#41d174");
+                }
             }
         });
         document.getElementById('apikey').addEventListener('input', function() {
             var key = this.value.trim();
             var btn = document.getElementById('savekey');
-            var status = document.getElementById('status-box');
             if (validKey(key)) {
                 btn.disabled = false;
                 btn.classList.remove('disabled');
-                status.style.display = 'none';
+                document.getElementById('status-box').style.display = 'none';
             } else {
                 btn.disabled = true;
                 btn.classList.add('disabled');
                 if (key.length > 0) {
-                    showStatus("❌ Invalid API key. It must start with <b>sk-</b> and be at least 48 characters.", "#ffd1d1", "#e64b4b");
+                    showStatus("❌ Invalid API key. Must start with <b>sk-</b> and be at least 48 characters.", "#ffd1d1", "#e64b4b");
                 } else {
-                    status.style.display = 'none';
+                    document.getElementById('status-box').style.display = 'none';
                 }
             }
         });
         document.getElementById('savekey').onclick = function() {
             var key = document.getElementById('apikey').value.trim();
             if (!validKey(key)) {
-                showStatus("❌ Invalid API key. It must start with <b>sk-</b> and be at least 48 characters.", "#ffd1d1", "#e64b4b");
+                showStatus("❌ Invalid API key. Must start with <b>sk-</b> and be at least 48 characters.", "#ffd1d1", "#e64b4b");
                 return;
             }
             localStorage.setItem('openai_api_key', key);
+            localStorage.setItem('llm_mode', 'openai');
             showStatus("✅ API key saved! <b>You're good to go. Click Log Workout to start.</b>", "#c1ffd1", "#41d174");
             showNav();
-        }
+        };
+        document.getElementById('save-local').onclick = function() {
+            var m = document.getElementById('local-model-input').value.trim() || 'llama3.2';
+            localStorage.setItem('llm_mode', 'local');
+            localStorage.setItem('local_model', m);
+            localStorage.removeItem('openai_api_key');
+            showStatus("✅ Local LLM set to <b>" + m + "</b>. Make sure Ollama is running, then <b>click Log Workout</b>.", "#c1ffd1", "#41d174");
+            showNav();
+        };
         </script>
         <p style="margin-top: 28px; color:#aaa; font-size:0.98em;">
             <strong>Privacy:</strong> Your API key is stored only in your browser and never sent to our server.
@@ -602,18 +641,28 @@ def search():
 def review():
     workout_text = request.form.get("workout", "")
     user_api_key = request.form.get("user_api_key", "").strip()
+    llm_mode = request.form.get("llm_mode", "openai")
+    local_model = request.form.get("local_model", "llama3.2").strip() or "llama3.2"
 
     pretty_json = None
     parsed_output = None
     error = None
+    client = None
+    model = None
 
-    if not user_api_key or not user_api_key.startswith("sk-"):
-        error = "OpenAI API key is missing or invalid. Please re-enter it on the API Key Config page."
+    if llm_mode == "local":
+        client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+        model = local_model
     else:
-        try:
-            openai.api_key = user_api_key
+        if not user_api_key or not user_api_key.startswith("sk-"):
+            error = "OpenAI API key is missing or invalid. Please re-enter it on the API Key Config page."
+        else:
             client = OpenAI(api_key=user_api_key)
-            parsed_output = parse_workout_input(workout_text, client, exerciseListText)
+            model = "gpt-3.5-turbo"
+
+    if client and not error:
+        try:
+            parsed_output = parse_workout_input(workout_text, client, exerciseListText, model=model)
             parsed_data = json.loads(parsed_output)
             pretty_json = json.dumps(parsed_data, indent=2)
         except AuthenticationError:
@@ -623,18 +672,22 @@ def review():
             )
         except RateLimitError:
             error = (
-                "OpenAI is rate-limiting you or you’re out of credits. "
+                "OpenAI is rate-limiting you or you're out of credits. "
                 "Give it a minute or check your usage dashboard."
             )
         except Exception as e:
-            # This will catch *any* other error (network, key revoked, etc)
             error_detail = str(e) if not hasattr(e, 'message') else str(e.message)
-            error = (
-                "Could not parse the workout or there was a problem communicating with OpenAI. "
-                f"Details: {error_detail}"
-            )
+            if llm_mode == "local" and ("connection" in error_detail.lower() or "refused" in error_detail.lower()):
+                error = (
+                    "Could not reach Ollama. Make sure it's running locally "
+                    f"(<code>ollama run {local_model}</code>) and try again."
+                )
+            else:
+                error = (
+                    "Could not parse the workout or there was a problem communicating with the LLM. "
+                    f"Details: {error_detail}"
+                )
 
-    # GET user_email as before...
     user_email = None
     if google.authorized:
         try:
@@ -650,7 +703,10 @@ def review():
         pretty_json=pretty_json,
         error=error,
         parsed_output=parsed_output,
-        user_email=user_email
+        user_email=user_email,
+        llm_mode=llm_mode,
+        local_model=local_model,
+        user_api_key_hidden=user_api_key,
     )
 
 
@@ -659,10 +715,25 @@ def review():
 def confirm():
     workout_text = request.form.get("workout_text", "")
     parsed_output = request.form.get("parsed_output", "")
+    llm_mode = request.form.get("llm_mode", "openai")
+    local_model = request.form.get("local_model", "llama3.2").strip() or "llama3.2"
+    user_api_key = request.form.get("user_api_key", "").strip()
+
     try:
         parsed_data = json.loads(parsed_output)
     except Exception as e:
         return f"Failed to parse data for saving: {e}", 400
+
+    if llm_mode == "local":
+        llm_client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+        model = local_model
+    elif user_api_key.startswith("sk-"):
+        llm_client = OpenAI(api_key=user_api_key)
+        model = "gpt-3.5-turbo"
+    else:
+        llm_client = None
+        model = "gpt-3.5-turbo"
+
     user_email = None
     if google.authorized:
         try:
@@ -675,7 +746,10 @@ def confirm():
         return "Not logged in", 401
     today_str = datetime.now().strftime("%Y-%m-%d")
     for entry in parsed_data:
-        matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df)
+        if llm_client:
+            matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df, llm_client, model=model)
+        else:
+            matched_name, tags = entry.get("exercise", ""), ""
         workout = Workout(
             user_email=user_email,
             date=today_str,

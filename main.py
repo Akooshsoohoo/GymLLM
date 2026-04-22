@@ -20,7 +20,7 @@ exerciseListText = ", ".join(tag_df["exercise"].tolist())
 
 # --------- Core Parsing Function (used in both CLI and web app) ---------
 
-def parse_workout_input(user_input, client, exerciseListText):
+def parse_workout_input(user_input, client, exerciseListText, model="gpt-3.5-turbo"):
     systemPrompt = (
         "You are a workout log parser that turns natural-language gym logs into structured data. "
         # ... [unchanged, omitted for brevity] ...
@@ -33,7 +33,7 @@ def parse_workout_input(user_input, client, exerciseListText):
         {"role": "user", "content": user_input}
     ]
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model=model,
         messages=messages
     )
     reply = response.choices[0].message.content.strip()
@@ -42,7 +42,7 @@ def parse_workout_input(user_input, client, exerciseListText):
 
 # --------- Match a raw name to a canonical name + tags ---------
 
-def find_best_match(raw_name, tag_df, client):
+def find_best_match(raw_name, tag_df, client, model="gpt-3.5-turbo"):
     raw = raw_name.lower().strip()
     for i, canonical in enumerate(tag_df["exercise"]):
         if raw in canonical or canonical in raw:
@@ -54,7 +54,7 @@ def find_best_match(raw_name, tag_df, client):
         "Examples: 'back;pull;compound;lats', 'chest;push;isolation', 'quads;legs;compound;lower'."
     )
     tag_response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model=model,
         messages=[{"role": "user", "content": tag_prompt}]
     )
     generated_tags = tag_response.choices[0].message.content.strip()
