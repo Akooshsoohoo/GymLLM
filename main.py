@@ -22,11 +22,37 @@ exerciseListText = ", ".join(tag_df["exercise"].tolist())
 
 def parse_workout_input(user_input, client, exerciseListText, model="gpt-3.5-turbo"):
     systemPrompt = (
-        "You are a workout log parser that turns natural-language gym logs into structured data. "
-        # ... [unchanged, omitted for brevity] ...
-        "Output rules:\n"
-        "- Always return a flat JSON *list* of objects, not a dictionary or nested structure.\n"
-        "- No extra commentary, just pure JSON unless clarification is needed.\n"
+        "You are a workout log parser. Convert natural-language gym logs into structured JSON.\n\n"
+
+        "OUTPUT: Return ONLY a raw JSON array — no markdown, no code fences, no explanation.\n"
+        "Example: [{\"exercise\": \"barbell bench press\", \"weight\": \"185 lbs\", \"sets\": 3, \"reps\": [10, 10, 10], \"notes\": \"\"}]\n\n"
+
+        "SETS & REPS — interpret shorthand as follows:\n"
+        "  '5x5'        → sets: 5, reps: [5,5,5,5,5]\n"
+        "  '3x10'       → sets: 3, reps: [10,10,10]\n"
+        "  '4x8'        → sets: 4, reps: [8,8,8,8]\n"
+        "  '10,8,6'     → sets: 3, reps: [10,8,6]\n"
+        "  'sets of 12' (no count given) → assume 3 sets → sets: 3, reps: [12,12,12]\n"
+        "  'a few sets' → assume 3 sets\n"
+        "  only reps mentioned, no sets → assume 1 set\n"
+        "  no reps or sets mentioned → omit both (leave null)\n\n"
+
+        "WEIGHT:\n"
+        "  Include units if stated ('185 lbs', '80 kg').\n"
+        "  'bodyweight' or 'BW' → weight: 'bodyweight'.\n"
+        "  Not mentioned → weight: ''.\n\n"
+
+        "ASSUMPTIONS — always assume rather than ask unless truly impossible:\n"
+        "  Unclear equipment → pick the most common variant (usually barbell for compounds, dumbbell for isolation).\n"
+        "  Unclear weight → leave blank.\n"
+        "  Unclear reps → use the most reasonable default for that exercise.\n\n"
+
+        "EXERCISE NAMES — match to this list when possible. Only invent a name if nothing fits:\n"
+        + exerciseListText + "\n\n"
+
+        "Each JSON object must have these keys: exercise, weight, sets, reps, notes.\n"
+        "sets is an integer. reps is a list of integers (one per set). All others are strings.\n"
+        "Return ONLY the JSON array. Nothing else."
     )
     messages = [
         {"role": "system", "content": systemPrompt},
@@ -37,7 +63,13 @@ def parse_workout_input(user_input, client, exerciseListText, model="gpt-3.5-tur
         messages=messages
     )
     reply = response.choices[0].message.content.strip()
-    cleanReply = reply.removeprefix("```json").removesuffix("```").strip()
+    # strip code fences local models sometimes add
+    cleanReply = reply.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    # if the model added text before the array, extract just the JSON array
+    start = cleanReply.find("[")
+    end = cleanReply.rfind("]")
+    if start != -1 and end != -1:
+        cleanReply = cleanReply[start:end + 1]
     return cleanReply
 
 # --------- Match a raw name to a canonical name + tags ---------
