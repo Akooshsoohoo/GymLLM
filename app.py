@@ -204,7 +204,11 @@ SEARCH_TEMPLATE = """
         var q = this.value.toLowerCase();
         var rows = document.querySelectorAll('#workout-table tbody tr');
         rows.forEach(function(row) {
-            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+            var cellText = Array.from(row.querySelectorAll('input[type="text"]'))
+                .map(function(i) { return i.value; })
+                .join(' ')
+                .toLowerCase();
+            row.style.display = (q === '' || cellText.includes(q)) ? '' : 'none';
         });
     });
     </script>
