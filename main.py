@@ -116,7 +116,7 @@ def extract_date(user_input):
     if match:
         try:
             return datetime.strptime(match.group(1), "%Y-%m-%d")
-        except:
+        except ValueError:
             pass
     return today
 

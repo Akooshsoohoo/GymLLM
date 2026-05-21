@@ -15,12 +15,17 @@ from openai import OpenAI
 from openai import AuthenticationError, RateLimitError
 from main import parse_workout_input, exerciseListText, find_best_match, tag_df
 
+OPENAI_MODEL = "gpt-3.5-turbo"
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 if not app.secret_key:
     raise RuntimeError("FLASK_SECRET_KEY environment variable is not set! Aborting.")
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+db_url = os.getenv("DATABASE_URL")
+if not db_url:
+    raise RuntimeError("DATABASE_URL environment variable is not set! Aborting.")
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -604,8 +609,11 @@ def search():
     ]
 
     if request.method == "POST":
-        num_rows = int(request.form.get("num_rows", 0))
-        num_cols = int(request.form.get("num_cols", 7))
+        try:
+            num_rows = int(request.form.get("num_rows", 0))
+            num_cols = int(request.form.get("num_cols", 7))
+        except ValueError:
+            return "Invalid form data", 400
         new_data = []
         ids_to_delete = []
         for i in range(num_rows):
@@ -616,12 +624,12 @@ def search():
                 ids_to_delete.append(i)
             else:
                 new_data.append(row)
+        ids_to_delete_set = set(ids_to_delete)
         for idx in sorted(ids_to_delete, reverse=True):
-            w = workouts[idx]
-            db.session.delete(w)
+            db.session.delete(workouts[idx])
         db.session.commit()
-        for idx, row in enumerate(new_data):
-            w = workouts[idx]
+        remaining = [w for i, w in enumerate(workouts) if i not in ids_to_delete_set]
+        for w, row in zip(remaining, new_data):
             w.date, w.exercise, w.weight, w.sets, w.reps, w.notes, w.tags = row
         db.session.commit()
         return redirect(url_for("search"))
@@ -650,7 +658,7 @@ def review():
             error = "OpenAI API key is missing or invalid. Please re-enter it on the API Key Config page."
         else:
             client = OpenAI(api_key=user_api_key)
-            model = "gpt-3.5-turbo"
+            model = OPENAI_MODEL
 
     if client and not error:
         try:
@@ -721,10 +729,10 @@ def confirm():
         model = local_model
     elif user_api_key.startswith("sk-"):
         llm_client = OpenAI(api_key=user_api_key)
-        model = "gpt-3.5-turbo"
+        model = OPENAI_MODEL
     else:
         llm_client = None
-        model = "gpt-3.5-turbo"
+        model = OPENAI_MODEL
 
     user_email = None
     if google.authorized:
@@ -739,7 +747,10 @@ def confirm():
     today_str = datetime.now().strftime("%Y-%m-%d")
     for entry in parsed_data:
         if llm_client:
-            matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df, llm_client, model=model)
+            try:
+                matched_name, tags = find_best_match(entry.get("exercise", ""), tag_df, llm_client, model=model)
+            except Exception:
+                matched_name, tags = entry.get("exercise", ""), ""
         else:
             matched_name, tags = entry.get("exercise", ""), ""
         workout = Workout(
@@ -766,5 +777,3 @@ if __name__ == "__main__":
         db.create_all()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
-app.debug = True
