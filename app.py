@@ -408,7 +408,7 @@ def _fix_google_token_expires():
 
 @app.route("/login")
 def login():
-    if google.authorized:
+    if get_user_email():
         return redirect(url_for("home"))
     return redirect(url_for("google.login"))
 
