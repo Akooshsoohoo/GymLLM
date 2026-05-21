@@ -72,6 +72,7 @@ REVIEW_TEMPLATE = """
         <a href="/">Log Workout</a>
         <a href="/search">Search/Filter Log</a>
         <a href="/apikey">API Key Config</a>
+        {% if not user_email %}<a href="/login">Sign In</a>{% endif %}
     </div>
     <h1>Review & Confirm Workout</h1>
     {% if error %}
@@ -157,6 +158,7 @@ HTML_TEMPLATE = """
         <a href="/">Log Workout</a>
         <a href="/search">Search/Filter Log</a>
         <a href="/apikey">API Key Config</a>
+        {% if not user_email %}<a href="/login">Sign In</a>{% endif %}
     </div>
     <h1>GymLLM</h1>
     <form method="post" action="/review">
@@ -201,6 +203,7 @@ SEARCH_TEMPLATE = """
         <a href="/">Log Workout</a>
         <a href="/search">Search/Filter Log</a>
         <a href="/apikey">API Key Config</a>
+        {% if not user_email %}<a href="/login">Sign In</a>{% endif %}
     </div>
     <h1>Search Your Workout Log</h1>
     <div style="margin-bottom:16px;">
@@ -375,6 +378,22 @@ def welcome():
 
 
 
+def get_user_email():
+    """Return the signed-in user's email, or None. Clears an expired token so the
+    next request properly redirects to login instead of silently showing no account bar."""
+    if not google.authorized:
+        return None
+    try:
+        resp = google.get("/oauth2/v2/userinfo")
+        if resp.ok:
+            return resp.json().get("email")
+        if resp.status_code in (401, 403):
+            del google_bp.token
+    except Exception:
+        pass
+    return None
+
+
 @app.before_request
 def _fix_google_token_expires():
     token = google_bp.token
@@ -406,14 +425,7 @@ def oauth_success():
 
 @app.route("/apikey", methods=["GET"])
 def apikey_config():
-    user_email = None
-    if google.authorized:
-        try:
-            resp = google.get("/oauth2/v2/userinfo")
-            if resp.ok:
-                user_email = resp.json().get("email")
-        except Exception:
-            pass
+    user_email = get_user_email()
     return render_template_string("""
     <!DOCTYPE html>
     <html>
@@ -572,13 +584,9 @@ def home():
     if not google.authorized:
         return redirect(url_for("welcome"))
 
-    user_email = None
-    try:
-        resp = google.get("/oauth2/v2/userinfo")
-        if resp.ok:
-            user_email = resp.json().get("email")
-    except Exception:
-        pass
+    user_email = get_user_email()
+    if not user_email:
+        return redirect(url_for("welcome"))
 
     return render_template_string(
         HTML_TEMPLATE,
@@ -591,14 +599,7 @@ def home():
 
 @app.route("/search", methods=["GET", "POST"])
 def search():
-    user_email = None
-    if google.authorized:
-        try:
-            resp = google.get("/oauth2/v2/userinfo")
-            if resp.ok:
-                user_email = resp.json().get("email")
-        except Exception:
-            pass
+    user_email = get_user_email()
     if not user_email:
         return redirect(url_for("login"))
 
@@ -688,14 +689,7 @@ def review():
                     f"Details: {error_detail}"
                 )
 
-    user_email = None
-    if google.authorized:
-        try:
-            resp = google.get("/oauth2/v2/userinfo")
-            if resp.ok:
-                user_email = resp.json().get("email")
-        except Exception:
-            pass
+    user_email = get_user_email()
 
     return render_template_string(
         REVIEW_TEMPLATE,
@@ -734,14 +728,7 @@ def confirm():
         llm_client = None
         model = OPENAI_MODEL
 
-    user_email = None
-    if google.authorized:
-        try:
-            resp = google.get("/oauth2/v2/userinfo")
-            if resp.ok:
-                user_email = resp.json().get("email")
-        except Exception:
-            pass
+    user_email = get_user_email()
     if not user_email:
         return "Not logged in", 401
     today_str = datetime.now().strftime("%Y-%m-%d")
