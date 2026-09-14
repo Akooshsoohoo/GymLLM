@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | History{% endblock %}
+{% block content %}
+<h1>Exercise history</h1>
+{% if not summary %}
+<p class="muted">Nothing logged yet. <a href="{{ url_for('main.home') }}">Log your first workout.</a></p>
+{% else %}
+<div class="table-wrap">
+<table class="sortable">
+    <thead>
+    <tr><th data-sort="text">Exercise</th><th data-sort="number">Entries</th><th data-sort="date">First</th><th data-sort="date">Last</th></tr>
+    </thead>
+    <tbody>
+    {% for s in summary %}
+    <tr>
+        <td><a href="{{ url_for('main.exercise_history', name=s.exercise) }}">{{ s.exercise }}</a></td>
+        <td>{{ s.sessions }}</td>
+        <td>{{ s.first }}</td>
+        <td>{{ s.last }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

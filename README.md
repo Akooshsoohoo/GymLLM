@@ -1,144 +1,117 @@
 # GymLLM
 
-A local-first, web-based workout logger and search tool powered by OpenAI's GPT.
+Log workouts in plain English. GymLLM sends your text to the LLM of your choice
+(OpenAI, Anthropic, Gemini, Groq, OpenRouter, a local Ollama or LM Studio, or any
+OpenAI-compatible server), shows you the parsed sets and reps to review and edit,
+then saves them to your personal log. Search and edit the log, and see per-exercise
+history with a progress chart.
 
----
+Sign-in is via Google. Each user only ever sees their own entries.
 
-## What is GymLLM?
+## How it works
 
-GymLLM lets you log workouts in plain language, have them parsed and normalized using OpenAI's API, review and confirm what gets saved, and search/filter all your workout history from a web browser.  
-All data is local by default.
+1. Sign in with Google.
+2. On **LLM Settings**, pick a provider, a model, and (for hosted providers) your
+   API key. Hit **Test connection** to check it works. The key lives in a signed
+   cookie in your browser; the server forwards it to the provider when you parse a
+   workout and never stores it.
+3. On **Log Workout**, type something like
+   `yesterday: bench 185 for 5x5, lat pulldowns 3x10, felt strong`.
+4. Review the parsed table, fix anything, adjust the date, and save.
+5. **Search / Edit Log** lists everything newest first with in-place editing.
+   **History** shows every exercise you have done and a chart of your top weight
+   per session.
 
----
+## Running locally
 
-## Requirements
+Requirements: Python 3.12, a Google OAuth client.
 
-- Python 3.8 or newer (tested on 3.10+)
-- pip
-- An OpenAI API key
+```bash
+git clone https://github.com/Akooshsoohoo/GymLLM.git
+cd GymLLM
+python -m venv .venv
+.venv\Scripts\activate          # Windows;  source .venv/bin/activate on macOS/Linux
+pip install -r requirements-dev.txt
+copy .env.example .env          # cp on macOS/Linux
+```
 
----
+Fill in `.env`:
 
-## Installation & Setup
+| Variable | Notes |
+|---|---|
+| `FLASK_SECRET_KEY` | Any long random string. `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | From [Google Cloud Console](https://console.cloud.google.com/apis/credentials): create an *OAuth client ID* of type *Web application* and add `http://localhost:5000/login/google/authorized` as an authorised redirect URI. |
+| `DATABASE_URL` | Optional locally. Defaults to a SQLite file in `instance/`. |
+| `OAUTHLIB_INSECURE_TRANSPORT=1` | Local only, so OAuth works over plain `http://localhost`. |
 
-1. Clone the repository:
+Then:
 
-   git clone https://github.com/Akooshsoohoo/gymllm.git
-   cd gymllm
+```bash
+python app.py
+```
 
-2. Install dependencies:
+Open <http://localhost:5000>.
 
-   pip install flask openai pandas python-dotenv
+### Using a local model
 
-3. Set up your OpenAI API key:
+Install [Ollama](https://ollama.com), run `ollama pull llama3.2`, keep Ollama
+running, and choose **Ollama (local)** on the settings page. Local providers only
+work when GymLLM itself is running on the same machine, because the server is what
+talks to the model. If you deploy GymLLM and still want a local model, expose it
+through a tunnel and use the **Custom (OpenAI-compatible)** provider with that URL.
 
-   - Go to https://platform.openai.com/api-keys and create an API key.
-   - Create a file named `.env` in the project directory.
-   - Add this line to `.env`:
+### Tests and lint
 
-     OPENAI_API_KEY=sk-...
+```bash
+pytest -q
+ruff check . && ruff format --check .
+```
 
-   (Replace `sk-...` with your actual OpenAI API key.)
+Tests use an in-memory SQLite database and a fake LLM client; nothing touches the
+network or your real database.
 
----
+## Deploying to Render
 
-## Running the App
+`render.yaml` describes the service: Python 3.12, `gunicorn wsgi:app`, health
+check on `/healthz`. Set these environment variables on the service:
 
-Start the web server with:
+- `FLASK_ENV=production` (enables Secure cookies, requires `DATABASE_URL`)
+- `FLASK_SECRET_KEY`
+- `DATABASE_URL` (Render Postgres; `postgres://` URLs are rewritten automatically)
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, with
+  `https://<your-domain>/login/google/authorized` added as a redirect URI.
 
-   python app.py
+Do **not** set `OAUTHLIB_INSECURE_TRANSPORT` in production.
 
-- The app runs at http://localhost:5000.
-- No need for any cloud deployment or extra setup for local use.
+The database table is created on startup if missing. The schema is unchanged from
+earlier versions, so existing data keeps working.
 
----
+## Project layout
 
-## Usage
+```
+app.py / wsgi.py          entrypoints (dev server / gunicorn)
+gymllm/
+  __init__.py             create_app() factory
+  config.py               environment -> Flask config
+  auth.py                 Google sign-in, session caching, login_required
+  routes.py               all pages: log, review, confirm, search, history, settings
+  parsing.py              system prompt + normalisation of LLM output
+  exercises.py            canonical exercise list, matching, LLM tag fallback
+  llm/providers.py        provider registry + per-browser LLMConfig
+  llm/client.py           OpenAI-compatible and Anthropic adapters, error mapping
+  models.py               Workout table
+data/taggedExerciseList.csv   canonical names and tags (edit to customise)
+templates/, static/       Jinja templates, CSS, and the small front-end script
+tests/                    pytest suite
+```
 
-1. Go to http://localhost:5000.
-2. Enter your workout in plain English in the form (e.g., "bench 185 for 5x5, lat pulldowns 3x10").
-3. Review and confirm the parsed and canonicalized result. Edit and re-parse as needed.
-4. When satisfied, approve and save to log.
-5. To search/filter your workout history, go to `/search` (or click the navigation link).
+## Adding a provider
 
----
-
-## Customization
-
-- Exercises/Tags:  
-  Edit `exerciseList.csv` and `taggedExerciseList.csv` to control canonical exercise names and tags.
-- Styling:  
-  Edit `static/style.css` for custom appearance.
-- All logs are stored in `workoutLog.csv` in the project directory.
-
----
-
-## Project Structure
-
-- `app.py` — Main Flask web app (UI, routes, logging, search)
-- `main.py` — LLM parsing and normalization logic
-- `exerciseList.csv` — Canonical exercise names
-- `taggedExerciseList.csv` — Canonical names and their tags
-- `workoutLog.csv` — Your logged workouts (auto-created)
-- `static/style.css` — All UI styling
-- `.env` — Your (private) OpenAI API key
-
----
-
-## Notes
-
-- Your OpenAI API key is required to use the app.  
-  The key is read from `.env` and is never uploaded or shared.
-- All data is local.  
-  Nothing is sent anywhere except to OpenAI’s API for parsing.
-- If you want to deploy online or share with others, you will need to handle your API key and user authentication accordingly.
-- Do not commit your `.env` or `workoutLog.csv` to git.  
-  Add them to `.gitignore`.
-
----
-
-## Example: .gitignore
-
-.env
-workoutLog.csv
-
----
-
-## Example: .env
-
-OPENAI_API_KEY=sk-...
-
----
-
-## Example: exerciseList.csv
-
-bench press
-lat pulldown
-dumbbell curl
-triceps rope pushdown
-shoulder press
-...
-
----
-
-## Example: taggedExerciseList.csv
-
-exercise,tags
-bench press,chest;push;compound
-lat pulldown,back;pull;compound;lats
-dumbbell curl,biceps;pull;isolation
-triceps rope pushdown,triceps;push;isolation
-shoulder press,shoulders;push;compound
-...
-
----
+Most providers expose an OpenAI-compatible endpoint. Add an entry to `PROVIDERS`
+in `gymllm/llm/providers.py` with its base URL, default model, and whether it needs
+a key. Providers with their own SDK (like Anthropic) get an adapter class in
+`gymllm/llm/client.py` implementing `complete_json(system, user)`.
 
 ## License
 
-MIT License. Use at your own risk.
-
----
-
-## Support
-
-For issues or feature requests, open an issue or PR on the repository.
+MIT.

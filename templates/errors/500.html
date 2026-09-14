@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Error{% endblock %}
+{% block content %}
+<h1>Something went wrong</h1>
+<p class="muted">The error has been logged. <a href="{{ url_for('main.home') }}">Try again from the start.</a></p>
+{% endblock %}

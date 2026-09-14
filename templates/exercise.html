@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | {{ name }}{% endblock %}
+{% block content %}
+<p class="muted small"><a href="{{ url_for('main.exercises') }}">&larr; All exercises</a></p>
+<h1>{{ name }}</h1>
+{% if tags %}<p class="tags">{% for t in tags.split(';') if t %}<span class="tag">{{ t }}</span>{% endfor %}</p>{% endif %}
+
+{% if not rows %}
+<p class="muted">No entries for this exercise yet.</p>
+{% else %}
+<div class="stat-row">
+    <div class="stat"><div class="stat-value">{{ sessions }}</div><div class="stat-label">session{{ '' if sessions == 1 else 's' }}</div></div>
+    <div class="stat"><div class="stat-value">{{ best.weight if best else '—' }}</div><div class="stat-label">best weight{% if best %} · {{ best.date }}{% endif %}</div></div>
+    <div class="stat"><div class="stat-value">{{ last_date }}</div><div class="stat-label">last done</div></div>
+</div>
+
+<div id="chart-wrap" data-series='{{ series|tojson }}'>
+    <h2>Top weight per session</h2>
+    <svg id="progress-chart" viewBox="0 0 640 260" role="img" aria-label="Top weight per session"></svg>
+    <p class="muted small" id="chart-note" hidden>Weights without a leading number (e.g. "bodyweight") are not charted.</p>
+</div>
+
+<div class="table-wrap">
+<table class="sortable">
+    <thead>
+    <tr><th data-sort="date">Date</th><th data-sort="number">Weight</th><th data-sort="number">Sets</th><th>Reps</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+    {% for r in rows|reverse %}
+    <tr>
+        <td>{{ r.date }}</td><td>{{ r.weight }}</td><td>{{ r.sets }}</td><td>{{ r.reps }}</td><td>{{ r.notes }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

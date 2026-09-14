@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Welcome{% endblock %}
+{% block body_class %}welcome{% endblock %}
+{% block chrome %}{% endblock %}
+{% block content %}
+<div class="welcome-bg" aria-hidden="true">
+    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="grad1" cx="50%" cy="50%" r="70%">
+                <stop offset="0%" stop-color="#7f5af099"/>
+                <stop offset="100%" stop-color="transparent"/>
+            </radialGradient>
+            <radialGradient id="grad2" cx="80%" cy="25%" r="50%">
+                <stop offset="0%" stop-color="#b48eff88"/>
+                <stop offset="100%" stop-color="transparent"/>
+            </radialGradient>
+        </defs>
+        <ellipse cx="22%" cy="55%" rx="220" ry="140" fill="url(#grad1)">
+            <animate attributeName="cx" values="22%;32%;22%" dur="16s" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="55%;62%;55%" dur="19s" repeatCount="indefinite"/>
+        </ellipse>
+        <ellipse cx="75%" cy="25%" rx="130" ry="110" fill="url(#grad2)">
+            <animate attributeName="cx" values="75%;70%;75%" dur="17s" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="25%;35%;25%" dur="22s" repeatCount="indefinite"/>
+        </ellipse>
+    </svg>
+</div>
+<div class="login-box">
+    <h1>GymLLM</h1>
+    <p>Log your workouts with simple, natural language.</p>
+    <a href="{{ url_for('auth.login') }}" class="login-button">Log in with Google</a>
+    <p class="login-note">Bring your own model: OpenAI, Claude, Gemini, Groq, or a local Ollama.</p>
+</div>
+{% endblock %}

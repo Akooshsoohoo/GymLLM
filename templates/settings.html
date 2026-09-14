@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | LLM Settings{% endblock %}
+{% block content %}
+<h1>LLM settings</h1>
+<p class="muted">
+    Pick where your workout text gets parsed. Your API key is kept in a signed cookie in
+    <em>your</em> browser and is only forwarded to the provider when you parse a workout;
+    the server never stores it.
+</p>
+
+{% if not is_local_host %}
+<div class="status warn" id="local-warning" hidden>
+    Local providers (Ollama, LM Studio) run on <em>your</em> machine, but this copy of GymLLM is
+    running on a server, so it cannot reach them. Run GymLLM locally, or expose your local model
+    through a tunnel and use the <strong>Custom</strong> provider with that URL.
+</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('main.settings') }}" id="settings-form"
+      data-test-url="{{ url_for('main.settings_test') }}"
+      data-has-key="{{ '1' if config.api_key else '0' }}"
+      data-providers='{{ providers.values()|map(attribute="__dict__")|list|tojson }}'>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="field-row">
+        <label for="provider">Provider</label>
+        <select id="provider" name="provider">
+            {% for p in providers.values() %}
+            <option value="{{ p.id }}" {% if p.id == config.provider %}selected{% endif %}>{{ p.label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <p class="muted small" id="provider-help"></p>
+
+    <div class="field-row" id="base-url-row" hidden>
+        <label for="base_url">Base URL</label>
+        <input type="url" id="base_url" name="base_url" value="{{ config.base_url }}" placeholder="https://my-server.example.com/v1">
+    </div>
+
+    <div class="field-row">
+        <label for="model">Model</label>
+        <input type="text" id="model" name="model" value="{{ config.model }}" list="model-suggestions" autocomplete="off" spellcheck="false">
+        <datalist id="model-suggestions"></datalist>
+    </div>
+
+    <div class="field-row" id="api-key-row">
+        <label for="api_key">API key</label>
+        <input type="password" id="api_key" name="api_key" value="" autocomplete="off" spellcheck="false"
+               placeholder="{{ 'saved key kept if left blank' if config.api_key else '' }}">
+        <button type="button" class="btn-link" id="toggle-key">show</button>
+    </div>
+
+    <div class="actions">
+        <button type="submit" class="btn-primary">Save</button>
+        <button type="button" class="btn-secondary" id="test-connection">Test connection</button>
+        <span id="test-result" class="small"></span>
+    </div>
+</form>
+{% endblock %}

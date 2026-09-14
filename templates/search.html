@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Search Log{% endblock %}
+{% block content %}
+<h1>Your workout log</h1>
+{% if not rows %}
+<p class="muted">Nothing logged yet. <a href="{{ url_for('main.home') }}">Log your first workout.</a></p>
+{% else %}
+<div class="field-row">
+    <input type="search" id="query" autocomplete="off" placeholder="Filter by exercise, date, tag, note..." aria-label="Filter log">
+    <span class="muted small" id="row-count">{{ rows|length }} rows</span>
+</div>
+<p class="muted small">Click a column header to sort. Edit cells in place, tick Delete to remove rows, then save.</p>
+<form method="post" action="{{ url_for('main.search') }}" id="log-edit-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="table-wrap">
+    <table id="workout-table" class="sortable">
+        <thead>
+        <tr>
+            <th data-sort="date">Date</th>
+            <th data-sort="text">Exercise</th>
+            <th data-sort="number">Weight</th>
+            <th data-sort="number">Sets</th>
+            <th data-sort="text">Reps</th>
+            <th data-sort="text">Notes</th>
+            <th data-sort="text">Tags</th>
+            <th class="center">Delete</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for r in rows %}
+        <tr data-id="{{ r.id }}">
+            <td><input type="text" name="cell-{{ r.id }}-date" value="{{ r.date }}" class="date-cell" pattern="\d{4}-\d{2}-\d{2}" title="YYYY-MM-DD"></td>
+            <td class="exercise-cell">
+                <input type="text" name="cell-{{ r.id }}-exercise" value="{{ r.exercise }}">
+                <a class="cell-link" href="{{ url_for('main.exercise_history', name=r.exercise) }}" title="History for {{ r.exercise }}">history</a>
+            </td>
+            <td><input type="text" name="cell-{{ r.id }}-weight" value="{{ r.weight }}"></td>
+            <td><input type="text" name="cell-{{ r.id }}-sets" value="{{ r.sets }}" class="narrow"></td>
+            <td><input type="text" name="cell-{{ r.id }}-reps" value="{{ r.reps }}"></td>
+            <td><input type="text" name="cell-{{ r.id }}-notes" value="{{ r.notes }}"></td>
+            <td><input type="text" name="cell-{{ r.id }}-tags" value="{{ r.tags }}"></td>
+            <td class="center"><input type="checkbox" name="delete-{{ r.id }}" value="1" class="delete-box"></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div class="actions">
+        <button type="submit" class="btn-primary">Save changes</button>
+        <span class="muted small" id="dirty-count" hidden></span>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Log Workout{% endblock %}
+{% block content %}
+<h1>Log a workout</h1>
+<p class="muted">
+    Using <strong>{{ config.describe() }}</strong>
+    · <a href="{{ url_for('main.settings') }}">change</a>
+</p>
+<form method="post" action="{{ url_for('main.review') }}" id="log-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="client_date" class="client-date" value="">
+    <label for="workout">Describe your workout</label>
+    <textarea id="workout" name="workout" rows="5" required autofocus
+        placeholder="e.g. yesterday: bench 185 for 5x5, lat pulldowns 3x10, felt strong"></textarea>
+    <div class="actions">
+        <button type="submit" class="btn-primary">Parse workout</button>
+        <span class="muted small">You'll get to review and edit before anything is saved.</span>
+    </div>
+</form>
+<details class="hint">
+    <summary>Tips</summary>
+    <ul>
+        <li>Mention a day ("yesterday", "on Monday", "2025-06-01") and it becomes the log date.</li>
+        <li>Shorthand works: <code>5x5</code>, <code>3x10</code>, <code>10,8,6</code>, <code>bodyweight</code>.</li>
+        <li>Units are kept as you write them: <code>185 lbs</code> or <code>80 kg</code>.</li>
+    </ul>
+</details>
+{% endblock %}
