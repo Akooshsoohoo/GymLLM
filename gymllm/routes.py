@@ -30,6 +30,7 @@ bp = Blueprint("main", __name__)
 
 ENTRY_FIELDS = ("exercise", "weight", "sets", "reps", "notes")
 MAX_ENTRIES = 100
+RECENT_SESSIONS = 5
 _CELL_RE = re.compile(r"^cell-(\d+)-(\w+)$")
 _DELETE_RE = re.compile(r"^delete-(\d+)$")
 _WEIGHT_NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)")
@@ -67,6 +68,35 @@ def welcome():
     return render_template("welcome.html")
 
 
+def _sets_summary(sets: str, reps: str) -> str:
+    """Compact 'sets x reps' for the session cards: '5, 5, 5' with 3 sets -> '3x5'."""
+    parts = [r.strip() for r in reps.split(",") if r.strip()]
+    if parts and len(set(parts)) == 1 and (not sets or sets == str(len(parts))):
+        return f"{len(parts)}×{parts[0]}"
+    if sets and reps:
+        return f"{sets}×{reps}"
+    return sets or reps
+
+
+def _recent_sessions(user_email: str, limit: int = RECENT_SESSIONS) -> list[dict]:
+    """The user's most recent workout days, newest first, each with its entries."""
+    workouts = (
+        Workout.query.filter_by(user_email=user_email)
+        .order_by(Workout.date.desc(), Workout.id.desc())
+        .all()
+    )
+    sessions: list[dict] = []
+    for w in workouts:
+        if not sessions or sessions[-1]["date"] != w.date:
+            if len(sessions) == limit:
+                break
+            sessions.append({"date": w.date, "rows": []})
+        row = w.as_dict()
+        row["sets_reps"] = _sets_summary(row["sets"], row["reps"])
+        sessions[-1]["rows"].append(row)
+    return sessions
+
+
 @bp.route("/")
 @login_required
 def home():
@@ -74,7 +104,8 @@ def home():
     if config is None:
         flash("Choose an LLM provider before logging a workout.", "info")
         return redirect(url_for("main.settings"))
-    return render_template("log.html", config=config)
+    sessions = _recent_sessions(current_user_email())
+    return render_template("log.html", config=config, sessions=sessions)
 
 
 # --- Settings -----------------------------------------------------------------

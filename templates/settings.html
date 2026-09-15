@@ -1,59 +1,63 @@
 {% extends "base.html" %}
-{% block title %}GymLLM | LLM Settings{% endblock %}
+{% block title %}GymLLM | Settings{% endblock %}
 {% block content %}
-<h1>LLM settings</h1>
-<p class="muted">
-    Pick where your workout text gets parsed. Your API key is kept in a signed cookie in
-    <em>your</em> browser and is only forwarded to the provider when you parse a workout;
-    the server never stores it.
-</p>
+<div class="page-head">
+    <h1>Settings</h1>
+</div>
 
 {% if not is_local_host %}
-<div class="status warn" id="local-warning" hidden>
+<div class="alert warn" id="local-warning" hidden>
     Local providers (Ollama, LM Studio) run on <em>your</em> machine, but this copy of GymLLM is
     running on a server, so it cannot reach them. Run GymLLM locally, or expose your local model
     through a tunnel and use the <strong>Custom</strong> provider with that URL.
 </div>
 {% endif %}
 
-<form method="post" action="{{ url_for('main.settings') }}" id="settings-form"
+<form method="post" action="{{ url_for('main.settings') }}" id="settings-form" class="card card-narrow"
       data-test-url="{{ url_for('main.settings_test') }}"
       data-has-key="{{ '1' if config.api_key else '0' }}"
       data-providers='{{ providers.values()|map(attribute="__dict__")|list|tojson }}'>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2 class="card-title">Model</h2>
+    <p class="muted small card-lead">
+        Where your workout text gets parsed. Your API key is kept in a signed cookie in your
+        browser and only forwarded to the provider when you parse a workout. The server never stores it.
+    </p>
 
-    <div class="field-row">
+    <div class="field">
         <label for="provider">Provider</label>
-        <select id="provider" name="provider">
+        <select id="provider" name="provider" class="select">
             {% for p in providers.values() %}
             <option value="{{ p.id }}" {% if p.id == config.provider %}selected{% endif %}>{{ p.label }}</option>
             {% endfor %}
         </select>
+        <p class="field-help" id="provider-help"></p>
     </div>
-    <p class="muted small" id="provider-help"></p>
 
-    <div class="field-row" id="base-url-row" hidden>
+    <div class="field" id="base-url-row" hidden>
         <label for="base_url">Base URL</label>
-        <input type="url" id="base_url" name="base_url" value="{{ config.base_url }}" placeholder="https://my-server.example.com/v1">
+        <input type="url" id="base_url" name="base_url" class="input" value="{{ config.base_url }}" placeholder="https://my-server.example.com/v1">
     </div>
 
-    <div class="field-row">
+    <div class="field">
         <label for="model">Model</label>
-        <input type="text" id="model" name="model" value="{{ config.model }}" list="model-suggestions" autocomplete="off" spellcheck="false">
+        <input type="text" id="model" name="model" class="input" value="{{ config.model }}" list="model-suggestions" autocomplete="off" spellcheck="false">
         <datalist id="model-suggestions"></datalist>
     </div>
 
-    <div class="field-row" id="api-key-row">
+    <div class="field" id="api-key-row">
         <label for="api_key">API key</label>
-        <input type="password" id="api_key" name="api_key" value="" autocomplete="off" spellcheck="false"
-               placeholder="{{ 'saved key kept if left blank' if config.api_key else '' }}">
-        <button type="button" class="btn-link" id="toggle-key">show</button>
+        <div class="input-group">
+            <input type="password" id="api_key" name="api_key" class="input" value="" autocomplete="off" spellcheck="false"
+                   placeholder="{{ 'saved key kept if left blank' if config.api_key else '' }}">
+            <button type="button" class="btn btn-text" id="toggle-key">show</button>
+        </div>
     </div>
 
-    <div class="actions">
-        <button type="submit" class="btn-primary">Save</button>
-        <button type="button" class="btn-secondary" id="test-connection">Test connection</button>
-        <span id="test-result" class="small"></span>
+    <div class="toolbar">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-ghost" id="test-connection">Test connection</button>
+        <span id="test-result" class="small" role="status"></span>
     </div>
 </form>
 {% endblock %}

@@ -11,16 +11,18 @@ Sign-in is via Google. Each user only ever sees their own entries.
 ## How it works
 
 1. Sign in with Google.
-2. On **LLM Settings**, pick a provider, a model, and (for hosted providers) your
+2. On **Settings**, pick a provider, a model, and (for hosted providers) your
    API key. Hit **Test connection** to check it works. The key lives in a signed
    cookie in your browser; the server forwards it to the provider when you parse a
    workout and never stores it.
-3. On **Log Workout**, type something like
-   `yesterday: bench 185 for 5x5, lat pulldowns 3x10, felt strong`.
+3. On **Log**, type something like
+   `yesterday: bench 185 for 5x5, lat pulldowns 3x10, felt strong`. Your most
+   recent sessions are listed underneath.
 4. Review the parsed table, fix anything, adjust the date, and save.
-5. **Search / Edit Log** lists everything newest first with in-place editing.
-   **History** shows every exercise you have done and a chart of your top weight
-   per session.
+5. **History** has two tabs. *All entries* lists everything newest first; hit
+   **Edit** to change cells or delete rows in place. *By exercise* shows every
+   exercise you have done, and each one opens a page with a chart of your top
+   weight per session.
 
 ## Running locally
 

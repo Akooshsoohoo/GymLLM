@@ -47,6 +47,42 @@ def test_home_shows_provider_in_use(logged_in):
     assert r.status_code == 200 and b"OpenAI" in r.data and b"gpt-4o-mini" in r.data
 
 
+def test_home_lists_recent_sessions(logged_in, add_workout):
+    add_workout(date="2026-01-01", exercise="older lift")
+    add_workout(date="2026-02-01", exercise="newer lift")
+    add_workout(date="2026-02-01", exercise="second newer lift")
+    add_workout(date="2026-03-01", exercise="not mine", user_email=OTHER)
+    r = logged_in.get("/")
+    body = r.data.decode()
+    assert r.status_code == 200
+    assert body.index("newer lift") < body.index("older lift")
+    assert "second newer lift" in body and "not mine" not in body
+    assert body.count("2026-02-01") == 1  # one session heading per date
+
+
+@pytest.mark.parametrize(
+    "sets,reps,expected",
+    [
+        ("5", "5, 5, 5, 5, 5", "5×5"),
+        ("3", "10, 8, 6", "3×10, 8, 6"),
+        ("", "8, 8", "2×8"),
+        ("4", "", "4"),
+        ("", "", ""),
+    ],
+)
+def test_sets_summary(sets, reps, expected):
+    from gymllm.routes import _sets_summary
+
+    assert _sets_summary(sets, reps) == expected
+
+
+def test_home_recent_sessions_capped(logged_in, add_workout):
+    for day in range(1, 9):
+        add_workout(date=f"2026-01-{day:02d}", exercise=f"lift {day}")
+    body = logged_in.get("/").data.decode()
+    assert "lift 8" in body and "lift 4" in body and "lift 3" not in body
+
+
 def test_logout_clears_auth_but_keeps_llm_settings(logged_in):
     r = logged_in.get("/logout")
     assert r.status_code == 302 and r.headers["Location"].endswith("/welcome")

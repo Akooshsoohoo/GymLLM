@@ -1,20 +1,29 @@
 {% extends "base.html" %}
-{% block title %}GymLLM | History{% endblock %}
+{% block title %}GymLLM | By exercise{% endblock %}
 {% block content %}
-<h1>Exercise history</h1>
+{% include "_history_tabs.html" %}
 {% if not summary %}
-<p class="muted">Nothing logged yet. <a href="{{ url_for('main.home') }}">Log your first workout.</a></p>
+<div class="empty">
+    <p>Nothing logged yet.</p>
+    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log your first workout</a>
+</div>
 {% else %}
-<div class="table-wrap">
-<table class="sortable">
+<div class="toolbar">
+    <input type="search" id="exercise-query" class="input input-filter" autocomplete="off"
+           placeholder="Filter exercises" aria-label="Filter exercises"
+           data-filter="#exercise-table" data-count="#exercise-count">
+    <span class="muted small" id="exercise-count">{{ summary|length }} exercises</span>
+</div>
+<div class="table-wrap card card-flush">
+<table id="exercise-table" class="table sortable">
     <thead>
-    <tr><th data-sort="text">Exercise</th><th data-sort="number">Entries</th><th data-sort="date">First</th><th data-sort="date">Last</th></tr>
+    <tr><th data-sort="text">Exercise</th><th data-sort="number" class="num">Entries</th><th data-sort="date">First</th><th data-sort="date">Last</th></tr>
     </thead>
     <tbody>
     {% for s in summary %}
     <tr>
-        <td><a href="{{ url_for('main.exercise_history', name=s.exercise) }}">{{ s.exercise }}</a></td>
-        <td>{{ s.sessions }}</td>
+        <td><a href="{{ url_for('main.exercise_history', name=s.exercise) }}" class="cell-link">{{ s.exercise }}</a></td>
+        <td class="num">{{ s.sessions }}</td>
         <td>{{ s.first }}</td>
         <td>{{ s.last }}</td>
     </tr>

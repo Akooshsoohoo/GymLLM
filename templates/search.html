@@ -1,19 +1,31 @@
 {% extends "base.html" %}
-{% block title %}GymLLM | Search Log{% endblock %}
+{% block title %}GymLLM | All entries{% endblock %}
 {% block content %}
-<h1>Your workout log</h1>
+{% include "_history_tabs.html" %}
 {% if not rows %}
-<p class="muted">Nothing logged yet. <a href="{{ url_for('main.home') }}">Log your first workout.</a></p>
-{% else %}
-<div class="field-row">
-    <input type="search" id="query" autocomplete="off" placeholder="Filter by exercise, date, tag, note..." aria-label="Filter log">
-    <span class="muted small" id="row-count">{{ rows|length }} rows</span>
+<div class="empty">
+    <p>Nothing logged yet.</p>
+    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log your first workout</a>
 </div>
-<p class="muted small">Click a column header to sort. Edit cells in place, tick Delete to remove rows, then save.</p>
-<form method="post" action="{{ url_for('main.search') }}" id="log-edit-form">
+{% else %}
+<form method="post" action="{{ url_for('main.search') }}" id="log-edit-form" class="log-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="table-wrap">
-    <table id="workout-table" class="sortable">
+    <div class="toolbar toolbar-split">
+        <div class="toolbar-group">
+            <input type="search" id="query" class="input input-filter" autocomplete="off"
+                   placeholder="Filter by exercise, date, tag, note" aria-label="Filter entries"
+                   data-filter="#workout-table" data-count="#row-count">
+            <span class="muted small" id="row-count">{{ rows|length }} rows</span>
+        </div>
+        <div class="toolbar-group">
+            <span class="muted small" id="dirty-count" hidden></span>
+            <button type="button" class="btn btn-ghost btn-sm edit-only" id="edit-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm edit-only">Save changes</button>
+            <button type="button" class="btn btn-ghost btn-sm read-only" id="edit-toggle">Edit</button>
+        </div>
+    </div>
+    <div class="table-wrap card card-flush">
+    <table id="workout-table" class="table sortable">
         <thead>
         <tr>
             <th data-sort="date">Date</th>
@@ -23,32 +35,29 @@
             <th data-sort="text">Reps</th>
             <th data-sort="text">Notes</th>
             <th data-sort="text">Tags</th>
-            <th class="center">Delete</th>
+            <th class="col-actions edit-only">Delete</th>
         </tr>
         </thead>
         <tbody>
         {% for r in rows %}
         <tr data-id="{{ r.id }}">
-            <td><input type="text" name="cell-{{ r.id }}-date" value="{{ r.date }}" class="date-cell" pattern="\d{4}-\d{2}-\d{2}" title="YYYY-MM-DD"></td>
+            <td class="date-cell"><input type="text" name="cell-{{ r.id }}-date" value="{{ r.date }}" pattern="\d{4}-\d{2}-\d{2}" title="YYYY-MM-DD" aria-label="Date"></td>
             <td class="exercise-cell">
-                <input type="text" name="cell-{{ r.id }}-exercise" value="{{ r.exercise }}">
-                <a class="cell-link" href="{{ url_for('main.exercise_history', name=r.exercise) }}" title="History for {{ r.exercise }}">history</a>
+                <a class="cell-link read-only" href="{{ url_for('main.exercise_history', name=r.exercise) }}">{{ r.exercise }}</a>
+                <input type="text" name="cell-{{ r.id }}-exercise" value="{{ r.exercise }}" class="edit-only" aria-label="Exercise">
             </td>
-            <td><input type="text" name="cell-{{ r.id }}-weight" value="{{ r.weight }}"></td>
-            <td><input type="text" name="cell-{{ r.id }}-sets" value="{{ r.sets }}" class="narrow"></td>
-            <td><input type="text" name="cell-{{ r.id }}-reps" value="{{ r.reps }}"></td>
-            <td><input type="text" name="cell-{{ r.id }}-notes" value="{{ r.notes }}"></td>
-            <td><input type="text" name="cell-{{ r.id }}-tags" value="{{ r.tags }}"></td>
-            <td class="center"><input type="checkbox" name="delete-{{ r.id }}" value="1" class="delete-box"></td>
+            <td><input type="text" name="cell-{{ r.id }}-weight" value="{{ r.weight }}" aria-label="Weight"></td>
+            <td><input type="text" name="cell-{{ r.id }}-sets" value="{{ r.sets }}" class="narrow" aria-label="Sets"></td>
+            <td><input type="text" name="cell-{{ r.id }}-reps" value="{{ r.reps }}" aria-label="Reps"></td>
+            <td><input type="text" name="cell-{{ r.id }}-notes" value="{{ r.notes }}" aria-label="Notes"></td>
+            <td class="tags-cell"><input type="text" name="cell-{{ r.id }}-tags" value="{{ r.tags }}" aria-label="Tags"></td>
+            <td class="col-actions edit-only"><input type="checkbox" name="delete-{{ r.id }}" value="1" class="delete-box" aria-label="Delete row"></td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
     </div>
-    <div class="actions">
-        <button type="submit" class="btn-primary">Save changes</button>
-        <span class="muted small" id="dirty-count" hidden></span>
-    </div>
+    <p class="muted small">Click a column header to sort.</p>
 </form>
 {% endif %}
 {% endblock %}

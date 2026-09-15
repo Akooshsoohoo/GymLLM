@@ -1,57 +1,63 @@
 {% extends "base.html" %}
 {% block title %}GymLLM | Review{% endblock %}
 {% block content %}
-<h1>Review &amp; confirm</h1>
+<div class="page-head">
+    <h1>Review and confirm</h1>
+</div>
 
 {% if error %}
-<div class="status error">{{ error }}</div>
+<div class="alert error">{{ error }}</div>
 {% endif %}
 
-<form method="post" action="{{ url_for('main.review') }}" class="reparse-form">
+<form method="post" action="{{ url_for('main.review') }}" class="card card-compact reparse-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="client_date" class="client-date" value="{{ client_date }}">
-    <label for="workout">Original text</label>
-    <textarea id="workout" name="workout" rows="3">{{ workout_text }}</textarea>
-    <div class="actions">
-        <button type="submit" class="btn-secondary">Re-parse</button>
+    <label for="workout" class="card-title">Original text</label>
+    <textarea id="workout" name="workout" rows="3" class="textarea">{{ workout_text }}</textarea>
+    <div class="toolbar">
+        <button type="submit" class="btn btn-ghost btn-sm">Re-parse</button>
     </div>
 </form>
 
 {% if entries is not none %}
-<h2>Parsed entries</h2>
-<p class="muted small">Edit anything below before saving. Blank the exercise or tick Remove to drop a row.</p>
-<form method="post" action="{{ url_for('main.confirm') }}" id="confirm-form">
+<form method="post" action="{{ url_for('main.confirm') }}" id="confirm-form" class="card">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="field-row">
-        <label for="date">Workout date</label>
-        <input type="date" id="date" name="date" value="{{ workout_date }}" required class="date-input">
-        {% if date_from_text %}<span class="muted small">taken from your text</span>{% endif %}
+    <div class="card-head">
+        <div class="field-inline">
+            <label for="date">Workout date</label>
+            <input type="date" id="date" name="date" value="{{ workout_date }}" required class="input date-input">
+            {% if date_from_text %}<span class="muted small">taken from your text</span>{% endif %}
+        </div>
+        <span class="muted small">Edit anything before saving.</span>
     </div>
     <div class="table-wrap">
-    <table id="entries-table">
+    <table id="entries-table" class="table table-editing">
         <thead>
         <tr>
-            <th>Exercise</th><th>Weight</th><th>Sets</th><th>Reps</th><th>Notes</th><th class="center">Remove</th>
+            <th>Exercise</th><th>Weight</th><th>Sets</th><th>Reps</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
         </tr>
         </thead>
         <tbody>
         {% for e in entries %}
         <tr>
-            <td><input type="text" name="entry-{{ loop.index0 }}-exercise" value="{{ e.exercise }}" list="exercise-names"></td>
-            <td><input type="text" name="entry-{{ loop.index0 }}-weight" value="{{ e.weight }}" placeholder="185 lbs"></td>
-            <td><input type="text" name="entry-{{ loop.index0 }}-sets" value="{{ e.sets }}" class="narrow" inputmode="numeric"></td>
-            <td><input type="text" name="entry-{{ loop.index0 }}-reps" value="{{ e.reps }}" placeholder="10, 8, 6"></td>
-            <td><input type="text" name="entry-{{ loop.index0 }}-notes" value="{{ e.notes }}"></td>
-            <td class="center"><input type="checkbox" name="entry-{{ loop.index0 }}-delete" value="1"></td>
+            <td class="exercise-cell"><input type="text" name="entry-{{ loop.index0 }}-exercise" value="{{ e.exercise }}" list="exercise-names" aria-label="Exercise"></td>
+            <td><input type="text" name="entry-{{ loop.index0 }}-weight" value="{{ e.weight }}" placeholder="185 lbs" aria-label="Weight"></td>
+            <td><input type="text" name="entry-{{ loop.index0 }}-sets" value="{{ e.sets }}" class="narrow" inputmode="numeric" aria-label="Sets"></td>
+            <td><input type="text" name="entry-{{ loop.index0 }}-reps" value="{{ e.reps }}" placeholder="10, 8, 6" aria-label="Reps"></td>
+            <td><input type="text" name="entry-{{ loop.index0 }}-notes" value="{{ e.notes }}" aria-label="Notes"></td>
+            <td class="col-actions">
+                <input type="checkbox" name="entry-{{ loop.index0 }}-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">
+                <button type="button" class="btn btn-text row-remove">Remove</button>
+            </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
     </div>
     <input type="hidden" name="num_entries" id="num_entries" value="{{ entries|length }}">
-    <div class="actions">
-        <button type="submit" class="btn-primary" {% if not entries %}disabled{% endif %}>Save to log</button>
-        <button type="button" class="btn-secondary" id="add-row">Add row</button>
+    <div class="toolbar toolbar-end">
+        <button type="button" class="btn btn-ghost" id="add-row">Add row</button>
+        <button type="submit" class="btn btn-primary" {% if not entries %}disabled{% endif %}>Save to log</button>
     </div>
 </form>
 <datalist id="exercise-names"></datalist>

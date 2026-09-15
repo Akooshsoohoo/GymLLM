@@ -1,0 +1,8 @@
+{% set ep = request.endpoint or '' %}
+<div class="page-head">
+    <h1>History</h1>
+</div>
+<nav class="tabs" aria-label="History sections">
+    <a href="{{ url_for('main.search') }}" class="{{ 'active' if ep == 'main.search' }}">All entries</a>
+    <a href="{{ url_for('main.exercises') }}" class="{{ 'active' if ep in ('main.exercises', 'main.exercise_history') }}">By exercise</a>
+</nav>

@@ -19,6 +19,9 @@
     var input = td.querySelector("input[type=text]");
     return (input ? input.value : td.textContent).trim();
   }
+  function rowText(tr) {
+    return $$("td", tr).map(cellText).join(" ").toLowerCase();
+  }
   function sortKey(text, type) {
     if (type === "number") { var m = text.match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : -Infinity; }
     return text.toLowerCase();
@@ -46,30 +49,38 @@
     });
   });
 
-  // ---------------------------------------------------------------- Search page
-  var query = $("#query");
-  var workoutTable = $("#workout-table");
-  if (query && workoutTable) {
-    var rows = $$("tbody tr", workoutTable);
-    var counter = $("#row-count");
-    var applyFilter = function () {
-      var q = query.value.trim().toLowerCase();
+  // ---------------------------------------------------------------- Table filter
+  // <input data-filter="#table" data-count="#counter"> hides rows that don't match.
+  $$("input[data-filter]").forEach(function (input) {
+    var table = $(input.dataset.filter);
+    if (!table || !table.tBodies[0]) return;
+    var counter = input.dataset.count ? $(input.dataset.count) : null;
+    var rows = $$("tr", table.tBodies[0]);
+    var noun = counter ? (counter.textContent.match(/[a-z]+$/i) || ["rows"])[0].replace(/s$/, "") : "row";
+    var apply = function () {
+      var q = input.value.trim().toLowerCase();
       var shown = 0;
       rows.forEach(function (row) {
-        var text = $$("input[type=text]", row).map(function (i) { return i.value; }).join(" ").toLowerCase();
-        var show = !q || text.indexOf(q) !== -1;
+        var show = !q || rowText(row).indexOf(q) !== -1;
         row.hidden = !show;
         if (show) shown++;
       });
-      if (counter) counter.textContent = shown + (shown === 1 ? " row" : " rows") + (q ? " match" : "");
+      if (counter) counter.textContent = shown + " " + noun + (shown === 1 ? "" : "s") + (q ? " match" : "");
     };
-    query.addEventListener("input", applyFilter);
+    input.addEventListener("input", apply);
+  });
 
+  // ---------------------------------------------------------------- History: edit mode + dirty tracking
+  var logForm = $("#log-edit-form");
+  if (logForm) {
+    var logRows = $$("tbody tr", logForm);
     var dirty = $("#dirty-count");
-    var form = $("#log-edit-form");
+    var toggle = $("#edit-toggle");
+    var cancel = $("#edit-cancel");
+
     var updateDirty = function () {
       var changed = 0, deleted = 0;
-      rows.forEach(function (row) {
+      logRows.forEach(function (row) {
         var box = $(".delete-box", row);
         if (box && box.checked) { deleted++; row.classList.add("row-deleted"); return; }
         row.classList.remove("row-deleted");
@@ -85,31 +96,58 @@
         dirty.hidden = !parts.length;
       }
     };
-    if (form) {
-      form.addEventListener("input", updateDirty);
-      form.addEventListener("change", updateDirty);
-    }
+    logForm.addEventListener("input", updateDirty);
+    logForm.addEventListener("change", updateDirty);
+
+    var setEditing = function (on) {
+      logForm.classList.toggle("editing", on);
+      if (on) {
+        var first = $("tbody tr:not([hidden]) input[type=text]", logForm);
+        if (first) first.focus();
+      }
+    };
+    if (toggle) toggle.addEventListener("click", function () { setEditing(true); });
+    if (cancel) cancel.addEventListener("click", function () {
+      logForm.reset();
+      logRows.forEach(function (row) { row.classList.remove("row-dirty", "row-deleted"); });
+      if (dirty) { dirty.hidden = true; dirty.textContent = ""; }
+      setEditing(false);
+    });
   }
 
-  // ---------------------------------------------------------------- Review page: add row
-  var addRow = $("#add-row");
+  // ---------------------------------------------------------------- Review page: remove/undo + add row
+  var confirmForm = $("#confirm-form");
   var entriesTable = $("#entries-table");
-  if (addRow && entriesTable) {
+  if (confirmForm && entriesTable) {
+    confirmForm.addEventListener("click", function (ev) {
+      var btn = ev.target.closest(".row-remove");
+      if (!btn) return;
+      var row = btn.closest("tr");
+      var box = $(".delete-box", row);
+      var removing = !row.classList.contains("row-deleted");
+      row.classList.toggle("row-deleted", removing);
+      if (box) box.checked = removing;
+      btn.textContent = removing ? "Undo" : "Remove";
+    });
+
+    var addRow = $("#add-row");
     var numField = $("#num_entries");
-    addRow.addEventListener("click", function () {
+    if (addRow && numField) addRow.addEventListener("click", function () {
       var i = parseInt(numField.value, 10) || 0;
       var tr = document.createElement("tr");
-      var cell = function (name, cls, extra) {
-        return '<td' + (cls === "center" ? ' class="center"' : "") + '><input type="' + (name === "delete" ? "checkbox" : "text") +
-          '" name="entry-' + i + "-" + name + '"' + (name === "delete" ? ' value="1"' : "") + (extra || "") + "></td>";
+      var text = function (name, extra) {
+        return '<td' + (name === "exercise" ? ' class="exercise-cell"' : "") + '><input type="text" name="entry-' + i + "-" + name +
+          '" aria-label="' + name.charAt(0).toUpperCase() + name.slice(1) + '"' + (extra || "") + "></td>";
       };
-      tr.innerHTML = cell("exercise", "", ' list="exercise-names"') + cell("weight") + cell("sets", "", ' class="narrow"') +
-        cell("reps") + cell("notes") + cell("delete", "center");
+      tr.innerHTML = text("exercise", ' list="exercise-names"') + text("weight", ' placeholder="185 lbs"') +
+        text("sets", ' class="narrow" inputmode="numeric"') + text("reps", ' placeholder="10, 8, 6"') + text("notes") +
+        '<td class="col-actions"><input type="checkbox" name="entry-' + i + '-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">' +
+        '<button type="button" class="btn btn-text row-remove">Remove</button></td>';
       entriesTable.tBodies[0].appendChild(tr);
       numField.value = i + 1;
-      var submit = $('#confirm-form button[type=submit]');
+      var submit = $('button[type=submit]', confirmForm);
       if (submit) submit.disabled = false;
-      tr.querySelector("input").focus();
+      tr.querySelector("input[type=text]").focus();
     });
   }
 
@@ -141,11 +179,11 @@
     select.addEventListener("change", function () { render(true); });
     render(false);
 
-    var toggle = $("#toggle-key");
-    if (toggle) toggle.addEventListener("click", function () {
+    var toggleKey = $("#toggle-key");
+    if (toggleKey) toggleKey.addEventListener("click", function () {
       var show = apiKey.type === "password";
       apiKey.type = show ? "text" : "password";
-      toggle.textContent = show ? "hide" : "show";
+      toggleKey.textContent = show ? "hide" : "show";
     });
 
     // One-time migration from the old localStorage-based settings.
@@ -220,8 +258,12 @@
         svg.appendChild(el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "grid" }));
         svg.appendChild(el("text", { x: L - 8, y: y(v) + 4, class: "axis-label", "text-anchor": "end" }, Math.round(v)));
       }
-      // line
+      // area + line
       var d = xs.map(function (i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(ys[i]).toFixed(1); }).join(" ");
+      if (series.length > 1) {
+        var floor = (H - B).toFixed(1);
+        svg.appendChild(el("path", { d: d + " L" + x(series.length - 1).toFixed(1) + " " + floor + " L" + x(0).toFixed(1) + " " + floor + " Z", class: "area" }));
+      }
       svg.appendChild(el("path", { d: d, class: "line" }));
       // points + x labels (thin out labels when crowded)
       var every = Math.max(1, Math.ceil(series.length / 8));

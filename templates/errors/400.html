@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}GymLLM | Request rejected{% endblock %}
 {% block content %}
-<h1>Request rejected</h1>
-<div class="status error">{{ message or "The form could not be verified." }}</div>
-<p class="muted">This usually means the page was open for a long time or you were signed out. <a href="{{ url_for('main.home') }}">Go back and try again.</a></p>
+<div class="empty">
+    <h1>Request rejected</h1>
+    <div class="alert error">{{ message or "The form could not be verified." }}</div>
+    <p class="muted">This usually means the page was open for a long time or you were signed out.</p>
+    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Go back and try again</a>
+</div>
 {% endblock %}

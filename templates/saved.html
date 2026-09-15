@@ -1,19 +1,21 @@
 {% extends "base.html" %}
 {% block title %}GymLLM | Saved{% endblock %}
 {% block content %}
-<h1>Workout saved</h1>
-<div class="status ok">Logged {{ rows|length }} {{ 'entry' if rows|length == 1 else 'entries' }} for {{ workout_date }}.</div>
-<div class="table-wrap">
-<table>
+<div class="page-head">
+    <h1>Workout saved</h1>
+</div>
+<div class="alert ok">Logged {{ rows|length }} {{ 'entry' if rows|length == 1 else 'entries' }} for {{ workout_date }}.</div>
+<div class="table-wrap card card-flush">
+<table class="table">
     <thead>
-    <tr><th>Exercise</th><th>Weight</th><th>Sets</th><th>Reps</th><th>Notes</th><th>Tags</th></tr>
+    <tr><th>Exercise</th><th>Weight</th><th class="num">Sets</th><th>Reps</th><th>Notes</th><th>Tags</th></tr>
     </thead>
     <tbody>
     {% for r in rows %}
     <tr>
-        <td><a href="{{ url_for('main.exercise_history', name=r.exercise) }}">{{ r.exercise }}</a></td>
+        <td><a href="{{ url_for('main.exercise_history', name=r.exercise) }}" class="cell-link">{{ r.exercise }}</a></td>
         <td>{{ r.weight }}</td>
-        <td>{{ r.sets }}</td>
+        <td class="num">{{ r.sets }}</td>
         <td>{{ r.reps }}</td>
         <td>{{ r.notes }}</td>
         <td class="muted small">{{ r.tags }}</td>
@@ -22,8 +24,8 @@
     </tbody>
 </table>
 </div>
-<div class="actions">
-    <a href="{{ url_for('main.home') }}" class="btn-primary">Log another</a>
-    <a href="{{ url_for('main.search') }}" class="btn-secondary">View log</a>
+<div class="toolbar">
+    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log another</a>
+    <a href="{{ url_for('main.search') }}" class="btn btn-ghost">View all entries</a>
 </div>
 {% endblock %}

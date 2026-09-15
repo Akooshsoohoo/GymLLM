@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -67,6 +68,15 @@ def _register_context(app: Flask) -> None:
             "llm_config": LLMConfig.from_session(),
             "providers": PROVIDERS,
         }
+
+    @app.template_filter("nice_date")
+    def nice_date(value: str) -> str:
+        """'2026-02-01' -> 'Sun 1 Feb 2026'; anything unparsable is returned as is."""
+        try:
+            d = date.fromisoformat(str(value))
+        except ValueError:
+            return str(value)
+        return f"{d:%a} {d.day} {d:%b %Y}"
 
 
 def _register_error_handlers(app: Flask) -> None:
