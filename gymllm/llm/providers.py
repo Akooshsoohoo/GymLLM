@@ -152,6 +152,22 @@ class LLMConfig:
     def is_local(self) -> bool:
         return self.provider_info.is_local
 
+    @property
+    def runs_in_browser(self) -> bool:
+        """Local providers are called from the user's browser, never from the server,
+        so a hosted copy of GymLLM can still reach the model on the visitor's machine."""
+        return self.provider_info.is_local
+
+    def browser_config(self) -> dict | None:
+        """What page JavaScript needs to call the model directly, or None."""
+        if not self.runs_in_browser:
+            return None
+        return {
+            "base_url": self.effective_base_url,
+            "model": self.model,
+            "label": self.provider_info.label,
+        }
+
     def validate(self) -> list[str]:
         errors: list[str] = []
         if self.provider not in PROVIDERS:

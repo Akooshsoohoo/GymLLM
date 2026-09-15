@@ -58,3 +58,11 @@ def test_llm_tags_swallows_errors_and_bad_shapes():
     assert llm_tags("x", llm) == ""
     assert llm_tags("x", FakeLLM().queue({"nope": 1})) == ""
     assert llm_tags("x", FakeLLM().queue(["a", "b"])) == ""
+
+
+def test_clean_tags():
+    from gymllm.exercises import clean_tags
+
+    assert clean_tags(["Back", " pull", "back", ""]) == "back;pull"
+    assert clean_tags("Chest, push; Chest") == "chest;push"
+    assert clean_tags(None) == "" and clean_tags(42) == ""

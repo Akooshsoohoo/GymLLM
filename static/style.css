@@ -350,6 +350,14 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 .empty p { margin-bottom: 16px; }
 .empty .alert { text-align: left; max-width: 480px; margin: 0 auto 16px; }
 
+/* --- Settings: browser setup panel ------------------------------------- */
+.setup-heading { font-size: 0.9rem; margin: 14px 0 4px; }
+.setup-os { margin: 8px 0; }
+.setup-os summary { cursor: pointer; font-weight: 500; font-size: 0.9rem; color: var(--muted); }
+.setup-os summary:hover { color: var(--text); }
+.setup-os pre { margin: 8px 0 0; font-size: 0.85rem; }
+#browser-setup code { white-space: nowrap; }
+
 /* --- Chips ------------------------------------------------------------- */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .chip {

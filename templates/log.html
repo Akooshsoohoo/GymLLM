@@ -4,19 +4,23 @@
 <div class="page-head">
     <h1>Log a workout</h1>
     <a href="{{ url_for('main.settings') }}" class="chip chip-link" title="Change model">
-        <span class="chip-dot" aria-hidden="true"></span>{{ config.describe() }}
+        <span class="chip-dot" aria-hidden="true"></span>{{ config.describe() }}{% if config.runs_in_browser %} · in your browser{% endif %}
     </a>
 </div>
 
-<form method="post" action="{{ url_for('main.review') }}" id="log-form" class="card">
+<div class="alert error" id="llm-error" hidden></div>
+
+<form method="post" action="{{ url_for('main.review') }}" id="log-form" class="card"
+      {% if config.runs_in_browser %}data-browser-llm='{{ config.browser_config()|tojson }}'{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="client_date" class="client-date" value="">
+    <input type="hidden" name="llm_output" value="">
     <label for="workout" class="sr-only">Describe your workout</label>
     <textarea id="workout" name="workout" rows="6" required autofocus class="textarea textarea-plain"
         placeholder="yesterday: bench 185 for 5x5, lat pulldowns 3x10, felt strong"></textarea>
     <div class="toolbar">
         <button type="submit" class="btn btn-primary">Parse workout</button>
-        <span class="muted small">You review and edit before anything is saved.</span>
+        <span class="muted small" data-llm-status>You review and edit before anything is saved.</span>
     </div>
 </form>
 

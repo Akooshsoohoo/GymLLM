@@ -114,7 +114,8 @@ def normalize_entry(entry) -> dict:
     }
 
 
-def _to_parsed(data) -> ParsedWorkout:
+def parsed_from_output(data) -> ParsedWorkout:
+    """Validate and normalise a decoded model response."""
     if isinstance(data, list):
         data = {"exercises": data, "date": None}
     if not isinstance(data, dict):
@@ -137,7 +138,7 @@ def parse_workout(text: str, client, today: date | None = None) -> ParsedWorkout
     last: BadOutputError | None = None
     for _ in range(2):
         try:
-            return _to_parsed(client.complete_json(system, text))
+            return parsed_from_output(client.complete_json(system, text))
         except BadOutputError as e:
             last = e
     assert last is not None

@@ -1,27 +1,22 @@
 {% extends "base.html" %}
 {% block title %}GymLLM | Settings{% endblock %}
 {% block content %}
+{% set origin_is_local = request.host.split(':')[0] in ('localhost', '127.0.0.1', '::1', '[::1]') %}
 <div class="page-head">
     <h1>Settings</h1>
 </div>
 
-{% if not is_local_host %}
-<div class="alert warn" id="local-warning" hidden>
-    Local providers (Ollama, LM Studio) run on <em>your</em> machine, but this copy of GymLLM is
-    running on a server, so it cannot reach them. Run GymLLM locally, or expose your local model
-    through a tunnel and use the <strong>Custom</strong> provider with that URL.
-</div>
-{% endif %}
-
 <form method="post" action="{{ url_for('main.settings') }}" id="settings-form" class="card card-narrow"
       data-test-url="{{ url_for('main.settings_test') }}"
       data-has-key="{{ '1' if config.api_key else '0' }}"
+      data-site-origin="{{ site_origin }}"
       data-providers='{{ providers.values()|map(attribute="__dict__")|list|tojson }}'>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <h2 class="card-title">Model</h2>
     <p class="muted small card-lead">
-        Where your workout text gets parsed. Your API key is kept in a signed cookie in your
-        browser and only forwarded to the provider when you parse a workout. The server never stores it.
+        Where your workout text gets parsed. Hosted providers are called by the server with the
+        API key kept in a signed cookie in your browser; the server never stores it. Local
+        providers are called straight from this page, so the site never sees that traffic.
     </p>
 
     <div class="field">
@@ -60,4 +55,54 @@
         <span id="test-result" class="small" role="status"></span>
     </div>
 </form>
+
+<section class="card card-narrow" id="browser-setup" hidden>
+    <h2 class="card-title">Runs in your browser</h2>
+    <p class="small">
+        <span data-setup-label>This provider</span> is called directly from this page, so it has to be
+        running on <em>this</em> computer. Your workout text goes from the page to the model and never
+        through the GymLLM server.
+    </p>
+
+    {% if origin_is_local %}
+    <p class="muted small">You are running GymLLM locally, so no extra setup is needed.</p>
+    {% else %}
+    <div data-setup-for="ollama" hidden>
+        <h3 class="setup-heading">Allow this site once</h3>
+        <p class="muted small">
+            Ollama only answers browsers from origins it trusts. Add <code>{{ site_origin }}</code> to
+            <code>OLLAMA_ORIGINS</code>, then quit and reopen Ollama.
+        </p>
+        <details class="setup-os" open>
+            <summary>Windows</summary>
+            <p class="muted small">In PowerShell, then quit Ollama from the tray icon and start it again:</p>
+            <pre><code>[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS", "{{ site_origin }}", "User")</code></pre>
+        </details>
+        <details class="setup-os">
+            <summary>macOS</summary>
+            <p class="muted small">In Terminal, then quit and reopen the Ollama app:</p>
+            <pre><code>launchctl setenv OLLAMA_ORIGINS "{{ site_origin }}"</code></pre>
+        </details>
+        <details class="setup-os">
+            <summary>Linux (systemd)</summary>
+            <pre><code>sudo systemctl edit ollama
+# add under [Service]:
+Environment="OLLAMA_ORIGINS={{ site_origin }}"
+
+sudo systemctl restart ollama</code></pre>
+        </details>
+    </div>
+    <div data-setup-for="lmstudio" hidden>
+        <h3 class="setup-heading">Allow this site once</h3>
+        <p class="muted small">
+            In LM Studio open the <strong>Developer</strong> tab, start the server, and turn on
+            <strong>Enable CORS</strong> in the server settings.
+        </p>
+    </div>
+    <p class="muted small">
+        Chrome may ask whether this site can access your local network. Choose <strong>Allow</strong>.
+        Safari does not permit this kind of request; use Chrome, Edge or Firefox.
+    </p>
+    {% endif %}
+</section>
 {% endblock %}

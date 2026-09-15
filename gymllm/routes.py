@@ -19,28 +19,43 @@ from flask import (
 from sqlalchemy import func
 
 from .auth import current_user_email, login_required
-from .exercises import llm_tags, match_exercise
+from .exercises import TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
-from .llm.client import LLMError, test_connection
+from .llm.client import BadOutputError, LLMError, extract_json, test_connection
 from .llm.providers import PROVIDERS, LLMConfig
 from .models import FIELDS, Workout
-from .parsing import is_iso_date, normalize_entry, parse_workout
+from .parsing import (
+    build_system_prompt,
+    is_iso_date,
+    normalize_entry,
+    parse_workout,
+    parsed_from_output,
+)
 
 bp = Blueprint("main", __name__)
 
 ENTRY_FIELDS = ("exercise", "weight", "sets", "reps", "notes")
 MAX_ENTRIES = 100
+MAX_LLM_OUTPUT = 200_000
 RECENT_SESSIONS = 5
 _CELL_RE = re.compile(r"^cell-(\d+)-(\w+)$")
 _DELETE_RE = re.compile(r"^delete-(\d+)$")
 _WEIGHT_NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)")
 
 
-def _llm_client():
+def _llm_config() -> LLMConfig | None:
+    """The saved, valid provider config, or None if the user still has to set one up."""
     config = LLMConfig.from_session()
     if config is None or config.validate():
-        return None, None
-    return config, current_app.config["LLM_CLIENT_FACTORY"](config)
+        return None
+    return config
+
+
+def _llm_client(config: LLMConfig):
+    """A server-side client, or None when the provider is called from the browser."""
+    if config.runs_in_browser:
+        return None
+    return current_app.config["LLM_CLIENT_FACTORY"](config)
 
 
 def _client_today() -> date:
@@ -51,9 +66,8 @@ def _client_today() -> date:
     return date.today()
 
 
-def _is_local_host() -> bool:
-    host = request.host.split(":")[0]
-    return host in ("localhost", "127.0.0.1", "::1")
+def _site_origin() -> str:
+    return request.host_url.rstrip("/")
 
 
 @bp.route("/healthz")
@@ -137,7 +151,7 @@ def settings():
             for e in errors:
                 flash(e, "error")
             return (
-                render_template("settings.html", config=config, is_local_host=_is_local_host()),
+                render_template("settings.html", config=config, site_origin=_site_origin()),
                 400,
             )
         config.to_session()
@@ -146,7 +160,7 @@ def settings():
     config = LLMConfig.from_session() or LLMConfig(
         provider="openai", model=PROVIDERS["openai"].default_model
     )
-    return render_template("settings.html", config=config, is_local_host=_is_local_host())
+    return render_template("settings.html", config=config, site_origin=_site_origin())
 
 
 @bp.route("/settings/test", methods=["POST"])
@@ -156,9 +170,40 @@ def settings_test():
     errors = config.validate()
     if errors:
         return jsonify(ok=False, message=" ".join(errors)), 400
+    if config.runs_in_browser:
+        return jsonify(ok=False, message="This provider is tested from your browser."), 400
     client = current_app.config["LLM_CLIENT_FACTORY"](config)
     ok, message = test_connection(config, client=client)
     return jsonify(ok=ok, message=message)
+
+
+# --- Browser-side LLM helpers -------------------------------------------------
+# Local providers (Ollama, LM Studio) are called by page JavaScript, so these
+# endpoints hand the page the same prompts the server would have used.
+
+
+@bp.route("/llm/prompt")
+@login_required
+def llm_prompt():
+    when = request.args.get("date", "")
+    if not is_iso_date(when):
+        return jsonify(error="date must be YYYY-MM-DD"), 400
+    return jsonify(system=build_system_prompt(date.fromisoformat(when)))
+
+
+@bp.route("/llm/tag-targets", methods=["POST"])
+@login_required
+def llm_tag_targets():
+    data = request.get_json(silent=True) or {}
+    names = data.get("names")
+    if not isinstance(names, list):
+        return jsonify(error="names must be a list"), 400
+    unmatched: list[str] = []
+    for raw in names[:MAX_ENTRIES]:
+        name = str(raw or "").strip()
+        if name and match_exercise(name) is None and name not in unmatched:
+            unmatched.append(name)
+    return jsonify(unmatched=unmatched, system=TAG_SYSTEM)
 
 
 # --- Logging flow -------------------------------------------------------------
@@ -171,15 +216,18 @@ def review():
     if not workout_text:
         flash("Describe your workout first.", "error")
         return redirect(url_for("main.home"))
-    config, client = _llm_client()
-    if client is None:
+    config = _llm_config()
+    if config is None:
         flash("Set up an LLM provider first.", "error")
         return redirect(url_for("main.settings"))
 
     today = _client_today()
-    context = {"workout_text": workout_text, "client_date": today.isoformat()}
+    context = {"workout_text": workout_text, "client_date": today.isoformat(), "config": config}
     try:
-        parsed = parse_workout(workout_text, client, today=today)
+        if config.runs_in_browser:
+            parsed = _parse_browser_output(request.form.get("llm_output", ""))
+        else:
+            parsed = parse_workout(workout_text, _llm_client(config), today=today)
     except LLMError as e:
         return render_template("review.html", error=e.user_message, entries=None, **context)
     except Exception:  # noqa: BLE001
@@ -200,7 +248,20 @@ def review():
     )
 
 
-def _entries_from_form(form) -> list[dict]:
+def _parse_browser_output(raw: str):
+    """Validate the model response the page fetched from a local provider."""
+    raw = (raw or "").strip()
+    if not raw:
+        raise BadOutputError(
+            "Your browser did not return a model response. JavaScript must be enabled "
+            "to use a local model."
+        )
+    if len(raw) > MAX_LLM_OUTPUT:
+        raise BadOutputError("The model response was too large to process.")
+    return parsed_from_output(extract_json(raw))
+
+
+def _entries_from_form(form, with_tags: bool = False) -> list[dict]:
     try:
         count = min(int(form.get("num_entries", 0)), MAX_ENTRIES)
     except ValueError:
@@ -212,6 +273,8 @@ def _entries_from_form(form) -> list[dict]:
         raw = {f: form.get(f"entry-{i}-{f}", "") for f in ENTRY_FIELDS}
         entry = normalize_entry(raw)
         if entry["exercise"]:
+            if with_tags:
+                entry["tags"] = clean_tags(form.get(f"entry-{i}-tags", ""))
             entries.append(entry)
     return entries
 
@@ -224,17 +287,22 @@ def confirm():
     if not is_iso_date(when):
         flash("Date must be in YYYY-MM-DD format.", "error")
         return redirect(url_for("main.home"))
-    entries = _entries_from_form(request.form)
+    config = _llm_config()
+    in_browser = config is not None and config.runs_in_browser
+    entries = _entries_from_form(request.form, with_tags=in_browser)
     if not entries:
         flash("Nothing to save: every row was empty or deleted.", "error")
         return redirect(url_for("main.home"))
 
-    _config, client = _llm_client()
+    client = _llm_client(config) if config else None
     saved = []
     for entry in entries:
         match = match_exercise(entry["exercise"])
         if match:
             name, tags = match
+        elif in_browser:
+            name = entry["exercise"]
+            tags = entry.get("tags", "")  # tagged by the local model in the browser
         else:
             name = entry["exercise"]
             tags = llm_tags(name, client) if client else ""

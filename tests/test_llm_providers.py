@@ -111,15 +111,16 @@ def test_openai_errors_are_mapped(exc, expected):
         _openai_client_with(create).complete_json("s", "u")
 
 
-def test_local_connection_error_mentions_running_locally():
+def test_custom_connection_error_names_the_url():
     def create(messages, **extra):
         raise openai.APIConnectionError(request=_fake_response(0).request)
 
-    c = OpenAICompatClient(LLMConfig("ollama", "llama3.2"))
+    c = OpenAICompatClient(LLMConfig("custom", "m", base_url="http://models.example.com/v1"))
     c._create = create
     with pytest.raises(LLMConnectionError) as info:
         c.complete_json("s", "u")
-    assert "same machine" in info.value.user_message
+    assert "http://models.example.com/v1" in info.value.user_message
+    assert "reachable from where GymLLM is hosted" in info.value.user_message
 
 
 def test_test_connection_reports_success_and_local_models():
@@ -139,3 +140,20 @@ def test_test_connection_reports_failure_message():
 
 def test_module_exports_error_hierarchy():
     assert issubclass(llm_client.BadOutputError, llm_client.LLMError)
+
+
+@pytest.mark.parametrize(
+    "provider,expected",
+    [("ollama", True), ("lmstudio", True), ("openai", False), ("custom", False)],
+)
+def test_runs_in_browser(provider, expected):
+    cfg = LLMConfig(provider=provider, model="m", base_url="http://x.example/v1")
+    assert cfg.runs_in_browser is expected
+    if expected:
+        assert cfg.browser_config() == {
+            "base_url": cfg.effective_base_url,
+            "model": "m",
+            "label": cfg.provider_info.label,
+        }
+    else:
+        assert cfg.browser_config() is None

@@ -68,11 +68,10 @@ def extract_json(text: str | None) -> Any:
 
 def _connection_message(config: LLMConfig) -> str:
     label = config.provider_info.label
-    if config.is_local:
+    if config.is_local or config.provider == "custom":
         return (
-            f"Could not reach {label} at {config.effective_base_url}. Local providers only "
-            "work when GymLLM runs on the same machine. Make sure it is running, or expose "
-            "it through a tunnel and use the Custom provider."
+            f"Could not reach {label} at {config.effective_base_url}. Make sure the server "
+            "is running and reachable from where GymLLM is hosted."
         )
     return f"Could not connect to {label}. Check your network and the base URL, then try again."
 

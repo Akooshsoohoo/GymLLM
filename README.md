@@ -57,10 +57,31 @@ Open <http://localhost:5000>.
 ### Using a local model
 
 Install [Ollama](https://ollama.com), run `ollama pull llama3.2`, keep Ollama
-running, and choose **Ollama (local)** on the settings page. Local providers only
-work when GymLLM itself is running on the same machine, because the server is what
-talks to the model. If you deploy GymLLM and still want a local model, expose it
-through a tunnel and use the **Custom (OpenAI-compatible)** provider with that URL.
+running, and choose **Ollama (local)** on the Settings page (LM Studio works the
+same way). Local providers are called **from your browser**, not from the server,
+so they work on the hosted site too: your workout text goes straight from the page
+to the model on your machine and never through GymLLM's server.
+
+When GymLLM is served from anywhere other than `localhost`, tell the local server
+to accept requests from that site (a one-time step; the Settings page shows these
+commands with the real address filled in):
+
+- **Ollama, Windows** (PowerShell, then quit Ollama from the tray and reopen it):
+  `[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS", "https://your-gymllm.example.com", "User")`
+- **Ollama, macOS** (then quit and reopen the Ollama app):
+  `launchctl setenv OLLAMA_ORIGINS "https://your-gymllm.example.com"`
+- **Ollama, Linux (systemd):** `sudo systemctl edit ollama`, add
+  `Environment="OLLAMA_ORIGINS=https://your-gymllm.example.com"` under `[Service]`,
+  then `sudo systemctl restart ollama`.
+- **LM Studio:** Developer tab, server settings, turn on **Enable CORS**.
+
+Chrome may ask once whether the site can access your local network; choose Allow.
+Safari does not permit pages to call `localhost`, so use Chrome, Edge or Firefox.
+**Test connection** on the Settings page runs this exact check from the browser and
+lists the models you have installed.
+
+A tunnel is only needed if the model runs on a *different* machine from the
+browser; use the **Custom (OpenAI-compatible)** provider with that URL.
 
 ### Tests and lint
 

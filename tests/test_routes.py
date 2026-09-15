@@ -1,10 +1,24 @@
+import json
+
 import pytest
 
 from gymllm import create_app
+from gymllm.exercises import TAG_SYSTEM
 from gymllm.extensions import db
 from gymllm.llm.client import AuthError
 from gymllm.models import Workout
 from tests.conftest import OTHER, USER, base_test_config
+
+OLLAMA_SESSION = {"provider": "ollama", "model": "llama3.2", "api_key": "", "base_url": ""}
+
+
+@pytest.fixture
+def local_user(client):
+    """Signed in with a local provider, which the browser calls instead of the server."""
+    with client.session_transaction() as s:
+        s["user_email"] = USER
+        s["llm"] = dict(OLLAMA_SESSION)
+    return client
 
 
 def test_healthz(client):
@@ -128,7 +142,10 @@ def test_settings_switching_to_ollama_needs_no_key(logged_in):
 
 def test_settings_test_endpoint(logged_in, fake_llm):
     fake_llm.queue({"ok": True})
-    r = logged_in.post("/settings/test", data={"provider": "ollama", "model": "llama3.2"})
+    r = logged_in.post(
+        "/settings/test",
+        data={"provider": "custom", "model": "x", "base_url": "http://models.example.com/v1"},
+    )
     assert r.get_json()["ok"] is True
     r = logged_in.post(
         "/settings/test", data={"provider": "anthropic", "model": "x", "api_key": ""}
@@ -138,6 +155,40 @@ def test_settings_test_endpoint(logged_in, fake_llm):
     fake_llm.queue({"ok": True})
     r = logged_in.post("/settings/test", data={"provider": "openai", "model": "x", "api_key": ""})
     assert r.status_code == 200 and r.get_json()["ok"] is True
+
+
+def test_settings_test_refuses_local_providers(logged_in, fake_llm):
+    r = logged_in.post("/settings/test", data={"provider": "ollama", "model": "llama3.2"})
+    assert r.status_code == 400 and "from your browser" in r.get_json()["message"]
+    assert fake_llm.calls == []
+
+
+# --- browser-side LLM helpers -------------------------------------------------
+
+
+def test_llm_prompt_endpoint(logged_in, client):
+    r = logged_in.get("/llm/prompt?date=2026-09-14")
+    assert r.status_code == 200
+    assert "Monday, 2026-09-14" in r.get_json()["system"]
+    assert "barbell bench press" in r.get_json()["system"]
+    assert logged_in.get("/llm/prompt?date=14/09/2026").status_code == 400
+    assert logged_in.get("/llm/prompt").status_code == 400
+
+
+def test_llm_prompt_requires_login(client):
+    r = client.get("/llm/prompt?date=2026-09-14")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/welcome")
+
+
+def test_llm_tag_targets(logged_in):
+    r = logged_in.post(
+        "/llm/tag-targets",
+        json={"names": ["Barbell Bench Press", "made-up movement", "", "made-up movement"]},
+    )
+    assert r.status_code == 200
+    assert r.get_json() == {"unmatched": ["made-up movement"], "system": TAG_SYSTEM}
+    assert logged_in.post("/llm/tag-targets", json={"names": "nope"}).status_code == 400
+    assert logged_in.post("/llm/tag-targets", data="x").status_code == 400
 
 
 # --- review / confirm ---------------------------------------------------------
@@ -188,6 +239,45 @@ def test_review_shows_friendly_llm_error(logged_in, fake_llm):
     assert b'name="entry-0-exercise"' not in r.data
 
 
+def test_review_browser_mode_uses_posted_output_not_server(local_user, fake_llm):
+    r = local_user.post(
+        "/review",
+        data={"workout": "bench", "client_date": "2026-09-14", "llm_output": json.dumps(PARSED)},
+    )
+    assert r.status_code == 200
+    assert b'value="2026-09-13"' in r.data
+    assert b'name="entry-1-exercise"' in r.data and b"lat pulldown" in r.data
+    assert b"data-browser-llm" in r.data and b"localhost:11434/v1" in r.data
+    assert fake_llm.calls == []  # the server never called a model
+
+
+def test_review_browser_mode_tolerates_fenced_output(local_user):
+    fenced = "```json\n" + json.dumps(PARSED) + "\n```"
+    r = local_user.post("/review", data={"workout": "bench", "llm_output": fenced})
+    assert r.status_code == 200 and b'name="entry-0-exercise"' in r.data
+
+
+def test_review_browser_mode_errors(local_user):
+    r = local_user.post("/review", data={"workout": "bench"})
+    assert r.status_code == 200 and b"browser did not return" in r.data
+    assert b'name="entry-0-exercise"' not in r.data
+    r = local_user.post("/review", data={"workout": "bench", "llm_output": "not json at all"})
+    assert r.status_code == 200 and b"did not return JSON" in r.data
+
+
+def test_browser_output_size_cap():
+    from gymllm.llm.client import BadOutputError
+    from gymllm.routes import MAX_LLM_OUTPUT, _parse_browser_output
+
+    with pytest.raises(BadOutputError, match="too large"):
+        _parse_browser_output("{" * (MAX_LLM_OUTPUT + 1))
+
+
+def test_home_shows_browser_hint_for_local_provider(local_user):
+    r = local_user.get("/")
+    assert r.status_code == 200 and b"in your browser" in r.data and b"data-browser-llm" in r.data
+
+
 def test_review_empty_text_redirects_home(logged_in):
     r = logged_in.post("/review", data={"workout": "  "})
     assert r.status_code == 302 and r.headers["Location"].endswith("/")
@@ -220,6 +310,37 @@ def test_confirm_saves_rows_with_tags_and_skips_deleted(logged_in, app, fake_llm
         assert rows[1].tags == "novel;thing"
         assert rows[0].date == rows[1].date == "2026-09-13"
         assert rows[0].reps == "5, 5, 5, 5, 5" and rows[0].sets == "5"
+
+
+def test_confirm_browser_mode_takes_tags_from_form(local_user, app, fake_llm):
+    data = {
+        "date": "2026-09-13",
+        "num_entries": "2",
+        "entry-0-exercise": "Barbell Bench Press",
+        "entry-0-tags": "ignored, matched names keep csv tags",
+        "entry-1-exercise": "made-up movement",
+        "entry-1-tags": "Novel, thing; novel",
+    }
+    r = local_user.post("/confirm", data=data)
+    assert r.status_code == 200 and b"Logged 2 entries" in r.data
+    assert fake_llm.calls == []
+    with app.app_context():
+        rows = Workout.query.order_by(Workout.id).all()
+        assert rows[0].tags.startswith("chest")
+        assert rows[1].tags == "novel;thing"
+
+
+def test_confirm_server_mode_ignores_posted_tags(logged_in, app, fake_llm):
+    fake_llm.queue({"tags": ["from-model"]})
+    data = {
+        "date": "2026-09-13",
+        "num_entries": "1",
+        "entry-0-exercise": "made-up movement",
+        "entry-0-tags": "sneaky",
+    }
+    logged_in.post("/confirm", data=data)
+    with app.app_context():
+        assert Workout.query.one().tags == "from-model"
 
 
 def test_confirm_rejects_bad_date_and_empty_forms(logged_in, app):

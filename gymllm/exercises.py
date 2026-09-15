@@ -76,13 +76,8 @@ TAG_SYSTEM = (
 )
 
 
-def llm_tags(raw: str, client) -> str:
-    """Ask the LLM for tags for an exercise not in the list. Empty string on failure."""
-    try:
-        data = client.complete_json(TAG_SYSTEM, f"Exercise: {raw}")
-    except LLMError:
-        return ""
-    tags = data.get("tags") if isinstance(data, dict) else None
+def clean_tags(tags) -> str:
+    """Normalise a list (or ';'/',' separated string) of tags into 'a;b;c'."""
     if isinstance(tags, str):
         tags = re.split(r"[;,]", tags)
     if not isinstance(tags, list):
@@ -93,3 +88,12 @@ def llm_tags(raw: str, client) -> str:
         if t and t not in clean:
             clean.append(t)
     return ";".join(clean)
+
+
+def llm_tags(raw: str, client) -> str:
+    """Ask the LLM for tags for an exercise not in the list. Empty string on failure."""
+    try:
+        data = client.complete_json(TAG_SYSTEM, f"Exercise: {raw}")
+    except LLMError:
+        return ""
+    return clean_tags(data.get("tags") if isinstance(data, dict) else None)

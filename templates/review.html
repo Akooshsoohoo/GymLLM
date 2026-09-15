@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}GymLLM | Review{% endblock %}
 {% block content %}
+{% set browser_llm = config.browser_config()|tojson if config and config.runs_in_browser else none %}
 <div class="page-head">
     <h1>Review and confirm</h1>
 </div>
@@ -8,19 +9,25 @@
 {% if error %}
 <div class="alert error">{{ error }}</div>
 {% endif %}
+<div class="alert error" id="llm-error" hidden></div>
 
-<form method="post" action="{{ url_for('main.review') }}" class="card card-compact reparse-form">
+<form method="post" action="{{ url_for('main.review') }}" class="card card-compact reparse-form"
+      {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="client_date" class="client-date" value="{{ client_date }}">
+    <input type="hidden" name="llm_output" value="">
     <label for="workout" class="card-title">Original text</label>
     <textarea id="workout" name="workout" rows="3" class="textarea">{{ workout_text }}</textarea>
     <div class="toolbar">
         <button type="submit" class="btn btn-ghost btn-sm">Re-parse</button>
+        <span class="muted small" data-llm-status></span>
     </div>
 </form>
 
 {% if entries is not none %}
-<form method="post" action="{{ url_for('main.confirm') }}" id="confirm-form" class="card">
+<form method="post" action="{{ url_for('main.confirm') }}" id="confirm-form" class="card"
+      data-tag-targets-url="{{ url_for('main.llm_tag_targets') }}"
+      {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="card-head">
         <div class="field-inline">
@@ -56,6 +63,7 @@
     </div>
     <input type="hidden" name="num_entries" id="num_entries" value="{{ entries|length }}">
     <div class="toolbar toolbar-end">
+        <span class="muted small" data-llm-status></span>
         <button type="button" class="btn btn-ghost" id="add-row">Add row</button>
         <button type="submit" class="btn btn-primary" {% if not entries %}disabled{% endif %}>Save to log</button>
     </div>
