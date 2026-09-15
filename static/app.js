@@ -319,12 +319,16 @@
     var select = $("#provider"), model = $("#model"), apiKey = $("#api_key"), baseUrl = $("#base_url");
     var keyRow = $("#api-key-row"), urlRow = $("#base-url-row"), help = $("#provider-help");
     var suggestions = $("#model-suggestions"), setup = $("#browser-setup");
+    var modelRow = $("#model-row"), siteNote = $("#site-note");
     var lastProvider = select.value;
 
     var render = function (changed) {
       var p = providers[select.value] || {};
-      keyRow.hidden = !p.needs_key && p.id !== "custom";
+      var isSite = p.id === "site";
+      keyRow.hidden = isSite || (!p.needs_key && p.id !== "custom");
       urlRow.hidden = p.id !== "custom";
+      if (modelRow) modelRow.hidden = isSite;
+      if (siteNote) siteNote.hidden = !isSite;
       if (setup) {
         setup.hidden = !p.is_local;
         var lbl = $("[data-setup-label]", setup); if (lbl) lbl.textContent = p.label || "This provider";

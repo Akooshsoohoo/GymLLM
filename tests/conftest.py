@@ -17,7 +17,12 @@ class FakeLLM:
     def __init__(self):
         self.responses = []
         self.calls = []
+        self.configs = []  # every LLMConfig the client factory was asked for
         self.error = None
+
+    def for_config(self, config):
+        self.configs.append(config)
+        return self
 
     def queue(self, *responses):
         self.responses.extend(responses)
@@ -48,7 +53,17 @@ def base_test_config():
         "GOOGLE_OAUTH_CLIENT_ID": "x",
         "GOOGLE_OAUTH_CLIENT_SECRET": "y",
         "IS_PRODUCTION": False,
+        "SITE_LLM": None,
     }
+
+
+SITE_LLM = {
+    "provider": "groq",
+    "model": "llama-3.3-70b-versatile",
+    "api_key": "gsk-site",
+    "base_url": "",
+    "daily_limit": 2,
+}
 
 
 @pytest.fixture
@@ -69,6 +84,28 @@ def app(fake_llm):
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture
+def site_app(fake_llm):
+    """An app whose owner configured a shared model with a cap of 2 parses a day."""
+    cfg = base_test_config()
+    cfg["SITE_LLM"] = dict(SITE_LLM)
+    app = create_app(cfg)
+    app.config["LLM_CLIENT_FACTORY"] = lambda config: fake_llm.for_config(config)
+    yield app
+    with app.app_context():
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.fixture
+def site_user(site_app):
+    """Signed in on the shared-model app with no provider chosen."""
+    client = site_app.test_client()
+    with client.session_transaction() as s:
+        s["user_email"] = USER
+    return client
 
 
 @pytest.fixture

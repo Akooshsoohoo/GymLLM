@@ -4,10 +4,21 @@
 <div class="page-head">
     <h1>Log a workout</h1>
     <a href="{{ url_for('main.settings') }}" class="chip chip-link" title="Change model">
-        <span class="chip-dot" aria-hidden="true"></span>{{ config.describe() }}{% if config.runs_in_browser %} · in your browser{% endif %}
+        <span class="chip-dot" aria-hidden="true"></span>
+        {%- if config.is_site -%}
+            GymLLM shared model · {{ quota_left }} of {{ quota_limit }} free parses left today
+        {%- else -%}
+            {{ config.describe() }}{% if config.runs_in_browser %} · in your browser{% endif %}
+        {%- endif -%}
     </a>
 </div>
 
+{% if config.is_site and quota_left == 0 %}
+<div class="alert warn">
+    You have used today's {{ quota_limit }} free parses with the shared model. Come back tomorrow,
+    or <a href="{{ url_for('main.settings') }}">add your own key or a local model</a> for unlimited use.
+</div>
+{% endif %}
 <div class="alert error" id="llm-error" hidden></div>
 
 <form method="post" action="{{ url_for('main.review') }}" id="log-form" class="card"

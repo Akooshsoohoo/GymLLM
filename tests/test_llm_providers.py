@@ -19,6 +19,8 @@ from tests.conftest import FakeLLM
 
 def test_every_provider_has_a_usable_default():
     for p in PROVIDERS.values():
+        if p.id == "site":
+            continue  # virtual: resolved from SITE_LLM at runtime
         assert p.kind in ("openai", "anthropic")
         if p.id != "custom":
             assert p.default_model
@@ -157,3 +159,40 @@ def test_runs_in_browser(provider, expected):
         }
     else:
         assert cfg.browser_config() is None
+
+
+# --- shared site model ---------------------------------------------------------
+
+
+def test_site_config_resolves_to_owner_settings(site_app):
+    with site_app.app_context():
+        cfg = LLMConfig("site", "")
+        assert cfg.is_site and cfg.validate() == []
+        real = cfg.resolved()
+        assert (real.provider, real.model, real.api_key) == (
+            "groq",
+            "llama-3.3-70b-versatile",
+            "gsk-site",
+        )
+        assert cfg.describe() == "GymLLM shared model · llama-3.3-70b-versatile"
+        assert LLMConfig.site_default().provider == "site"
+        client = get_client(cfg)
+        assert isinstance(client, OpenAICompatClient)
+        assert client.config.api_key == "gsk-site"
+        assert str(client._client.base_url).startswith("https://api.groq.com")
+
+
+def test_site_config_invalid_when_not_configured(app):
+    with app.app_context():
+        assert "not set up" in LLMConfig("site", "").validate()[0]
+        assert LLMConfig.site_default() is None
+        assert LLMConfig("site", "").resolved().provider == ""
+
+
+def test_site_config_never_stores_key_in_session(site_app):
+    with site_app.test_request_context():
+        from flask import session
+
+        LLMConfig("site", "leak", api_key="leak", base_url="leak").to_session()
+        assert session["llm"] == {"provider": "site", "model": "", "api_key": "", "base_url": ""}
+        assert LLMConfig.from_session().is_site

@@ -18,10 +18,17 @@ from flask import (
 )
 from sqlalchemy import func
 
+from . import quota
 from .auth import current_user_email, login_required
 from .exercises import TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
-from .llm.client import BadOutputError, LLMError, extract_json, test_connection
+from .llm.client import (
+    BadOutputError,
+    LLMError,
+    RateLimitError,
+    extract_json,
+    test_connection,
+)
 from .llm.providers import PROVIDERS, LLMConfig
 from .models import FIELDS, Workout
 from .parsing import (
@@ -37,6 +44,7 @@ bp = Blueprint("main", __name__)
 ENTRY_FIELDS = ("exercise", "weight", "sets", "reps", "notes")
 MAX_ENTRIES = 100
 MAX_LLM_OUTPUT = 200_000
+MAX_SITE_TAG_CALLS = 10  # per save, so tagging cannot drain the shared allowance
 RECENT_SESSIONS = 5
 _CELL_RE = re.compile(r"^cell-(\d+)-(\w+)$")
 _DELETE_RE = re.compile(r"^delete-(\d+)$")
@@ -44,18 +52,25 @@ _WEIGHT_NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)")
 
 
 def _llm_config() -> LLMConfig | None:
-    """The saved, valid provider config, or None if the user still has to set one up."""
-    config = LLMConfig.from_session()
+    """The saved, valid provider config, or None if the user still has to set one up.
+
+    With no saved choice the site's shared model (if configured) is used, so a
+    new user can log a workout without ever visiting Settings."""
+    config = LLMConfig.from_session() or LLMConfig.site_default()
     if config is None or config.validate():
         return None
     return config
+
+
+def _site_limit() -> int:
+    return int((LLMConfig.site_settings() or {}).get("daily_limit", 0))
 
 
 def _llm_client(config: LLMConfig):
     """A server-side client, or None when the provider is called from the browser."""
     if config.runs_in_browser:
         return None
-    return current_app.config["LLM_CLIENT_FACTORY"](config)
+    return current_app.config["LLM_CLIENT_FACTORY"](config.resolved())
 
 
 def _client_today() -> date:
@@ -114,12 +129,22 @@ def _recent_sessions(user_email: str, limit: int = RECENT_SESSIONS) -> list[dict
 @bp.route("/")
 @login_required
 def home():
-    config = LLMConfig.from_session()
+    config = _llm_config()
     if config is None:
         flash("Choose an LLM provider before logging a workout.", "info")
         return redirect(url_for("main.settings"))
-    sessions = _recent_sessions(current_user_email())
-    return render_template("log.html", config=config, sessions=sessions)
+    user_email = current_user_email()
+    quota_left = quota_limit = None
+    if config.is_site:
+        quota_limit = _site_limit()
+        quota_left = quota.remaining(user_email, quota_limit)
+    return render_template(
+        "log.html",
+        config=config,
+        sessions=_recent_sessions(user_email),
+        quota_left=quota_left,
+        quota_limit=quota_limit,
+    )
 
 
 # --- Settings -----------------------------------------------------------------
@@ -157,8 +182,10 @@ def settings():
         config.to_session()
         flash(f"Saved. Using {config.describe()}.", "ok")
         return redirect(url_for("main.settings"))
-    config = LLMConfig.from_session() or LLMConfig(
-        provider="openai", model=PROVIDERS["openai"].default_model
+    config = (
+        LLMConfig.from_session()
+        or LLMConfig.site_default()
+        or LLMConfig(provider="openai", model=PROVIDERS["openai"].default_model)
     )
     return render_template("settings.html", config=config, site_origin=_site_origin())
 
@@ -172,7 +199,7 @@ def settings_test():
         return jsonify(ok=False, message=" ".join(errors)), 400
     if config.runs_in_browser:
         return jsonify(ok=False, message="This provider is tested from your browser."), 400
-    client = current_app.config["LLM_CLIENT_FACTORY"](config)
+    client = current_app.config["LLM_CLIENT_FACTORY"](config.resolved())
     ok, message = test_connection(config, client=client)
     return jsonify(ok=ok, message=message)
 
@@ -223,11 +250,32 @@ def review():
 
     today = _client_today()
     context = {"workout_text": workout_text, "client_date": today.isoformat(), "config": config}
+    if config.is_site:
+        limit = _site_limit()
+        if not quota.consume(current_user_email(), limit):
+            return render_template(
+                "review.html",
+                error=(
+                    f"You have used today's {limit} free parses with the shared model. "
+                    "Come back tomorrow, or add your own key or a local model on the "
+                    "Settings page."
+                ),
+                entries=None,
+                **context,
+            )
     try:
         if config.runs_in_browser:
             parsed = _parse_browser_output(request.form.get("llm_output", ""))
         else:
             parsed = parse_workout(workout_text, _llm_client(config), today=today)
+    except RateLimitError as e:
+        message = e.user_message
+        if config.is_site:
+            message = (
+                "The shared model is busy or its daily allowance is used up. Try again in a "
+                "minute, or use your own key on the Settings page."
+            )
+        return render_template("review.html", error=message, entries=None, **context)
     except LLMError as e:
         return render_template("review.html", error=e.user_message, entries=None, **context)
     except Exception:  # noqa: BLE001
@@ -295,6 +343,7 @@ def confirm():
         return redirect(url_for("main.home"))
 
     client = _llm_client(config) if config else None
+    tag_calls_left = MAX_SITE_TAG_CALLS if config is not None and config.is_site else MAX_ENTRIES
     saved = []
     for entry in entries:
         match = match_exercise(entry["exercise"])
@@ -305,7 +354,10 @@ def confirm():
             tags = entry.get("tags", "")  # tagged by the local model in the browser
         else:
             name = entry["exercise"]
-            tags = llm_tags(name, client) if client else ""
+            tags = ""
+            if client and tag_calls_left > 0:
+                tag_calls_left -= 1
+                tags = llm_tags(name, client)
         workout = Workout(
             user_email=user_email,
             date=when,

@@ -67,6 +67,7 @@ def _register_context(app: Flask) -> None:
             "user_email": current_user_email(),
             "llm_config": LLMConfig.from_session(),
             "providers": PROVIDERS,
+            "site_llm": app.config.get("SITE_LLM"),
         }
 
     @app.template_filter("nice_date")

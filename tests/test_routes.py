@@ -459,3 +459,127 @@ def test_csrf_enforced_when_enabled():
     with app.app_context():
         db.session.remove()
         db.drop_all()
+
+
+# --- shared site model ---------------------------------------------------------
+
+
+def test_site_model_is_default_for_new_users(site_user):
+    r = site_user.get("/")
+    assert r.status_code == 200
+    assert b"2 of 2 free parses left today" in r.data
+    assert b"GymLLM shared model" in r.data
+
+
+def test_site_review_uses_owner_key_and_counts_quota(site_user, site_app, fake_llm):
+    from gymllm import quota
+
+    fake_llm.queue(PARSED, PARSED)
+    for _ in range(2):
+        r = site_user.post("/review", data={"workout": "bench", "client_date": "2026-09-14"})
+        assert r.status_code == 200 and b'name="entry-0-exercise"' in r.data
+    assert len(fake_llm.calls) == 2
+    assert all(c.provider == "groq" and c.api_key == "gsk-site" for c in fake_llm.configs)
+
+    r = site_user.post("/review", data={"workout": "bench"})
+    assert r.status_code == 200 and b"used today&#39;s 2 free parses" in r.data
+    assert len(fake_llm.calls) == 2  # refused before any model call
+    with site_app.app_context():
+        assert quota.remaining(USER, 2) == 0
+    r = site_user.get("/")
+    assert b"0 of 2 free parses left today" in r.data and b"Come back tomorrow" in r.data
+
+
+def test_site_quota_resets_next_day(site_user, site_app, fake_llm, monkeypatch):
+    from gymllm import quota
+
+    fake_llm.queue(PARSED, PARSED, PARSED)
+    site_user.post("/review", data={"workout": "a"})
+    site_user.post("/review", data={"workout": "b"})
+    monkeypatch.setattr(quota, "today", lambda: "2099-01-01")
+    r = site_user.post("/review", data={"workout": "c"})
+    assert b'name="entry-0-exercise"' in r.data and len(fake_llm.calls) == 3
+
+
+def test_site_rate_limit_message(site_user, fake_llm):
+    from gymllm.llm.client import RateLimitError
+
+    fake_llm.error = RateLimitError("Groq is rate-limiting you or you are out of credits.")
+    r = site_user.post("/review", data={"workout": "bench"})
+    assert r.status_code == 200 and b"shared model is busy" in r.data
+
+
+def test_site_confirm_caps_tag_calls(site_user, app, site_app, fake_llm):
+    data = {"date": "2026-09-13", "num_entries": "12"}
+    for i in range(12):
+        data[f"entry-{i}-exercise"] = f"made-up movement {i}"
+        fake_llm.queue({"tags": [f"t{i}"]})
+    r = site_user.post("/confirm", data=data)
+    assert r.status_code == 200 and b"Logged 12 entries" in r.data
+    assert len(fake_llm.calls) == 10
+    with site_app.app_context():
+        tagged = [w.tags for w in Workout.query.order_by(Workout.id).all()]
+        assert tagged[:10] == [f"t{i}" for i in range(10)] and tagged[10:] == ["", ""]
+
+
+def test_site_option_only_offered_when_configured(site_user, logged_in):
+    r = site_user.get("/settings")
+    assert b'value="site" selected' in r.data and b"GymLLM shared model (free)" in r.data
+    r = logged_in.get("/settings")
+    assert b'value="site"' not in r.data
+    r = logged_in.post("/settings", data={"provider": "site"})
+    assert r.status_code == 400 and b"not set up on this server" in r.data
+
+
+def test_site_settings_save_and_test(site_user, site_app, fake_llm):
+    from gymllm import quota
+
+    r = site_user.post("/settings", data={"provider": "site"}, follow_redirects=True)
+    assert b"Saved. Using GymLLM shared model" in r.data
+    with site_user.session_transaction() as s:
+        assert s["llm"] == {"provider": "site", "model": "", "api_key": "", "base_url": ""}
+    fake_llm.queue({"ok": True})
+    r = site_user.post("/settings/test", data={"provider": "site"})
+    assert r.get_json()["ok"] is True
+    with site_app.app_context():
+        assert quota.remaining(USER, 2) == 2
+
+
+def test_site_user_can_still_pick_own_provider(site_user, fake_llm):
+    site_user.post("/settings", data={"provider": "ollama", "model": "llama3.2"})
+    r = site_user.get("/")
+    assert b"in your browser" in r.data and b"free parses" not in r.data
+
+
+def test_quota_consume_handles_insert_race(site_app):
+    from sqlalchemy import insert
+    from sqlalchemy.exc import IntegrityError
+
+    from gymllm import quota
+    from gymllm.models import LLMUsage
+
+    with site_app.app_context():
+        assert quota.consume(USER, 2) is True
+        assert quota.consume(USER, 2) is True
+        assert quota.consume(USER, 2) is False
+        assert quota.used(USER) == 2
+        assert quota.consume(OTHER, 0) is False
+        # Simulate losing an insert race: another request commits the row between
+        # our existence check and our insert, so our insert fails.
+        real_add = db.session.add
+
+        def racing_add(obj):
+            if isinstance(obj, LLMUsage):
+                db.session.execute(
+                    insert(LLMUsage).values(user_email=obj.user_email, day=obj.day, count=0)
+                )
+                db.session.commit()
+                raise IntegrityError("dup", {}, Exception("dup"))
+            real_add(obj)
+
+        db.session.add = racing_add
+        try:
+            assert quota.consume("racer@example.com", 2) is True
+        finally:
+            db.session.add = real_add
+        assert quota.used("racer@example.com") == 1

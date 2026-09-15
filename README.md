@@ -8,11 +8,15 @@ history with a progress chart.
 
 Sign-in is via Google. Each user only ever sees their own entries.
 
+If the site owner sets up a shared model (see below), visitors can log workouts
+with nothing to configure, which is what makes the app usable from a phone.
+
 ## How it works
 
 1. Sign in with Google.
-2. On **Settings**, pick a provider, a model, and (for hosted providers) your
-   API key. Hit **Test connection** to check it works. The key lives in a signed
+2. If the site has a shared model, you are ready to go. Otherwise, on
+   **Settings**, pick a provider, a model, and (for hosted providers) your API
+   key. Hit **Test connection** to check it works. The key lives in a signed
    cookie in your browser; the server forwards it to the provider when you parse a
    workout and never stores it.
 3. On **Log**, type something like
@@ -82,6 +86,24 @@ lists the models you have installed.
 
 A tunnel is only needed if the model runs on a *different* machine from the
 browser; use the **Custom (OpenAI-compatible)** provider with that URL.
+
+### Free shared model (recommended for a public site)
+
+Set `SITE_LLM_API_KEY` and GymLLM offers a **GymLLM shared model** provider,
+selected by default for everyone, so a first-time visitor can parse a workout
+without creating an API key or installing anything. The key stays on the server:
+user sessions only record that they use the shared provider.
+
+- `SITE_LLM_API_KEY`: a key from [console.groq.com](https://console.groq.com/keys).
+  Groq's free tier needs no card and cannot bill you; when its daily allowance is
+  exhausted, requests fail until the next day.
+- `SITE_LLM_PROVIDER` (default `groq`) and `SITE_LLM_MODEL` (default: the
+  provider's default). Any hosted provider works, e.g. `gemini` with a free
+  [AI Studio](https://aistudio.google.com/apikey) key.
+- `SITE_LLM_DAILY_LIMIT` (default `20`): parses per user per day, so one person
+  cannot drain the shared allowance. The Log page shows how many are left.
+
+Users who want more can still add their own key or use a local model.
 
 ### Tests and lint
 

@@ -10,7 +10,7 @@
       data-test-url="{{ url_for('main.settings_test') }}"
       data-has-key="{{ '1' if config.api_key else '0' }}"
       data-site-origin="{{ site_origin }}"
-      data-providers='{{ providers.values()|map(attribute="__dict__")|list|tojson }}'>
+      data-providers='{{ providers.values()|rejectattr("id", "equalto", "site" if not site_llm else "")|map(attribute="__dict__")|list|tojson }}'>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <h2 class="card-title">Model</h2>
     <p class="muted small card-lead">
@@ -22,11 +22,17 @@
     <div class="field">
         <label for="provider">Provider</label>
         <select id="provider" name="provider" class="select">
-            {% for p in providers.values() %}
-            <option value="{{ p.id }}" {% if p.id == config.provider %}selected{% endif %}>{{ p.label }}</option>
+            {% for p in providers.values() if p.id != "site" or site_llm %}
+            <option value="{{ p.id }}" {% if p.id == config.provider %}selected{% endif %}>{{ p.label }}{% if p.id == "site" %} (free){% endif %}</option>
             {% endfor %}
         </select>
         <p class="field-help" id="provider-help"></p>
+        {% if site_llm %}
+        <p class="field-help" id="site-note" hidden>
+            Currently {{ site_llm.model }}, paid for by the site owner. Capped at
+            {{ site_llm.daily_limit }} parses a day per person; the counter is on the Log page.
+        </p>
+        {% endif %}
     </div>
 
     <div class="field" id="base-url-row" hidden>
@@ -34,7 +40,7 @@
         <input type="url" id="base_url" name="base_url" class="input" value="{{ config.base_url }}" placeholder="https://my-server.example.com/v1">
     </div>
 
-    <div class="field">
+    <div class="field" id="model-row">
         <label for="model">Model</label>
         <input type="text" id="model" name="model" class="input" value="{{ config.model }}" list="model-suggestions" autocomplete="off" spellcheck="false">
         <datalist id="model-suggestions"></datalist>

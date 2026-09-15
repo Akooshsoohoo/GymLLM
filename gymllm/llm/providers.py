@@ -9,9 +9,10 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal
 
-from flask import session
+from flask import current_app, session
 
 SESSION_KEY = "llm"
+SITE_PROVIDER = "site"
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,21 @@ class Provider:
 PROVIDERS: dict[str, Provider] = {
     p.id: p
     for p in (
+        # Virtual provider: the owner's shared key, configured with SITE_LLM_* env
+        # vars and resolved server-side (see LLMConfig.resolved). Listed first so
+        # it is the default choice wherever it is available.
+        Provider(
+            id=SITE_PROVIDER,
+            label="GymLLM shared model",
+            kind="openai",
+            base_url=None,
+            default_model="",
+            needs_key=False,
+            help_text=(
+                "Free and shared by everyone on this site, with a daily cap per person. "
+                "Bring your own key or a local model for unlimited use."
+            ),
+        ),
         Provider(
             id="openai",
             label="OpenAI",
@@ -153,6 +169,32 @@ class LLMConfig:
         return self.provider_info.is_local
 
     @property
+    def is_site(self) -> bool:
+        return self.provider == SITE_PROVIDER
+
+    @staticmethod
+    def site_settings() -> dict | None:
+        """The SITE_LLM app config, or None when the shared model is not set up."""
+        return current_app.config.get("SITE_LLM")
+
+    @classmethod
+    def site_default(cls) -> LLMConfig | None:
+        """A config for the shared model if it is available on this server."""
+        return cls(provider=SITE_PROVIDER, model="") if cls.site_settings() else None
+
+    def resolved(self) -> LLMConfig:
+        """The config to actually call: the shared model maps to the owner's real one."""
+        if not self.is_site:
+            return self
+        site = self.site_settings() or {}
+        return LLMConfig(
+            provider=site.get("provider", ""),
+            model=site.get("model", ""),
+            api_key=site.get("api_key", ""),
+            base_url=site.get("base_url", ""),
+        )
+
+    @property
     def runs_in_browser(self) -> bool:
         """Local providers are called from the user's browser, never from the server,
         so a hosted copy of GymLLM can still reach the model on the visitor's machine."""
@@ -172,6 +214,10 @@ class LLMConfig:
         errors: list[str] = []
         if self.provider not in PROVIDERS:
             return ["Unknown provider."]
+        if self.is_site:
+            return (
+                [] if self.site_settings() else ["The shared model is not set up on this server."]
+            )
         info = self.provider_info
         if not self.model.strip():
             errors.append("Model name is required.")
@@ -184,7 +230,10 @@ class LLMConfig:
         return errors
 
     def to_session(self) -> None:
-        session[SESSION_KEY] = asdict(self)
+        data = asdict(self)
+        if self.is_site:  # never let a key or model name for the shared provider leak in
+            data.update(model="", api_key="", base_url="")
+        session[SESSION_KEY] = data
         session.permanent = True
 
     @classmethod
@@ -206,4 +255,6 @@ class LLMConfig:
         )
 
     def describe(self) -> str:
+        if self.is_site:
+            return f"{self.provider_info.label} · {self.resolved().model}"
         return f"{self.provider_info.label} · {self.model}"

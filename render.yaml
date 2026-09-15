@@ -18,3 +18,10 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      # Optional shared model so visitors need no key of their own.
+      - key: SITE_LLM_API_KEY
+        sync: false
+      - key: SITE_LLM_PROVIDER
+        value: groq
+      - key: SITE_LLM_DAILY_LIMIT
+        value: "20"

@@ -26,3 +26,15 @@ class Workout(db.Model):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Workout {self.id} {self.date} {self.exercise}>"
+
+
+class LLMUsage(db.Model):
+    """How many parses a user has made with the site's shared model on a given day."""
+
+    __tablename__ = "llm_usage"
+    __table_args__ = (db.UniqueConstraint("user_email", "day", name="uq_llm_usage_user_day"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_email = db.Column(db.String, nullable=False, index=True)
+    day = db.Column(db.String, nullable=False)  # YYYY-MM-DD, UTC
+    count = db.Column(db.Integer, nullable=False, default=0)

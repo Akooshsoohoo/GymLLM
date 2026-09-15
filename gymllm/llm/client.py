@@ -174,6 +174,7 @@ class AnthropicClient:
 
 
 def get_client(config: LLMConfig):
+    config = config.resolved()
     if config.provider_info.kind == "anthropic":
         return AnthropicClient(config)
     return OpenAICompatClient(config)
