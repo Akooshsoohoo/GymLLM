@@ -171,10 +171,10 @@ def test_site_config_resolves_to_owner_settings(site_app):
         real = cfg.resolved()
         assert (real.provider, real.model, real.api_key) == (
             "groq",
-            "llama-3.3-70b-versatile",
+            "openai/gpt-oss-120b",
             "gsk-site",
         )
-        assert cfg.describe() == "GymLLM shared model · llama-3.3-70b-versatile"
+        assert cfg.describe() == "GymLLM shared model · openai/gpt-oss-120b"
         assert LLMConfig.site_default().provider == "site"
         client = get_client(cfg)
         assert isinstance(client, OpenAICompatClient)

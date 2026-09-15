@@ -100,10 +100,10 @@ PROVIDERS: dict[str, Provider] = {
             label="Groq",
             kind="openai",
             base_url="https://api.groq.com/openai/v1",
-            default_model="llama-3.3-70b-versatile",
+            default_model="openai/gpt-oss-120b",
             needs_key=True,
             key_hint="gsk_...",
-            model_suggestions=("llama-3.3-70b-versatile", "llama-3.1-8b-instant"),
+            model_suggestions=("openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"),
             help_url="https://console.groq.com/keys",
         ),
         Provider(

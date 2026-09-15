@@ -33,6 +33,7 @@ SETS & REPS - interpret shorthand as follows:
 
 WEIGHT:
   Include units if stated ('185 lbs', '80 kg'). Keep the unit the user used.
+  A bare number next to the exercise is the weight ('bench 185 5x5' -> weight: "185"); keep it as written, do not invent a unit.
   'bodyweight' or 'BW' -> weight: "bodyweight".
   Not mentioned -> weight: "".
 

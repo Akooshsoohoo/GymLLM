@@ -59,7 +59,7 @@ def base_test_config():
 
 SITE_LLM = {
     "provider": "groq",
-    "model": "llama-3.3-70b-versatile",
+    "model": "openai/gpt-oss-120b",
     "api_key": "gsk-site",
     "base_url": "",
     "daily_limit": 2,

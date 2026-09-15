@@ -14,7 +14,7 @@ def test_site_defaults_to_groq():
     cfg = build_config({**BASE, "SITE_LLM_API_KEY": "gsk-1"})["SITE_LLM"]
     assert cfg == {
         "provider": "groq",
-        "model": "llama-3.3-70b-versatile",
+        "model": "openai/gpt-oss-120b",
         "api_key": "gsk-1",
         "base_url": "",
         "daily_limit": 20,
