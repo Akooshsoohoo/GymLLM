@@ -1,6 +1,6 @@
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py310"  # Render runs 3.10; keep the code compatible
 extend-exclude = [".venv", "instance"]
 
 [tool.ruff.lint]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
@@ -12,7 +12,7 @@ from .models import LLMUsage
 
 
 def today() -> str:
-    return datetime.now(UTC).date().isoformat()
+    return datetime.now(timezone.utc).date().isoformat()
 
 
 def used(user_email: str, day: str | None = None) -> int:
