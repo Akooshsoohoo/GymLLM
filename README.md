@@ -3,8 +3,9 @@
 Log workouts in plain English. GymLLM sends your text to the LLM of your choice
 (OpenAI, Anthropic, Gemini, Groq, OpenRouter, a local Ollama or LM Studio, or any
 OpenAI-compatible server), shows you the parsed sets and reps to review and edit,
-then saves them to your personal log. Search and edit the log, and see per-exercise
-history with a progress chart.
+then saves them to your personal log. A Progress section charts your training
+over any range (7 days to all time), grouped by day, week or month, with
+per-exercise trends and personal records.
 
 Sign-in is via Google. Each user only ever sees their own entries.
 
@@ -23,10 +24,13 @@ with nothing to configure, which is what makes the app usable from a phone.
    `yesterday: bench 185 for 5x5, lat pulldowns 3x10, felt strong`. Your most
    recent sessions are listed underneath.
 4. Review the parsed table, fix anything, adjust the date, and save.
-5. **History** has two tabs. *All entries* lists everything newest first; hit
-   **Edit** to change cells or delete rows in place. *By exercise* shows every
-   exercise you have done, and each one opens a page with a chart of your top
-   weight per session.
+5. **Progress** has three tabs, all scoped by the same range picker (7d, 30d,
+   90d, 1y, all time). *Overview* shows sessions, volume and streak, a chart of
+   exercises logged per day/week/month, a training-day calendar, muscle-group
+   split, most-trained exercises and recent personal records. *Sessions* lists
+   every entry grouped by day, week or month; hit **Edit** to change cells or
+   delete rows in place. *Exercises* lists each exercise with its best weight and
+   a trend sparkline, and opens a page with top-weight and volume charts.
 
 ## Running locally
 
@@ -139,7 +143,8 @@ gymllm/
   __init__.py             create_app() factory
   config.py               environment -> Flask config
   auth.py                 Google sign-in, session caching, login_required
-  routes.py               all pages: log, review, confirm, search, history, settings
+  routes.py               all pages: log, review, confirm, progress, sessions, exercises, settings
+  stats.py                ranges, day/week/month grouping, volume, overview aggregation
   parsing.py              system prompt + normalisation of LLM output
   exercises.py            canonical exercise list, matching, LLM tag fallback
   llm/providers.py        provider registry + per-browser LLMConfig

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Progress{% endblock %}
+{% block content %}
+{% include "_progress_tabs.html" %}
+{% if not total %}
+<div class="empty">
+    <p>Nothing logged yet. Charts and stats will appear here once you log a workout.</p>
+    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log your first workout</a>
+</div>
+{% else %}
+{% set t = data.totals %}
+{% set d = data.deltas %}
+{% include "_range_filter.html" %}
+
+{% if not t.entries %}
+{% include "_empty_range.html" %}
+{% else %}
+{% macro delta(value, unit='') -%}
+    {% if value is not none %}
+    <div class="stat-delta {{ 'up' if value > 0 else 'down' if value < 0 else '' }}">
+        {{ '+' if value > 0 }}{{ value|fmt_num }}{{ unit }} vs previous {{ range_key }}
+    </div>
+    {% endif %}
+{%- endmacro %}
+<div class="stat-grid">
+    <div class="stat">
+        <div class="stat-label">Sessions</div>
+        <div class="stat-value">{{ t.sessions }}</div>
+        {{ delta(d.sessions) }}
+    </div>
+    <div class="stat">
+        <div class="stat-label">Exercises logged</div>
+        <div class="stat-value">{{ t.entries }}</div>
+        {{ delta(d.entries) }}
+    </div>
+    <div class="stat">
+        <div class="stat-label">Volume <span class="muted">weight × reps</span></div>
+        <div class="stat-value">{{ t.volume|fmt_num }}</div>
+        {{ delta(d.volume) }}
+    </div>
+    <div class="stat">
+        <div class="stat-label">Week streak</div>
+        <div class="stat-value">{{ data.streak }}</div>
+        <div class="stat-delta">consecutive week{{ '' if data.streak == 1 else 's' }} trained</div>
+    </div>
+</div>
+
+<section class="card chart-card">
+    <div class="card-head">
+        <h2 class="card-title">Exercises logged per {{ by }}</h2>
+        <span class="muted small">{{ t.exercises }} distinct exercise{{ '' if t.exercises == 1 else 's' }}</span>
+    </div>
+    <svg class="chart" data-chart="columns" data-y="entries" data-x="label"
+         data-series='{{ data.activity|tojson }}' role="img" aria-label="Exercises logged per {{ by }}"></svg>
+    <details class="chart-table">
+        <summary class="muted small">Show as table</summary>
+        <div class="table-wrap"><table class="table">
+            <thead><tr><th>{{ by|capitalize }}</th><th class="num">Sessions</th><th class="num">Exercises</th><th class="num">Volume</th></tr></thead>
+            <tbody>{% for p in data.activity if p.entries %}<tr><td>{{ p.label }}</td><td class="num">{{ p.sessions }}</td><td class="num">{{ p.entries }}</td><td class="num">{{ p.volume|fmt_num }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+    </details>
+</section>
+
+<section class="card chart-card">
+    <div class="card-head">
+        <h2 class="card-title">Training days</h2>
+        <span class="muted small heat-legend" aria-hidden="true">less <i class="h0"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i> more</span>
+    </div>
+    <div class="heat-scroll">
+        <svg class="chart heatmap" data-chart="heatmap" data-series='{{ data.heatmap|tojson }}' role="img" aria-label="Calendar of training days"></svg>
+    </div>
+</section>
+
+<div class="two-col">
+    <section class="card">
+        <h2 class="card-title">Muscle groups</h2>
+        {% if data.tags %}
+        {% set top = data.tags[0].count %}
+        <ol class="hbars">
+            {% for row in data.tags %}
+            <li>
+                <span class="hbar-label">{{ row.tag }}</span>
+                <span class="hbar-track"><span class="hbar-fill" style="width: {{ (100 * row.count / top)|round(1) }}%"></span></span>
+                <span class="hbar-value num">{{ row.count }}</span>
+            </li>
+            {% endfor %}
+        </ol>
+        <p class="muted small">Exercises logged per muscle tag. One exercise can count toward several.</p>
+        {% else %}
+        <p class="muted">No tagged exercises in this range.</p>
+        {% endif %}
+    </section>
+
+    <section class="card card-flush">
+        <h2 class="card-title card-title-pad">Most trained</h2>
+        <div class="table-wrap">
+        <table class="table">
+            <thead><tr><th>Exercise</th><th class="num">Logged</th><th>Best</th><th>Last</th></tr></thead>
+            <tbody>
+            {% for e in data.top_exercises %}
+            <tr>
+                <td><a href="{{ url_for('main.exercise_history', name=e.exercise, range=range_key) }}" class="cell-link">{{ e.exercise }}</a></td>
+                <td class="num">{{ e.entries }}</td>
+                <td>{{ e.best or '—' }}</td>
+                <td class="muted">{{ e.last }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </section>
+</div>
+
+<section class="card">
+    <h2 class="card-title">Personal records</h2>
+    {% if data.prs %}
+    <ul class="pr-list">
+        {% for pr in data.prs %}
+        <li>
+            <a href="{{ url_for('main.exercise_history', name=pr.exercise) }}" class="cell-link pr-name">{{ pr.exercise }}</a>
+            <span class="pr-detail"><strong>{{ pr.weight }}</strong> <span class="muted">up from {{ pr.previous|fmt_num }}</span></span>
+            <span class="muted small pr-date">{{ pr.date|nice_date }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No new best weights in this range. A record needs an earlier entry of the same exercise to beat.</p>
+    {% endif %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

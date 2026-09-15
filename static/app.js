@@ -164,12 +164,15 @@
   });
 
   // ---------------------------------------------------------------- Table filter
-  // <input data-filter="#table" data-count="#counter"> hides rows that don't match.
+  // <input data-filter="table selector" data-count="#counter" data-group=".group">
+  // hides rows that don't match; groups left with no visible rows are hidden too.
   $$("input[data-filter]").forEach(function (input) {
-    var table = $(input.dataset.filter);
-    if (!table || !table.tBodies[0]) return;
+    var tables = $$(input.dataset.filter).filter(function (t) { return t.tBodies[0]; });
+    if (!tables.length) return;
     var counter = input.dataset.count ? $(input.dataset.count) : null;
-    var rows = $$("tr", table.tBodies[0]);
+    var rows = [];
+    tables.forEach(function (t) { rows = rows.concat($$("tr", t.tBodies[0])); });
+    var groups = input.dataset.group ? $$(input.dataset.group) : [];
     var noun = counter ? (counter.textContent.match(/[a-z]+$/i) || ["rows"])[0].replace(/s$/, "") : "row";
     var apply = function () {
       var q = input.value.trim().toLowerCase();
@@ -178,6 +181,9 @@
         var show = !q || rowText(row).indexOf(q) !== -1;
         row.hidden = !show;
         if (show) shown++;
+      });
+      groups.forEach(function (g) {
+        g.hidden = !$$("tbody tr", g).some(function (r) { return !r.hidden; });
       });
       if (counter) counter.textContent = shown + " " + noun + (shown === 1 ? "" : "s") + (q ? " match" : "");
     };
@@ -417,56 +423,282 @@
     });
   }
 
-  // ---------------------------------------------------------------- Exercise history chart (inline SVG)
-  var chartWrap = $("#chart-wrap");
-  if (chartWrap) {
-    var series = [];
-    try { series = JSON.parse(chartWrap.dataset.series); } catch (e) { series = []; }
-    var svg = $("#progress-chart");
-    var note = $("#chart-note");
-    if (!series.length) {
-      chartWrap.hidden = true;
-    } else {
-      if (note) note.hidden = false;
-      var W = 640, H = 260, L = 54, R = 16, T = 16, B = 40;
-      var xs = series.map(function (_, i) { return i; });
-      var ys = series.map(function (p) { return p.weight; });
-      var yMin = Math.min.apply(null, ys), yMax = Math.max.apply(null, ys);
-      if (yMin === yMax) { yMin = yMin - 5; yMax = yMax + 5; }
-      var pad = (yMax - yMin) * 0.1; yMin -= pad; yMax += pad;
-      var x = function (i) { return series.length === 1 ? (L + W - R) / 2 : L + (i / (series.length - 1)) * (W - L - R); };
-      var y = function (v) { return T + (1 - (v - yMin) / (yMax - yMin)) * (H - T - B); };
-      var ns = "http://www.w3.org/2000/svg";
-      var el = function (tag, attrs, text) {
-        var e = document.createElementNS(ns, tag);
-        Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
-        if (text != null) e.textContent = text;
-        return e;
+  // ---------------------------------------------------------------- Charts (inline SVG, no library)
+  // <svg data-chart="line|columns|heatmap|spark" data-series='[...]' data-x="label" data-y="value">
+  // One accent hue, hairline grid, thin marks, a hover/keyboard tooltip. Re-renders on resize.
+  var charts = (function () {
+    var ns = "http://www.w3.org/2000/svg";
+    var NAMES = { sessions: "sessions", entries: "exercises", volume: "volume", weight: "top weight", reps: "reps" };
+    function el(tag, attrs, text) {
+      var e = document.createElementNS(ns, tag);
+      Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+      if (text != null) e.textContent = text;
+      return e;
+    }
+    function fmt(n) {
+      if (n == null || isNaN(n)) return "—";
+      var abs = Math.abs(n);
+      if (abs >= 100000) return Math.round(n / 1000).toLocaleString() + "k";
+      if (abs >= 10000) return (n / 1000).toFixed(1) + "k";
+      return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    }
+    var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    // Axis label for an x value: ISO dates become "27 May"; anything else is used as is.
+    // Tooltip title: ISO dates become "Mon 10 Aug 2026".
+    function titleLabel(v) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v))) return String(v);
+      var d = new Date(v + "T00:00:00");
+      return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    }
+    function axisLabel(v) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v));
+      return m ? parseInt(m[3], 10) + " " + MONTHS[parseInt(m[2], 10) - 1] : String(v);
+    }
+    function niceStep(raw) {
+      var p = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10));
+      var f = raw / p;
+      return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+    }
+    // Clean tick values covering [lo, hi]; zero-based when fromZero.
+    function scale(lo, hi, fromZero) {
+      if (fromZero) lo = 0;
+      if (hi === lo) { hi = lo + 1; if (!fromZero) lo = lo - 1; }
+      var step = niceStep((hi - lo) / 4);
+      var min = Math.floor(lo / step) * step, max = Math.ceil(hi / step) * step;
+      if (max === hi && !fromZero) max += step;
+      if (min === lo && !fromZero && lo !== 0) min -= step;
+      var ticks = [];
+      for (var v = min; v <= max + step / 2; v += step) ticks.push(Math.round(v * 1000) / 1000);
+      return { min: min, max: max, ticks: ticks };
+    }
+    // Measure the container, not the svg: an unrendered svg reports a default 300px.
+    function width(svg) {
+      var box = (svg.parentNode || svg).getBoundingClientRect();
+      return Math.max(240, Math.floor(box.width) || 640);
+    }
+    function labelEvery(n, w) { return Math.max(1, Math.ceil(n / Math.max(2, Math.floor(w / 72)))); }
+
+    // One tooltip per card, positioned relative to it.
+    function tip(svg) {
+      var card = svg.closest(".chart-card") || svg.parentNode;
+      var t = card.querySelector(".chart-tip");
+      if (!t) { t = document.createElement("div"); t.className = "chart-tip"; t.hidden = true; card.appendChild(t); }
+      return {
+        show: function (title, rows, px, py) {
+          t.textContent = "";
+          var h = document.createElement("div"); h.className = "tip-title"; h.textContent = title; t.appendChild(h);
+          rows.forEach(function (r) {
+            var d = document.createElement("div"); d.className = "tip-row";
+            var s = document.createElement("strong"); s.textContent = r[1];
+            var l = document.createElement("span"); l.textContent = r[0];
+            d.appendChild(s); d.appendChild(l); t.appendChild(d);
+          });
+          t.hidden = false;
+          var cr = card.getBoundingClientRect(), sr = svg.getBoundingClientRect();
+          var x = sr.left - cr.left + px + 12, y = sr.top - cr.top + py - 12;
+          if (x + t.offsetWidth > cr.width - 8) x = sr.left - cr.left + px - t.offsetWidth - 12;
+          t.style.left = Math.max(4, x) + "px";
+          t.style.top = Math.max(4, y) + "px";
+        },
+        hide: function () { t.hidden = true; }
       };
-      // gridlines + y labels
-      var ticks = 4;
-      for (var t = 0; t <= ticks; t++) {
-        var v = yMin + (t / ticks) * (yMax - yMin);
+    }
+    function rowsFor(p, yKey) {
+      var rows = [[NAMES[yKey] || yKey, fmt(p[yKey])]];
+      Object.keys(NAMES).forEach(function (k) {
+        if (k !== yKey && typeof p[k] === "number") rows.push([NAMES[k], fmt(p[k])]);
+      });
+      return rows;
+    }
+    // Shared hover/keyboard handling: `place(i)` gives the pixel x of index i.
+    function interactive(svg, n, place, onActive) {
+      var active = -1;
+      var set = function (i) { active = i; onActive(i); };
+      svg.setAttribute("tabindex", "0");
+      svg.addEventListener("pointermove", function (ev) {
+        var r = svg.getBoundingClientRect(), x = ev.clientX - r.left;
+        var best = 0, dist = Infinity;
+        for (var i = 0; i < n; i++) { var d = Math.abs(place(i) - x); if (d < dist) { dist = d; best = i; } }
+        if (best !== active) set(best);
+      });
+      svg.addEventListener("pointerleave", function () { set(-1); });
+      svg.addEventListener("keydown", function (ev) {
+        if (ev.key === "ArrowRight") { set(Math.min(n - 1, active + 1)); ev.preventDefault(); }
+        else if (ev.key === "ArrowLeft") { set(Math.max(0, active < 0 ? n - 1 : active - 1)); ev.preventDefault(); }
+        else if (ev.key === "Escape") set(-1);
+      });
+      svg.addEventListener("focus", function () { if (active < 0) set(n - 1); });
+      svg.addEventListener("blur", function () { set(-1); });
+    }
+
+    function line(svg, series, opts) {
+      var W = width(svg), H = 220, L = 48, R = 20, T = 14, B = 30;
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+      svg.setAttribute("height", H);
+      var ys = series.map(function (p) { return p[opts.y]; });
+      var sc = scale(Math.min.apply(null, ys), Math.max.apply(null, ys), false);
+      var n = series.length;
+      var x = function (i) { return n === 1 ? (L + W - R) / 2 : L + (i / (n - 1)) * (W - L - R); };
+      var y = function (v) { return T + (1 - (v - sc.min) / (sc.max - sc.min)) * (H - T - B); };
+      sc.ticks.forEach(function (v) {
         svg.appendChild(el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "grid" }));
-        svg.appendChild(el("text", { x: L - 8, y: y(v) + 4, class: "axis-label", "text-anchor": "end" }, Math.round(v)));
-      }
-      // area + line
-      var d = xs.map(function (i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(ys[i]).toFixed(1); }).join(" ");
-      if (series.length > 1) {
+        svg.appendChild(el("text", { x: L - 8, y: y(v) + 4, class: "axis-label", "text-anchor": "end" }, fmt(v)));
+      });
+      var d = series.map(function (p, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[opts.y]).toFixed(1); }).join(" ");
+      if (n > 1) {
         var floor = (H - B).toFixed(1);
-        svg.appendChild(el("path", { d: d + " L" + x(series.length - 1).toFixed(1) + " " + floor + " L" + x(0).toFixed(1) + " " + floor + " Z", class: "area" }));
+        svg.appendChild(el("path", { d: d + " L" + x(n - 1).toFixed(1) + " " + floor + " L" + x(0).toFixed(1) + " " + floor + " Z", class: "area" }));
       }
       svg.appendChild(el("path", { d: d, class: "line" }));
-      // points + x labels (thin out labels when crowded)
-      var every = Math.max(1, Math.ceil(series.length / 8));
-      series.forEach(function (p, i) {
-        var c = el("circle", { cx: x(i), cy: y(p.weight), r: 4, class: "point" });
-        c.appendChild(el("title", {}, p.date + ": " + p.weight));
-        svg.appendChild(c);
-        if (i % every === 0 || i === series.length - 1) {
-          svg.appendChild(el("text", { x: x(i), y: H - B + 18, class: "axis-label", "text-anchor": "middle" }, p.date.slice(5)));
+      var cross = el("line", { y1: T, y2: H - B, class: "crosshair" }); cross.style.display = "none"; svg.appendChild(cross);
+      var every = labelEvery(n, W - L - R);
+      var dotR = n > 60 ? 0 : 4;
+      var points = series.map(function (p, i) {
+        if (i % every === 0 || i === n - 1) {
+          svg.appendChild(el("text", { x: x(i), y: H - B + 18, class: "axis-label", "text-anchor": "middle" }, axisLabel(p[opts.x])));
         }
+        var c = el("circle", { cx: x(i), cy: y(p[opts.y]), r: dotR, class: "point" });
+        svg.appendChild(c);
+        return c;
+      });
+      // Selective direct label: the latest value only.
+      var last = series[n - 1];
+      svg.appendChild(el("text", { x: Math.min(x(n - 1), W - R - 4), y: y(last[opts.y]) - 10, class: "value-label", "text-anchor": n > 1 ? "end" : "middle" }, fmt(last[opts.y])));
+      var t = tip(svg);
+      interactive(svg, n, x, function (i) {
+        points.forEach(function (c, j) { c.setAttribute("r", j === i ? 6 : dotR); });
+        if (i < 0) { cross.style.display = "none"; t.hide(); return; }
+        cross.style.display = ""; cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i));
+        t.show(titleLabel(series[i][opts.x]), rowsFor(series[i], opts.y), x(i), y(series[i][opts.y]));
       });
     }
+
+    function columns(svg, series, opts) {
+      var W = width(svg), H = 220, L = 44, R = 12, T = 18, B = 30;
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+      svg.setAttribute("height", H);
+      var n = series.length;
+      var ys = series.map(function (p) { return p[opts.y] || 0; });
+      var sc = scale(0, Math.max.apply(null, ys), true);
+      var slot = (W - L - R) / n;
+      var bw = Math.max(2, Math.min(24, slot - 2));
+      var x = function (i) { return L + slot * (i + 0.5); };
+      var y = function (v) { return T + (1 - v / sc.max) * (H - T - B); };
+      sc.ticks.forEach(function (v) {
+        svg.appendChild(el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "grid" }));
+        svg.appendChild(el("text", { x: L - 8, y: y(v) + 4, class: "axis-label", "text-anchor": "end" }, fmt(v)));
+      });
+      var every = labelEvery(n, W - L - R);
+      var maxI = ys.indexOf(Math.max.apply(null, ys));
+      var bars = series.map(function (p, i) {
+        var v = ys[i], top = y(v), base = H - B, r = Math.min(4, bw / 2, base - top);
+        var left = x(i) - bw / 2;
+        var d = v > 0
+          ? "M" + left + " " + base + " V" + (top + r) + " a" + r + " " + r + " 0 0 1 " + r + " -" + r + " h" + (bw - 2 * r) +
+            " a" + r + " " + r + " 0 0 1 " + r + " " + r + " V" + base + " Z"
+          : "M" + left + " " + (base - 1) + " h" + bw + " v1 h-" + bw + " Z";
+        var bar = el("path", { d: d, class: "bar" + (v > 0 ? "" : " empty") });
+        svg.appendChild(bar);
+        if (i % every === 0 || i === n - 1) {
+          svg.appendChild(el("text", { x: x(i), y: H - B + 18, class: "axis-label", "text-anchor": "middle" }, axisLabel(p[opts.x])));
+        }
+        return bar;
+      });
+      if (ys[maxI] > 0) svg.appendChild(el("text", { x: x(maxI), y: y(ys[maxI]) - 6, class: "value-label", "text-anchor": "middle" }, fmt(ys[maxI])));
+      var t = tip(svg);
+      interactive(svg, n, x, function (i) {
+        bars.forEach(function (b, j) { b.classList.toggle("active", j === i); });
+        if (i < 0) { t.hide(); return; }
+        t.show(titleLabel(series[i][opts.x]), rowsFor(series[i], opts.y), x(i), y(ys[i]));
+      });
+    }
+
+    function heatmap(svg, days) {
+      var weeks = Math.ceil(days.length / 7);
+      var W = width(svg), left = 30, top = 18;
+      var cell = Math.max(9, Math.min(16, Math.floor((W - left) / weeks) - 3)), gap = 3, step = cell + gap;
+      var w = left + weeks * step, h = top + 7 * step;
+      svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+      svg.setAttribute("width", w); svg.setAttribute("height", h);
+      ["Mon", "Wed", "Fri"].forEach(function (d, i) {
+        svg.appendChild(el("text", { x: 0, y: top + (i * 2) * step + cell - 2, class: "cal-label" }, d));
+      });
+      var lastMonth = "", lastLabelCol = -3;
+      var cells = days.map(function (d, i) {
+        var col = Math.floor(i / 7), row = i % 7;
+        var month = d.date.slice(0, 7);
+        if (row === 0 && month !== lastMonth) {
+          if (col - lastLabelCol >= 3) {
+            var dt = new Date(d.date + "T00:00:00");
+            svg.appendChild(el("text", { x: left + col * step, y: 11, class: "cal-label" }, dt.toLocaleString(undefined, { month: "short" })));
+            lastLabelCol = col;
+          }
+          lastMonth = month;
+        }
+        var level = d.count === 0 ? 0 : d.count < 3 ? 1 : d.count < 6 ? 2 : 3;
+        var r = el("rect", { x: left + col * step, y: top + row * step, width: cell, height: cell, rx: 2, class: "cell h" + level });
+        svg.appendChild(r);
+        return r;
+      });
+      var t = tip(svg);
+      var active = -1;
+      var set = function (i) {
+        if (active >= 0) cells[active].classList.remove("active");
+        active = i;
+        if (i < 0) { t.hide(); return; }
+        cells[i].classList.add("active");
+        var d = days[i], dt = new Date(d.date + "T00:00:00");
+        var when = dt.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+        t.show(when, [[d.count === 1 ? "exercise logged" : "exercises logged", String(d.count)]],
+          left + Math.floor(i / 7) * step + cell, top + (i % 7) * step);
+      };
+      svg.addEventListener("pointermove", function (ev) {
+        var r = svg.getBoundingClientRect();
+        var sx = w / r.width, x = (ev.clientX - r.left) * sx - left, y = (ev.clientY - r.top) * sx - top;
+        var col = Math.floor(x / step), row = Math.floor(y / step);
+        var i = col * 7 + row;
+        if (x < 0 || y < 0 || row > 6 || i >= days.length) i = -1;
+        if (i !== active) set(i);
+      });
+      svg.addEventListener("pointerleave", function () { set(-1); });
+    }
+
+    function spark(svg, values) {
+      var W = 96, H = 24, n = values.length;
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+      var lo = Math.min.apply(null, values), hi = Math.max.apply(null, values);
+      if (lo === hi) { lo -= 1; hi += 1; }
+      var x = function (i) { return 3 + (i / (n - 1)) * (W - 6); };
+      var y = function (v) { return 3 + (1 - (v - lo) / (hi - lo)) * (H - 6); };
+      var d = values.map(function (v, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); }).join(" ");
+      svg.appendChild(el("path", { d: d, class: "line" }));
+      svg.appendChild(el("circle", { cx: x(n - 1), cy: y(values[n - 1]), r: 2.5, class: "point" }));
+      svg.appendChild(el("title", {}, values.map(fmt).join(" → ")));
+    }
+
+    var renderers = { line: line, columns: columns, heatmap: heatmap, spark: spark };
+    function renderAll() {
+      $$("svg[data-chart]").forEach(function (svg) {
+        var fn = renderers[svg.dataset.chart];
+        var series;
+        try { series = JSON.parse(svg.dataset.series); } catch (e) { series = null; }
+        if (!fn || !Array.isArray(series) || !series.length) { svg.hidden = true; return; }
+        // Swap in a fresh node so old listeners go with the old render.
+        var fresh = svg.cloneNode(false);
+        svg.parentNode.replaceChild(fresh, svg);
+        fn(fresh, series, { x: fresh.dataset.x || "label", y: fresh.dataset.y || "value" });
+      });
+    }
+    return { renderAll: renderAll };
+  })();
+  if ($("svg[data-chart]")) {
+    charts.renderAll();
+    var resizeTimer = null, lastWidth = window.innerWidth;
+    window.addEventListener("resize", function () {
+      if (window.innerWidth === lastWidth) return;
+      lastWidth = window.innerWidth;
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(charts.renderAll, 150);
+    });
   }
 })();

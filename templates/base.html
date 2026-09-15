@@ -22,7 +22,7 @@
             </a>
             <nav class="nav" aria-label="Main">
                 <a href="{{ url_for('main.home') }}" class="{{ 'active' if ep == 'main.home' }}">Log</a>
-                <a href="{{ url_for('main.search') }}" class="{{ 'active' if ep in ('main.search', 'main.exercises', 'main.exercise_history') }}">History</a>
+                <a href="{{ url_for('main.progress') }}" class="{{ 'active' if ep in ('main.progress', 'main.search', 'main.exercises', 'main.exercise_history') }}">Progress</a>
                 <a href="{{ url_for('main.settings') }}" class="{{ 'active' if ep == 'main.settings' }}">Settings</a>
             </nav>
             <div class="account">

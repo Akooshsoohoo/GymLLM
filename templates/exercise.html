@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}GymLLM | {{ name }}{% endblock %}
 {% block content %}
-<p class="crumb"><a href="{{ url_for('main.exercises') }}">&larr; All exercises</a></p>
+<p class="crumb"><a href="{{ url_for('main.exercises', range=range_key) }}">&larr; All exercises</a></p>
 <div class="page-head">
     <div>
         <h1>{{ name }}</h1>
@@ -9,20 +9,37 @@
     </div>
 </div>
 
-{% if not rows %}
+{% if not total %}
 <div class="empty"><p>No entries for this exercise yet.</p></div>
 {% else %}
+{% include "_range_filter.html" %}
+{% if not rows %}
+{% include "_empty_range.html" %}
+{% else %}
 <div class="stat-grid">
-    <div class="stat"><div class="stat-value">{{ sessions }}</div><div class="stat-label">session{{ '' if sessions == 1 else 's' }}</div></div>
-    <div class="stat"><div class="stat-value">{{ best.weight if best else '—' }}</div><div class="stat-label">best weight{% if best %} · {{ best.date }}{% endif %}</div></div>
-    <div class="stat"><div class="stat-value">{{ last_date }}</div><div class="stat-label">last done</div></div>
+    <div class="stat"><div class="stat-label">Sessions</div><div class="stat-value">{{ sessions }}</div></div>
+    <div class="stat"><div class="stat-label">Best weight</div><div class="stat-value">{{ best.weight if best else '—' }}</div>{% if best %}<div class="stat-delta">{{ best.date|nice_date }}</div>{% endif %}</div>
+    <div class="stat"><div class="stat-label">Volume <span class="muted">weight × reps</span></div><div class="stat-value">{{ volume|fmt_num if volume else '—' }}</div></div>
+    <div class="stat"><div class="stat-label">Last done</div><div class="stat-value stat-value-sm">{{ last_date|nice_date }}</div></div>
 </div>
 
-<section class="card" id="chart-wrap" data-series='{{ series|tojson }}'>
+{% set weighted = series|selectattr('weight', 'ne', none)|list %}
+{% if weighted %}
+<div class="two-col">
+<section class="card chart-card">
     <h2 class="card-title">Top weight per session</h2>
-    <svg id="progress-chart" viewBox="0 0 640 260" role="img" aria-label="Top weight per session"></svg>
-    <p class="muted small" id="chart-note" hidden>Weights without a leading number (e.g. "bodyweight") are not charted.</p>
+    <svg class="chart" data-chart="line" data-y="weight" data-x="date"
+         data-series='{{ weighted|tojson }}' role="img" aria-label="Top weight per session"></svg>
 </section>
+<section class="card chart-card">
+    <h2 class="card-title">Volume per session</h2>
+    <svg class="chart" data-chart="columns" data-y="volume" data-x="date"
+         data-series='{{ weighted|tojson }}' role="img" aria-label="Volume per session"></svg>
+</section>
+</div>
+{% else %}
+<p class="muted small">Weights without a leading number (e.g. "bodyweight") are not charted.</p>
+{% endif %}
 
 <div class="table-wrap card card-flush">
 <table class="table sortable">
@@ -30,7 +47,7 @@
     <tr><th data-sort="date">Date</th><th data-sort="number">Weight</th><th data-sort="number" class="num">Sets</th><th>Reps</th><th>Notes</th></tr>
     </thead>
     <tbody>
-    {% for r in rows|reverse %}
+    {% for r in rows %}
     <tr>
         <td>{{ r.date }}</td><td>{{ r.weight }}</td><td class="num">{{ r.sets }}</td><td>{{ r.reps }}</td><td>{{ r.notes }}</td>
     </tr>
@@ -38,5 +55,6 @@
     </tbody>
 </table>
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}

@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, render_template
+from flask import Flask, render_template, request, url_for
 from flask_wtf.csrf import CSRFError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -78,6 +78,20 @@ def _register_context(app: Flask) -> None:
         except ValueError:
             return str(value)
         return f"{d:%a} {d.day} {d:%b %Y}"
+
+    @app.template_filter("fmt_num")
+    def fmt_num(value) -> str:
+        """12345.0 -> '12,345'; 12.5 -> '12.5'; None -> ''."""
+        if value is None or value == "":
+            return ""
+        n = float(value)
+        return f"{n:,.0f}" if n == int(n) else f"{n:,.1f}"
+
+    @app.template_global("period_url")
+    def period_url(**changes) -> str:
+        """The current page's URL with some query args replaced (range=, by=)."""
+        args = {**(request.view_args or {}), **request.args.to_dict(), **changes}
+        return url_for(request.endpoint, **{k: v for k, v in args.items() if v is not None})
 
 
 def _register_error_handlers(app: Flask) -> None:

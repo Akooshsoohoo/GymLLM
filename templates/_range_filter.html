@@ -1,0 +1,18 @@
+{#- One filter row that scopes everything below it.
+    range_key: the active range; by: the active grouping, or none to hide that control. -#}
+<div class="filters">
+    <div class="segmented" role="group" aria-label="Time range">
+        {% for key, label, title in [('7d', '7d', 'Last 7 days'), ('30d', '30d', 'Last 30 days'), ('90d', '90d', 'Last 90 days'), ('1y', '1y', 'Last year'), ('all', 'All', 'All time')] %}
+        <a href="{{ period_url(range=key) }}" class="{{ 'active' if key == range_key }}"
+           {% if key == range_key %}aria-current="true"{% endif %} title="{{ title }}">{{ label }}</a>
+        {% endfor %}
+    </div>
+    {% if by %}
+    <div class="segmented" role="group" aria-label="Group by">
+        {% for key, label in [('day', 'Day'), ('week', 'Week'), ('month', 'Month')] %}
+        <a href="{{ period_url(by=key) }}" class="{{ 'active' if key == by }}"
+           {% if key == by %}aria-current="true"{% endif %}>{{ label }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>

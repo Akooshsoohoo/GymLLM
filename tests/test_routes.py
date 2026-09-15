@@ -33,6 +33,7 @@ def test_healthz(client):
         ("get", "/search"),
         ("get", "/settings"),
         ("get", "/exercises"),
+        ("get", "/progress"),
         ("post", "/review"),
         ("post", "/confirm"),
         ("post", "/search"),
@@ -433,10 +434,88 @@ def test_exercises_index_and_history_page(logged_in, add_workout):
     body = r.data.decode()
     assert r.status_code == 200
     assert "190 lbs" in body and '<div class="stat-value">2</div>' in body
-    assert '{"date": "2026-01-01", "weight": 185.0}' in body
+    assert '"date": "2026-01-01"' in body and '"weight": 185.0' in body
+    assert '"volume": 4625.0' in body  # 185 x 25 reps
+    assert 'data-chart="line"' in body and 'data-chart="columns"' in body
 
     r = logged_in.get("/exercise/nothing here")
     assert r.status_code == 200 and b"No entries" in r.data
+
+
+def test_exercises_index_shows_best_and_sparkline(logged_in, add_workout):
+    add_workout(date="2026-01-01", weight="185 lbs")
+    add_workout(date="2026-01-08", weight="190 lbs")
+    body = logged_in.get("/exercises").data.decode()
+    assert "190 lbs" in body
+    assert """data-chart="spark" data-series='[185.0, 190.0]'""" in body
+
+
+def test_range_filter_scopes_exercise_pages(logged_in, add_workout):
+    add_workout(date="2026-01-01", weight="185 lbs")
+    add_workout(date="2026-03-10", weight="190 lbs")
+    body = logged_in.get("/exercises?range=30d&today=2026-03-15").data.decode()
+    assert "190 lbs" in body and "185 lbs" not in body
+    assert "/exercises?range=7d&amp;today=2026-03-15" in body  # filter links keep other args
+
+    body = logged_in.get("/exercise/barbell bench press?range=7d&today=2026-03-15").data.decode()
+    assert "190 lbs" in body and '"weight": 185.0' not in body
+
+    body = logged_in.get("/exercise/barbell bench press?range=7d&today=2026-06-01").data.decode()
+    assert "Nothing logged in this range" in body and "Show all time" in body
+
+
+def test_sessions_page_groups_by_period(logged_in, add_workout):
+    add_workout(date="2026-03-02", exercise="squat")
+    add_workout(date="2026-03-10", exercise="bench")
+    add_workout(date="2026-03-12", exercise="row")
+    add_workout(date="2026-03-12", exercise="not mine", user_email=OTHER)
+
+    body = logged_in.get("/search?today=2026-03-15").data.decode()  # default: all time, by day
+    assert "Thu 12 Mar 2026" in body and "Tue 10 Mar 2026" in body and "Mon 2 Mar 2026" in body
+    assert body.index("Thu 12 Mar 2026") < body.index("Mon 2 Mar 2026")
+    assert "not mine" not in body and "3 rows" in body
+
+    body = logged_in.get("/search?range=7d&by=week&today=2026-03-15").data.decode()
+    assert "9–15 Mar 2026" in body and "2 sessions" in body
+    assert "squat" not in body and "bench" in body and "row" in body
+
+    body = logged_in.get("/search?range=all&by=month&today=2026-03-15").data.decode()
+    assert "March 2026" in body and "3 sessions" in body
+
+    body = logged_in.get("/search?range=7d&today=2026-06-01").data.decode()
+    assert "Nothing logged in this range" in body
+
+
+def test_search_edits_redirect_back_to_same_view(logged_in, app, add_workout):
+    a = add_workout(exercise="a")
+    r = logged_in.post("/search?range=30d&by=week", data={f"cell-{a}-weight": "200 lbs"})
+    assert r.status_code == 302 and r.headers["Location"].endswith("/search?range=30d&by=week")
+
+
+def test_progress_overview(logged_in, add_workout):
+    r = logged_in.get("/progress")
+    assert r.status_code == 200 and b"Nothing logged yet" in r.data
+
+    add_workout(date="2026-03-14", exercise="barbell bench press", weight="185 lbs")
+    add_workout(date="2026-03-14", exercise="pull up", weight="bodyweight", tags="back;pull")
+    add_workout(date="2026-03-10", exercise="barbell bench press", weight="190 lbs")
+    add_workout(date="2026-01-05", exercise="barbell bench press", weight="180 lbs")
+
+    body = logged_in.get("/progress?range=7d&today=2026-03-15").data.decode()
+    assert "Progress" in body and "Overview" in body and "Sessions" in body
+    assert 'data-chart="columns"' in body and 'data-chart="heatmap"' in body
+    assert '"key": "2026-03-09"' in body and '"key": "2026-03-15"' in body  # zero-filled week
+    assert "chest" in body and "back" in body  # muscle groups
+    assert "Personal records" in body and "190 lbs" in body and "up from 180" in body
+    assert "+2 vs previous 7d" in body  # sessions delta: 2 this week, none the week before
+    assert '"count": 2' in body  # heatmap cell for the 14th
+
+    body = logged_in.get("/progress?range=all&by=month&today=2026-03-15").data.decode()
+    assert "per month" in body and '"label": "Jan 2026"' in body and '"label": "Feb 2026"' in body
+    assert "vs previous" not in body  # no deltas for all time
+
+    body = logged_in.get("/progress?range=7d&today=2026-06-01").data.decode()
+    assert "Nothing logged in this range" in body
 
 
 def test_404_page(logged_in):

@@ -1,35 +1,51 @@
 {% extends "base.html" %}
-{% block title %}GymLLM | By exercise{% endblock %}
+{% block title %}GymLLM | Exercises{% endblock %}
 {% block content %}
-{% include "_history_tabs.html" %}
-{% if not summary %}
+{% include "_progress_tabs.html" %}
+{% if not total %}
 <div class="empty">
     <p>Nothing logged yet.</p>
     <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log your first workout</a>
 </div>
 {% else %}
-<div class="toolbar">
-    <input type="search" id="exercise-query" class="input input-filter" autocomplete="off"
-           placeholder="Filter exercises" aria-label="Filter exercises"
-           data-filter="#exercise-table" data-count="#exercise-count">
-    <span class="muted small" id="exercise-count">{{ summary|length }} exercises</span>
+{% include "_range_filter.html" %}
+{% if not summary %}
+{% include "_empty_range.html" %}
+{% else %}
+<div class="toolbar toolbar-split">
+    <div class="toolbar-group">
+        <input type="search" id="exercise-query" class="input input-filter" autocomplete="off"
+               placeholder="Filter exercises" aria-label="Filter exercises"
+               data-filter="#exercise-table" data-count="#exercise-count">
+        <span class="muted small" id="exercise-count">{{ summary|length }} exercises</span>
+    </div>
 </div>
 <div class="table-wrap card card-flush">
 <table id="exercise-table" class="table sortable">
     <thead>
-    <tr><th data-sort="text">Exercise</th><th data-sort="number" class="num">Entries</th><th data-sort="date">First</th><th data-sort="date">Last</th></tr>
+    <tr>
+        <th data-sort="text">Exercise</th>
+        <th data-sort="number" class="num">Logged</th>
+        <th data-sort="number" class="num">Sessions</th>
+        <th data-sort="number">Best</th>
+        <th>Top weight trend</th>
+        <th data-sort="date">Last</th>
+    </tr>
     </thead>
     <tbody>
     {% for s in summary %}
     <tr>
-        <td><a href="{{ url_for('main.exercise_history', name=s.exercise) }}" class="cell-link">{{ s.exercise }}</a></td>
+        <td><a href="{{ url_for('main.exercise_history', name=s.exercise, range=range_key) }}" class="cell-link">{{ s.exercise }}</a></td>
+        <td class="num">{{ s.entries }}</td>
         <td class="num">{{ s.sessions }}</td>
-        <td>{{ s.first }}</td>
-        <td>{{ s.last }}</td>
+        <td>{{ s.best or '—' }}</td>
+        <td class="spark-cell">{% if s.spark|length > 1 %}<svg class="spark" data-chart="spark" data-series='{{ s.spark|tojson }}' aria-hidden="true"></svg>{% endif %}</td>
+        <td class="muted">{{ s.last|nice_date }}</td>
     </tr>
     {% endfor %}
     </tbody>
 </table>
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}

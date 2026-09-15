@@ -18,7 +18,7 @@ from flask import (
 )
 from sqlalchemy import func
 
-from . import quota
+from . import quota, stats
 from .auth import current_user_email, login_required
 from .exercises import TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
@@ -48,7 +48,6 @@ MAX_SITE_TAG_CALLS = 10  # per save, so tagging cannot drain the shared allowanc
 RECENT_SESSIONS = 5
 _CELL_RE = re.compile(r"^cell-(\d+)-(\w+)$")
 _DELETE_RE = re.compile(r"^delete-(\d+)$")
-_WEIGHT_NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)")
 
 
 def _llm_config() -> LLMConfig | None:
@@ -75,10 +74,26 @@ def _llm_client(config: LLMConfig):
 
 def _client_today() -> date:
     """Prefer the browser's local date (sent by app.js) over the server's."""
-    value = request.form.get("client_date", "")
+    value = request.form.get("client_date", "") or request.args.get("today", "")
     if is_iso_date(value):
         return date.fromisoformat(value)
     return date.today()
+
+
+def _period_args() -> tuple[str, str, date]:
+    """The `range` and `by` query params, validated, plus the reference 'today'."""
+    range_key = stats.clean_range(request.args.get("range"))
+    by = stats.clean_grouping(request.args.get("by"), range_key)
+    return range_key, by, _client_today()
+
+
+def _all_rows(user_email: str) -> list[dict]:
+    workouts = (
+        Workout.query.filter_by(user_email=user_email)
+        .order_by(Workout.date.desc(), Workout.id.desc())
+        .all()
+    )
+    return [w.as_dict() for w in workouts]
 
 
 def _site_origin() -> str:
@@ -383,12 +398,19 @@ def search():
     user_email = current_user_email()
     if request.method == "POST":
         return _apply_search_edits(user_email)
-    workouts = (
-        Workout.query.filter_by(user_email=user_email)
-        .order_by(Workout.date.desc(), Workout.id.desc())
-        .all()
+    range_key = stats.clean_range(request.args.get("range"))
+    by = stats.clean_grouping(request.args.get("by"), "7d")  # entries default to per-day
+    all_rows = _all_rows(user_email)
+    rows = stats.filter_range(all_rows, _client_today(), range_key)
+    return render_template(
+        "search.html",
+        groups=stats.group_rows(rows, by),
+        total=len(all_rows),
+        shown=len(rows),
+        range_key=range_key,
+        by=by,
+        fields=FIELDS,
     )
-    return render_template("search.html", rows=[w.as_dict() for w in workouts], fields=FIELDS)
 
 
 def _apply_search_edits(user_email: str):
@@ -441,38 +463,53 @@ def _apply_search_edits(user_email: str):
         flash(f"Saved: {changed} updated, {deleted} deleted.", "ok")
     else:
         flash("No changes to save.", "info")
-    return redirect(url_for("main.search"))
+    keep = {k: v for k, v in request.args.items() if k in ("range", "by")}
+    return redirect(url_for("main.search", **keep))
 
 
-# --- History ------------------------------------------------------------------
+# --- Progress -----------------------------------------------------------------
 
 
-def _weight_number(weight: str | None) -> float | None:
-    m = _WEIGHT_NUM_RE.match(weight or "")
-    return float(m.group(1)) if m else None
+@bp.route("/progress")
+@login_required
+def progress():
+    range_key, by, today = _period_args()
+    all_rows = _all_rows(current_user_email())
+    data = stats.overview(all_rows, today, range_key, by)
+    return render_template(
+        "progress.html", data=data, total=len(all_rows), range_key=range_key, by=by
+    )
 
 
 @bp.route("/exercises")
 @login_required
 def exercises():
-    user_email = current_user_email()
-    rows = (
-        db.session.query(
-            Workout.exercise,
-            func.count(Workout.id),
-            func.max(Workout.date),
-            func.min(Workout.date),
+    range_key = stats.clean_range(request.args.get("range"))
+    all_rows = _all_rows(current_user_email())
+    rows = stats.filter_range(all_rows, _client_today(), range_key)
+    per_ex: dict[str, list[dict]] = {}
+    for r in rows:
+        per_ex.setdefault(r["exercise"], []).append(r)
+    summary = []
+    for name, members in per_ex.items():
+        series = stats.exercise_series(members)
+        weighted = [r for r in members if stats.weight_number(r["weight"]) is not None]
+        best = max(weighted, key=lambda r: stats.weight_number(r["weight"]), default=None)
+        summary.append(
+            {
+                "exercise": name,
+                "entries": len(members),
+                "sessions": len(series),
+                "first": series[0]["date"],
+                "last": series[-1]["date"],
+                "best": best["weight"] if best else "",
+                "spark": [p["weight"] for p in series if p["weight"] is not None][-12:],
+            }
         )
-        .filter(Workout.user_email == user_email)
-        .group_by(Workout.exercise)
-        .order_by(func.max(Workout.date).desc(), Workout.exercise)
-        .all()
+    summary.sort(key=lambda s: (s["last"], s["exercise"]), reverse=True)
+    return render_template(
+        "exercises.html", summary=summary, total=len(all_rows), range_key=range_key
     )
-    summary = [
-        {"exercise": ex, "sessions": count, "last": last, "first": first}
-        for ex, count, last, first in rows
-    ]
-    return render_template("exercises.html", summary=summary)
 
 
 @bp.route("/exercise/<path:name>")
@@ -482,6 +519,7 @@ def exercise_history(name: str):
     target = name.strip().lower()
     if not target:
         abort(404)
+    range_key = stats.clean_range(request.args.get("range"))
     workouts = (
         Workout.query.filter(
             Workout.user_email == user_email,
@@ -490,27 +528,28 @@ def exercise_history(name: str):
         .order_by(Workout.date.asc(), Workout.id.asc())
         .all()
     )
-    rows = [w.as_dict() for w in workouts]
+    all_rows = [w.as_dict() for w in workouts]
+    rows = stats.filter_range(all_rows, _client_today(), range_key)
+    series = stats.exercise_series(rows)
 
     best = None
-    per_date: dict[str, float] = {}
-    for w in workouts:
-        n = _weight_number(w.weight)
-        if n is None:
-            continue
-        per_date[w.date] = max(per_date.get(w.date, 0.0), n)
-        if best is None or n > best["value"]:
-            best = {"value": n, "weight": w.weight, "date": w.date}
-    series = [{"date": d, "weight": per_date[d]} for d in sorted(per_date)]
-    tags = next((w.tags for w in workouts if w.tags), "")
+    for r in rows:
+        n = stats.weight_number(r["weight"])
+        if n is not None and (best is None or n > best["value"]):
+            best = {"value": n, "weight": r["weight"], "date": r["date"]}
+    volume = sum(p["volume"] for p in series)
+    tags = next((r["tags"] for r in all_rows if r["tags"]), "")
 
     return render_template(
         "exercise.html",
         name=target,
-        rows=rows,
-        sessions=len({w.date for w in workouts}),
+        rows=list(reversed(rows)),
+        total=len(all_rows),
+        sessions=len(series),
         best=best,
-        last_date=workouts[-1].date if workouts else None,
+        volume=volume,
+        last_date=rows[-1]["date"] if rows else None,
         tags=tags,
         series=series,
+        range_key=range_key,
     )
