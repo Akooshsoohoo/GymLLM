@@ -28,7 +28,7 @@
     <input type="hidden" name="llm_output" value="">
     <label for="workout" class="sr-only">Describe your workout</label>
     <textarea id="workout" name="workout" rows="6" required autofocus class="textarea textarea-plain"
-        placeholder="yesterday: bench 185 for 5x5, lat pulldowns 3x10, felt strong"></textarea>
+        placeholder="today I walked 3 miles, did some pull ups, curled the 20 lb dumbbells for a few sets, and weighed in at 130 lbs"></textarea>
     <div class="toolbar">
         <button type="submit" class="btn btn-primary">Parse workout</button>
         <span class="muted small" data-llm-status>You review and edit before anything is saved.</span>
@@ -40,6 +40,7 @@
     <ul>
         <li>Mention a day ("yesterday", "on Monday", "2025-06-01") and it becomes the log date.</li>
         <li>Shorthand works: <code>5x5</code>, <code>3x10</code>, <code>10,8,6</code>, <code>bodyweight</code>.</li>
+        <li>Mix it all in one message: lifts go to your exercises, a walk, run or swim goes to cardio, and "weighed in at 130" records your body weight.</li>
         <li>Units are kept as you write them: <code>185 lbs</code> or <code>80 kg</code>.</li>
     </ul>
 </details>
@@ -67,6 +68,22 @@
                     </span>
                 </li>
                 {% endfor %}
+                {% for c in s.cardio %}
+                <li>
+                    <span class="session-exercise session-cardio">{{ c.activity }}</span>
+                    <span class="session-detail num">
+                        {{- c.distance -}}
+                        {%- if c.distance and c.duration %} · {% endif -%}
+                        {{- c.duration -}}
+                    </span>
+                </li>
+                {% endfor %}
+                {% if s.weight %}
+                <li class="session-weight">
+                    <span class="session-exercise muted">body weight</span>
+                    <span class="session-detail num">{{ s.weight.weight }}</span>
+                </li>
+                {% endif %}
             </ul>
         </article>
         {% endfor %}

@@ -296,24 +296,39 @@
       btn.textContent = removing ? "Undo" : "Remove";
     });
 
-    var addRow = $("#add-row");
-    var numField = $("#num_entries");
-    if (addRow && numField) addRow.addEventListener("click", function () {
-      var i = parseInt(numField.value, 10) || 0;
-      var tr = document.createElement("tr");
-      var text = function (name, extra) {
-        return '<td' + (name === "exercise" ? ' class="exercise-cell"' : "") + '><input type="text" name="entry-' + i + "-" + name +
-          '" aria-label="' + name.charAt(0).toUpperCase() + name.slice(1) + '"' + (extra || "") + "></td>";
-      };
-      tr.innerHTML = text("exercise", ' list="exercise-names"') + text("weight", ' placeholder="185 lbs"') +
-        text("sets", ' class="narrow" inputmode="numeric"') + text("reps", ' placeholder="10, 8, 6"') + text("notes") +
-        '<td class="col-actions"><input type="checkbox" name="entry-' + i + '-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">' +
-        '<button type="button" class="btn btn-text row-remove">Remove</button></td>';
-      entriesTable.tBodies[0].appendChild(tr);
-      numField.value = i + 1;
+    // "Add exercise" / "Add cardio": append an empty row named like the server expects.
+    var addRowTo = function (button, table, counter, prefix, columns) {
+      if (!button || !table || !counter) return;
+      button.addEventListener("click", function () {
+        var i = parseInt(counter.value, 10) || 0;
+        var tr = document.createElement("tr");
+        tr.innerHTML = columns.map(function (col, idx) {
+          return '<td' + (idx === 0 ? ' class="exercise-cell"' : "") + '><input type="text" name="' + prefix + "-" + i + "-" + col[0] +
+            '" aria-label="' + col[0].charAt(0).toUpperCase() + col[0].slice(1) + '"' + (col[1] || "") + "></td>";
+        }).join("") +
+          '<td class="col-actions"><input type="checkbox" name="' + prefix + "-" + i + '-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">' +
+          '<button type="button" class="btn btn-text row-remove">Remove</button></td>';
+        table.tBodies[0].appendChild(tr);
+        counter.value = i + 1;
+        var empty = $('[data-empty-for="' + table.id + '"]', confirmForm);
+        if (empty) empty.hidden = true;
+        var submit = $('button[type=submit]', confirmForm);
+        if (submit) submit.disabled = false;
+        tr.querySelector("input[type=text]").focus();
+      });
+    };
+    addRowTo($("#add-row"), entriesTable, $("#num_entries"), "entry", [
+      ["exercise", ' list="exercise-names"'], ["weight", ' placeholder="185 lbs"'],
+      ["sets", ' class="narrow" inputmode="numeric"'], ["reps", ' placeholder="10, 8, 6"'], ["notes", ""]
+    ]);
+    addRowTo($("#add-cardio"), $("#cardio-table"), $("#num_cardio"), "cardio", [
+      ["activity", ' placeholder="walking"'], ["distance", ' placeholder="3 miles"'],
+      ["duration", ' placeholder="45 min"'], ["notes", ""]
+    ]);
+    var bodyweightField = $("#bodyweight");
+    if (bodyweightField) bodyweightField.addEventListener("input", function () {
       var submit = $('button[type=submit]', confirmForm);
-      if (submit) submit.disabled = false;
-      tr.querySelector("input[type=text]").focus();
+      if (submit && bodyweightField.value.trim()) submit.disabled = false;
     });
   }
 
@@ -428,7 +443,7 @@
   // One accent hue, hairline grid, thin marks, a hover/keyboard tooltip. Re-renders on resize.
   var charts = (function () {
     var ns = "http://www.w3.org/2000/svg";
-    var NAMES = { sessions: "sessions", entries: "exercises", volume: "volume", weight: "top weight", reps: "reps" };
+    var NAMES = { sessions: "sessions", entries: "exercises", volume: "volume", weight: "weight", reps: "reps", distance: "distance", activities: "activities", minutes: "minutes" };
     function el(tag, attrs, text) {
       var e = document.createElementNS(ns, tag);
       Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });

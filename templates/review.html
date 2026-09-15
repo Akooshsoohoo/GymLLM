@@ -25,47 +25,96 @@
 </form>
 
 {% if entries is not none %}
+{% set cardio = cardio or [] %}
 <form method="post" action="{{ url_for('main.confirm') }}" id="confirm-form" class="card"
       data-tag-targets-url="{{ url_for('main.llm_tag_targets') }}"
       {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="card-head">
         <div class="field-inline">
-            <label for="date">Workout date</label>
+            <label for="date">Date</label>
             <input type="date" id="date" name="date" value="{{ workout_date }}" required class="input date-input">
             {% if date_from_text %}<span class="muted small">taken from your text</span>{% endif %}
         </div>
         <span class="muted small">Edit anything before saving.</span>
     </div>
-    <div class="table-wrap">
-    <table id="entries-table" class="table table-editing">
-        <thead>
-        <tr>
-            <th>Exercise</th><th>Weight</th><th>Sets</th><th>Reps</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for e in entries %}
-        <tr>
-            <td class="exercise-cell"><input type="text" name="entry-{{ loop.index0 }}-exercise" value="{{ e.exercise }}" list="exercise-names" aria-label="Exercise"></td>
-            <td><input type="text" name="entry-{{ loop.index0 }}-weight" value="{{ e.weight }}" placeholder="185 lbs" aria-label="Weight"></td>
-            <td><input type="text" name="entry-{{ loop.index0 }}-sets" value="{{ e.sets }}" class="narrow" inputmode="numeric" aria-label="Sets"></td>
-            <td><input type="text" name="entry-{{ loop.index0 }}-reps" value="{{ e.reps }}" placeholder="10, 8, 6" aria-label="Reps"></td>
-            <td><input type="text" name="entry-{{ loop.index0 }}-notes" value="{{ e.notes }}" aria-label="Notes"></td>
-            <td class="col-actions">
-                <input type="checkbox" name="entry-{{ loop.index0 }}-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">
-                <button type="button" class="btn btn-text row-remove">Remove</button>
-            </td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+
+    <div class="review-section">
+        <div class="section-head">
+            <h2>Exercises</h2>
+            <button type="button" class="btn btn-text" id="add-row">Add exercise</button>
+        </div>
+        <div class="table-wrap">
+        <table id="entries-table" class="table table-editing">
+            <thead>
+            <tr>
+                <th>Exercise</th><th>Weight</th><th>Sets</th><th>Reps</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for e in entries %}
+            <tr>
+                <td class="exercise-cell"><input type="text" name="entry-{{ loop.index0 }}-exercise" value="{{ e.exercise }}" list="exercise-names" aria-label="Exercise"></td>
+                <td><input type="text" name="entry-{{ loop.index0 }}-weight" value="{{ e.weight }}" placeholder="185 lbs" aria-label="Weight"></td>
+                <td><input type="text" name="entry-{{ loop.index0 }}-sets" value="{{ e.sets }}" class="narrow" inputmode="numeric" aria-label="Sets"></td>
+                <td><input type="text" name="entry-{{ loop.index0 }}-reps" value="{{ e.reps }}" placeholder="10, 8, 6" aria-label="Reps"></td>
+                <td><input type="text" name="entry-{{ loop.index0 }}-notes" value="{{ e.notes }}" aria-label="Notes"></td>
+                <td class="col-actions">
+                    <input type="checkbox" name="entry-{{ loop.index0 }}-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">
+                    <button type="button" class="btn btn-text row-remove">Remove</button>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% if not entries %}<p class="muted small table-empty" data-empty-for="entries-table">No lifts in this text.</p>{% endif %}
+        <input type="hidden" name="num_entries" id="num_entries" value="{{ entries|length }}">
     </div>
-    <input type="hidden" name="num_entries" id="num_entries" value="{{ entries|length }}">
+
+    <div class="review-section">
+        <div class="section-head">
+            <h2>Cardio</h2>
+            <button type="button" class="btn btn-text" id="add-cardio">Add cardio</button>
+        </div>
+        <div class="table-wrap">
+        <table id="cardio-table" class="table table-editing">
+            <thead>
+            <tr>
+                <th>Activity</th><th>Distance</th><th>Duration</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for c in cardio %}
+            <tr>
+                <td class="exercise-cell"><input type="text" name="cardio-{{ loop.index0 }}-activity" value="{{ c.activity }}" placeholder="walking" aria-label="Activity"></td>
+                <td><input type="text" name="cardio-{{ loop.index0 }}-distance" value="{{ c.distance }}" placeholder="3 miles" aria-label="Distance"></td>
+                <td><input type="text" name="cardio-{{ loop.index0 }}-duration" value="{{ c.duration }}" placeholder="45 min" aria-label="Duration"></td>
+                <td><input type="text" name="cardio-{{ loop.index0 }}-notes" value="{{ c.notes }}" aria-label="Notes"></td>
+                <td class="col-actions">
+                    <input type="checkbox" name="cardio-{{ loop.index0 }}-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">
+                    <button type="button" class="btn btn-text row-remove">Remove</button>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% if not cardio %}<p class="muted small table-empty" data-empty-for="cardio-table">No cardio in this text.</p>{% endif %}
+        <input type="hidden" name="num_cardio" id="num_cardio" value="{{ cardio|length }}">
+    </div>
+
+    <div class="review-section">
+        <div class="field-inline">
+            <label for="bodyweight">Body weight</label>
+            <input type="text" id="bodyweight" name="bodyweight" value="{{ bodyweight or '' }}" placeholder="130 lbs" class="input input-short" aria-describedby="bodyweight-help">
+            <span class="muted small" id="bodyweight-help">Optional. One reading per day; a new one replaces the old.</span>
+        </div>
+    </div>
+
     <div class="toolbar toolbar-end">
         <span class="muted small" data-llm-status></span>
-        <button type="button" class="btn btn-ghost" id="add-row">Add row</button>
-        <button type="submit" class="btn btn-primary" {% if not entries %}disabled{% endif %}>Save to log</button>
+        <button type="submit" class="btn btn-primary" {% if not entries and not cardio and not bodyweight %}disabled{% endif %}>Save to log</button>
     </div>
 </form>
 <datalist id="exercise-names"></datalist>

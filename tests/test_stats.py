@@ -130,8 +130,16 @@ def test_overview_totals_deltas_and_series():
         row(id=5, date="2026-01-01"),  # outside both
     ]
     data = stats.overview(rows, TODAY, "7d", "day")
-    assert data["totals"] == {"entries": 3, "sessions": 2, "exercises": 2, "volume": 375 * 15}
-    assert data["deltas"] == {"sessions": 1, "entries": 2, "volume": 190 * 15}
+    assert data["totals"] == {
+        "entries": 3,
+        "sessions": 2,
+        "exercises": 2,
+        "volume": 375 * 15,
+        "cardio": 0,
+        "minutes": 0,
+    }
+    assert data["deltas"] == {"sessions": 1, "entries": 2, "volume": 190 * 15, "cardio": 0}
+    assert data["cardio"]["count"] == 0 and data["bodyweight"] is None
     assert [p["key"] for p in data["activity"]] == [f"2026-03-{d:02d}" for d in range(9, 16)]
     assert [p["entries"] for p in data["activity"]] == [0, 1, 0, 0, 0, 2, 0]
     assert data["activity"][1]["label"] == "10 Mar"
@@ -153,7 +161,7 @@ def test_overview_totals_deltas_and_series():
 def test_overview_all_time_has_no_deltas_and_folds_tags():
     rows = [row(id=i, date="2026-03-01", tags=f"t{i}") for i in range(12)]
     data = stats.overview(rows, TODAY, "all", "month")
-    assert data["deltas"] == {"sessions": None, "entries": None, "volume": None}
+    assert data["deltas"] == {"sessions": None, "entries": None, "volume": None, "cardio": None}
     assert [p["key"] for p in data["activity"]] == ["2026-03"]
     assert data["tags"][-1] == {"tag": "other", "count": 2} and len(data["tags"]) == 11
 
@@ -175,3 +183,155 @@ def test_exercise_series():
         {"date": "2026-03-10", "weight": 190.0, "volume": 185 * 15 + 190 * 9, "reps": 24},
         {"date": "2026-03-12", "weight": None, "volume": 0.0, "reps": 15},
     ]
+
+
+# --- cardio and body weight ---------------------------------------------------
+
+
+def cardio(**kw):
+    base = {
+        "id": 1,
+        "date": "2026-03-10",
+        "activity": "walking",
+        "distance": "3 miles",
+        "duration": "45 min",
+        "notes": "",
+    }
+    base.update(kw)
+    return base
+
+
+def reading(**kw):
+    base = {"id": 1, "date": "2026-03-10", "weight": "130 lbs", "notes": ""}
+    base.update(kw)
+    return base
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("3 miles", (3.0, "mi")),
+        ("5km", (5.0, "km")),
+        ("2000 m", (2000.0, "m")),
+        ("130 lbs", (130.0, "lbs")),
+        ("82.5 kg", (82.5, "kg")),
+        ("20 laps", (20.0, "laps")),
+        ("bodyweight", None),
+        ("", None),
+    ],
+)
+def test_quantity(text, expected):
+    assert stats.quantity(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("45 min", 45),
+        ("1 h 20 min", 80),
+        ("1.5 hours", 90),
+        ("90 minutes", 90),
+        ("1:20:00", 80),
+        ("45:30", 45.5),
+        ("30 s", 0.5),
+        ("40", 40),
+        ("", None),
+        ("a while", None),
+    ],
+)
+def test_duration_minutes(text, expected):
+    assert stats.duration_minutes(text) == expected
+
+
+def test_format_minutes_and_distance():
+    assert stats.format_minutes(80) == "1 h 20 min"
+    assert stats.format_minutes(120) == "2 h"
+    assert stats.format_minutes(45) == "45 min"
+    assert stats.format_minutes(0) == ""
+    totals = stats.distance_totals(
+        [cardio(distance="3 miles"), cardio(distance="2.5 mi"), cardio(distance="5 km")]
+    )
+    assert totals == {"mi": 5.5, "km": 5.0}
+    assert stats.format_distance(totals) == "5.5 mi + 5 km"
+
+
+def test_group_rows_includes_cardio_and_weights():
+    groups = stats.group_rows(
+        [row(id=1, date="2026-03-10")],
+        "day",
+        cardio=[
+            cardio(id=1, date="2026-03-10"),
+            cardio(id=2, date="2026-03-12", activity="running", distance="5 km"),
+        ],
+        weights=[reading(id=1, date="2026-03-12")],
+    )
+    assert [g["key"] for g in groups] == ["2026-03-12", "2026-03-10"]
+    top, other = groups
+    assert top["rows"] == [] and top["cardio"][0]["activity"] == "running"
+    assert top["weights"][0]["weight"] == "130 lbs" and top["cardio_text"] == "5 km"
+    assert top["sessions"] == 1 and top["entries"] == 0
+    assert other["cardio_text"] == "3 mi" and other["entries"] == 1
+
+
+def test_bodyweight_summary():
+    weights = [
+        reading(id=1, date="2026-01-01", weight="135 lbs"),
+        reading(id=2, date="2026-03-01", weight="132 lbs"),
+        reading(id=3, date="2026-03-14", weight="130 lbs"),
+    ]
+    bw = stats.bodyweight_summary(weights, date(2026, 2, 1))
+    assert bw["latest"] == "130 lbs" and bw["latest_date"] == "2026-03-14"
+    assert bw["change"] == -2 and bw["unit"] == "lbs" and bw["since"] == "2026-03-01"
+    assert [p["weight"] for p in bw["series"]] == [132.0, 130.0]
+    assert stats.bodyweight_summary(weights, None)["change"] == -5
+    assert stats.bodyweight_summary(weights[:1], date(2026, 2, 1)) is None
+    single = stats.bodyweight_summary(weights[-1:], None)
+    assert single["change"] is None and single["since"] is None
+    mixed = stats.bodyweight_summary(
+        [reading(id=1, date="2026-03-01", weight="60 kg"), weights[-1]], None
+    )
+    assert mixed["change"] is None  # units differ, so no delta
+
+
+def test_overview_with_cardio_and_weights():
+    rows = [row(id=1, date="2026-03-14")]
+    activities = [
+        cardio(id=1, date="2026-03-12", distance="3 miles", duration="45 min"),
+        cardio(id=2, date="2026-03-13", activity="running", distance="2 mi", duration="20 min"),
+        cardio(id=3, date="2026-03-02", distance="1 mile"),  # previous window
+    ]
+    weights = [reading(id=1, date="2026-03-09", weight="132 lbs"), reading(id=2, date="2026-03-14")]
+    data = stats.overview(rows, TODAY, "7d", "day", cardio=activities, weights=weights)
+    assert data["totals"]["sessions"] == 3 and data["totals"]["cardio"] == 2
+    assert data["deltas"]["cardio"] == 1 and data["deltas"]["sessions"] == 2
+    assert (
+        data["cardio"]["distance_text"] == "5 mi" and data["cardio"]["minutes_text"] == "1 h 5 min"
+    )
+    assert data["distance_unit"] == "mi"
+    assert [p["distance"] for p in data["cardio_series"]] == [0, 0, 0, 3, 2, 0, 0]
+    assert data["cardio_series"][3]["activities"] == 1 and data["cardio_series"][3]["minutes"] == 45
+    assert data["bodyweight"]["latest"] == "130 lbs" and data["bodyweight"]["change"] == -2
+    assert {c["date"]: c["count"] for c in data["heatmap"] if c["count"]} == {
+        "2026-03-12": 1,
+        "2026-03-13": 1,
+        "2026-03-14": 1,
+    }
+
+
+def test_cardio_summary():
+    summary = stats.cardio_summary(
+        [
+            cardio(id=1, date="2026-03-10"),
+            cardio(id=2, date="2026-03-12", distance="2 miles", duration="30 min"),
+            cardio(id=3, date="2026-03-11", activity="swimming", distance="20 laps", duration=""),
+        ]
+    )
+    assert [a["activity"] for a in summary] == ["walking", "swimming"]
+    assert summary[0] == {
+        "activity": "walking",
+        "count": 2,
+        "distance_text": "5 mi",
+        "minutes_text": "1 h 15 min",
+        "last": "2026-03-12",
+    }
+    assert summary[1]["distance_text"] == "20 laps" and summary[1]["minutes_text"] == ""

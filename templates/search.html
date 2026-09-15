@@ -33,11 +33,16 @@
         <header class="group-head">
             <h2 class="group-title">{{ g.label }}</h2>
             <span class="muted small group-summary">
-                {%- if by != 'day' %}{{ g.sessions }} session{{ '' if g.sessions == 1 else 's' }} · {% endif -%}
-                {{ g.entries }} exercise{{ '' if g.entries == 1 else 's' }}
-                {%- if g.volume %} · {{ g.volume|fmt_num }} volume{% endif -%}
+                {%- set parts = [] -%}
+                {%- if by != 'day' %}{% set _ = parts.append(g.sessions ~ ' session' ~ ('' if g.sessions == 1 else 's')) %}{% endif -%}
+                {%- if g.entries %}{% set _ = parts.append(g.entries ~ ' exercise' ~ ('' if g.entries == 1 else 's')) %}{% endif -%}
+                {%- if g.volume %}{% set _ = parts.append((g.volume|fmt_num) ~ ' volume') %}{% endif -%}
+                {%- if g.cardio %}{% set _ = parts.append(g.cardio|length ~ ' cardio' ~ (' · ' ~ g.cardio_text if g.cardio_text else '')) %}{% endif -%}
+                {%- if g.weights %}{% set _ = parts.append('weighed ' ~ g.weights[0].weight) %}{% endif -%}
+                {{ parts|join(' · ') }}
             </span>
         </header>
+        {% if g.rows %}
         <div class="table-wrap card card-flush">
         <table class="table sortable filterable {{ 'by-day' if by == 'day' }}">
             <thead>
@@ -71,6 +76,59 @@
             </tbody>
         </table>
         </div>
+        {% endif %}
+        {% if g.cardio %}
+        <div class="table-wrap card card-flush">
+        <table class="table sortable filterable {{ 'by-day' if by == 'day' }}">
+            <thead>
+            <tr>
+                <th data-sort="date" class="date-col">Date</th>
+                <th data-sort="text">Cardio</th>
+                <th data-sort="number">Distance</th>
+                <th data-sort="text">Duration</th>
+                <th data-sort="text">Notes</th>
+                <th class="col-actions edit-only">Delete</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for c in g.cardio %}
+            <tr data-id="c{{ c.id }}">
+                <td class="date-cell date-col"><input type="text" name="cardio-{{ c.id }}-date" value="{{ c.date }}" pattern="\d{4}-\d{2}-\d{2}" title="YYYY-MM-DD" aria-label="Date"></td>
+                <td class="exercise-cell"><input type="text" name="cardio-{{ c.id }}-activity" value="{{ c.activity }}" aria-label="Activity"></td>
+                <td><input type="text" name="cardio-{{ c.id }}-distance" value="{{ c.distance }}" aria-label="Distance"></td>
+                <td><input type="text" name="cardio-{{ c.id }}-duration" value="{{ c.duration }}" aria-label="Duration"></td>
+                <td><input type="text" name="cardio-{{ c.id }}-notes" value="{{ c.notes }}" aria-label="Notes"></td>
+                <td class="col-actions edit-only"><input type="checkbox" name="cdelete-{{ c.id }}" value="1" class="delete-box" aria-label="Delete row"></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% endif %}
+        {% if g.weights %}
+        <div class="table-wrap card card-flush">
+        <table class="table filterable {{ 'by-day' if by == 'day' }}">
+            <thead>
+            <tr>
+                <th class="date-col">Date</th>
+                <th>Body weight</th>
+                <th>Notes</th>
+                <th class="col-actions edit-only">Delete</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for w in g.weights %}
+            <tr data-id="w{{ w.id }}">
+                <td class="date-cell date-col"><input type="text" name="bw-{{ w.id }}-date" value="{{ w.date }}" pattern="\d{4}-\d{2}-\d{2}" title="YYYY-MM-DD" aria-label="Date"></td>
+                <td><input type="text" name="bw-{{ w.id }}-weight" value="{{ w.weight }}" aria-label="Body weight"></td>
+                <td><input type="text" name="bw-{{ w.id }}-notes" value="{{ w.notes }}" aria-label="Notes"></td>
+                <td class="col-actions edit-only"><input type="checkbox" name="bwdelete-{{ w.id }}" value="1" class="delete-box" aria-label="Delete row"></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% endif %}
     </section>
     {% endfor %}
     <p class="muted small">Click a column header to sort within a {{ by }}. Use Edit to change or delete rows.</p>

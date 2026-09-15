@@ -4,7 +4,8 @@
 <div class="page-head">
     <h1>Workout saved</h1>
 </div>
-<div class="alert ok">Logged {{ rows|length }} {{ 'entry' if rows|length == 1 else 'entries' }} for {{ workout_date }}.</div>
+<div class="alert ok">Logged {{ count }} {{ 'entry' if count == 1 else 'entries' }} for {{ workout_date }}.</div>
+{% if rows %}
 <div class="table-wrap card card-flush">
 <table class="table">
     <thead>
@@ -24,8 +25,26 @@
     </tbody>
 </table>
 </div>
+{% endif %}
+{% if cardio %}
+<div class="table-wrap card card-flush">
+<table class="table">
+    <thead>
+    <tr><th>Cardio</th><th>Distance</th><th>Duration</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+    {% for c in cardio %}
+    <tr><td>{{ c.activity }}</td><td>{{ c.distance }}</td><td>{{ c.duration }}</td><td>{{ c.notes }}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endif %}
+{% if bodyweight %}
+<div class="card card-compact"><span class="muted">Body weight</span> <strong>{{ bodyweight.weight }}</strong></div>
+{% endif %}
 <div class="toolbar">
     <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log another</a>
-    <a href="{{ url_for('main.search') }}" class="btn btn-ghost">View all entries</a>
+    <a href="{{ url_for('main.search') }}" class="btn btn-ghost">View sessions</a>
 </div>
 {% endblock %}

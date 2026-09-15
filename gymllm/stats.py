@@ -26,6 +26,20 @@ MOVEMENT_TAGS = {"compound", "isolation", "isolated", "push", "pull", "upper", "
 
 _WEIGHT_NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)")
 _INT_RE = re.compile(r"\d+")
+_QUANTITY_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]*)")
+_DURATION_PART_RE = re.compile(r"(\d+(?:\.\d+)?)\s*([a-zA-Z]*)")
+_CLOCK_RE = re.compile(r"^\s*(\d+):(\d{1,2})(?::(\d{1,2}))?\s*$")
+_DISTANCE_UNITS = {
+    "mi": "mi", "mile": "mi", "miles": "mi",
+    "km": "km", "kms": "km", "kilometer": "km", "kilometers": "km", "kilometre": "km", "kilometres": "km", "k": "km",
+    "m": "m", "meter": "m", "meters": "m", "metre": "m", "metres": "m",
+    "yd": "yd", "yard": "yd", "yards": "yd",
+    "ft": "ft", "foot": "ft", "feet": "ft",
+    "lap": "laps", "laps": "laps",
+}  # fmt: skip
+_HOUR_UNITS = {"h", "hr", "hrs", "hour", "hours"}
+_SECOND_UNITS = {"s", "sec", "secs", "second", "seconds"}
+_MINUTE_UNITS = {"", "m", "min", "mins", "minute", "minutes"}
 _MONTHS = (
     "January",
     "February",
@@ -73,6 +87,85 @@ def entry_volume(row: dict) -> float | None:
     if weight is None or reps is None:
         return None
     return weight * reps
+
+
+def quantity(text: str | None) -> tuple[float, str] | None:
+    """'3 miles' -> (3.0, 'mi'); '130 lbs' -> (130.0, 'lbs'); 'bodyweight' -> None."""
+    m = _QUANTITY_RE.match(text or "")
+    if not m:
+        return None
+    unit = m.group(2).lower()
+    return float(m.group(1)), _DISTANCE_UNITS.get(unit, unit)
+
+
+def duration_minutes(text: str | None) -> float | None:
+    """'45 min' -> 45; '1 h 20 min' -> 80; '1:20:00' -> 80; '45:30' -> 45.5; '' -> None."""
+    text = (text or "").strip().lower()
+    if not text:
+        return None
+    m = _CLOCK_RE.match(text)
+    if m:
+        h, mm, ss = m.group(1), m.group(2), m.group(3)
+        if ss is None:  # mm:ss
+            return int(h) + int(mm) / 60
+        return int(h) * 60 + int(mm) + int(ss) / 60
+    total = 0.0
+    found = False
+    for num, unit in _DURATION_PART_RE.findall(text):
+        found = True
+        n = float(num)
+        if unit in _HOUR_UNITS:
+            total += n * 60
+        elif unit in _SECOND_UNITS:
+            total += n / 60
+        elif unit in _MINUTE_UNITS:
+            total += n
+    return total if found else None
+
+
+def format_minutes(minutes: float | None) -> str:
+    if not minutes:
+        return ""
+    whole = int(round(minutes))
+    h, m = divmod(whole, 60)
+    if h and m:
+        return f"{h} h {m} min"
+    return f"{h} h" if h else f"{m} min"
+
+
+def format_number(n: float) -> str:
+    return f"{n:,.0f}" if n == int(n) else f"{n:,.1f}"
+
+
+def distance_totals(cardio: list[dict]) -> dict[str, float]:
+    """Distance summed per unit, the most-used unit first: {'mi': 12.5, 'laps': 40}."""
+    totals: dict[str, float] = defaultdict(float)
+    uses: Counter[str] = Counter()
+    for c in cardio:
+        q = quantity(c.get("distance"))
+        if q:
+            totals[q[1]] += q[0]
+            uses[q[1]] += 1
+    return dict(sorted(totals.items(), key=lambda kv: (-uses[kv[0]], -kv[1])))
+
+
+def format_distance(totals: dict[str, float]) -> str:
+    return " + ".join(f"{format_number(v)} {u}".strip() for u, v in totals.items())
+
+
+def cardio_stats(cardio: list[dict]) -> dict:
+    minutes = sum(m for m in (duration_minutes(c.get("duration")) for c in cardio) if m)
+    totals = distance_totals(cardio)
+    first = next(iter(totals.items()), None)
+    return {
+        "count": len(cardio),
+        "distance": totals,
+        "distance_text": format_distance(totals),
+        "lead": f"{format_number(first[1])} {first[0]}".strip() if first else "",
+        "rest": format_distance(dict(list(totals.items())[1:])),
+        "minutes": minutes,
+        "minutes_text": format_minutes(minutes),
+    }
 
 
 def parse_date(value: str | None) -> date | None:
@@ -167,21 +260,41 @@ def _summarise(rows: list[dict]) -> dict:
     }
 
 
-def group_rows(rows: list[dict], by: str) -> list[dict]:
-    """Rows (any order) -> groups newest first, each with its rows newest first."""
+def _bucket(items: list[dict], by: str, unparsable: set[str]) -> dict[str, list[dict]]:
     buckets: dict[str, list[dict]] = defaultdict(list)
-    unparsable: set[str] = set()  # rows whose date is not ISO are grouped under it verbatim
-    for r in rows:
+    for r in items:
         d = parse_date(r["date"])
         if d is None:
             unparsable.add(r["date"])
         buckets[period_key(d, by) if d else r["date"]].append(r)
+    return buckets
+
+
+def group_rows(
+    rows: list[dict], by: str, cardio: list[dict] = (), weights: list[dict] = ()
+) -> list[dict]:
+    """Strength rows, cardio and weigh-ins (any order) -> groups newest first, each
+    holding its rows/cardio/weights newest first plus a summary."""
+    unparsable: set[str] = set()  # rows whose date is not ISO are grouped under it verbatim
+    strength = _bucket(rows, by, unparsable)
+    activities = _bucket(list(cardio), by, unparsable)
+    readings = _bucket(list(weights), by, unparsable)
+    newest = lambda r: (r["date"], r["id"])  # noqa: E731
     groups = []
-    for key in sorted(buckets, reverse=True):
-        members = sorted(buckets[key], key=lambda r: (r["date"], r["id"]), reverse=True)
+    for key in sorted(set(strength) | set(activities) | set(readings), reverse=True):
+        members = sorted(strength.get(key, []), key=newest, reverse=True)
+        group_cardio = sorted(activities.get(key, []), key=newest, reverse=True)
+        group_weights = sorted(readings.get(key, []), key=newest, reverse=True)
         summary = _summarise(members)
-        label = key if key in unparsable else period_label(key, by)
-        summary.update(key=key, label=label, rows=members)
+        summary["sessions"] = len({r["date"] for r in members} | {c["date"] for c in group_cardio})
+        summary.update(
+            key=key,
+            label=key if key in unparsable else period_label(key, by),
+            rows=members,
+            cardio=group_cardio,
+            cardio_text=format_distance(distance_totals(group_cardio)),
+            weights=group_weights,
+        )
         groups.append(summary)
     return groups
 
@@ -226,37 +339,120 @@ def _delta(current: float, previous: float | None) -> float | None:
     return None if previous is None else current - previous
 
 
-def overview(all_rows: list[dict], today: date, range_key: str, by: str) -> dict:
-    rows = filter_range(all_rows, today, range_key)
-    start = range_start(today, range_key)
+def _totals(rows: list[dict], cardio: list[dict]) -> dict:
     totals = _summarise(rows)
+    totals["sessions"] = len({r["date"] for r in rows} | {c["date"] for c in cardio})
+    totals["cardio"] = len(cardio)
+    totals["minutes"] = sum(m for m in (duration_minutes(c.get("duration")) for c in cardio) if m)
+    return totals
+
+
+def bodyweight_summary(weights: list[dict], start: date | None) -> dict | None:
+    """Latest reading in the range and its change since the first one in the range."""
+    lo = start.isoformat() if start else ""
+    readings = sorted((w for w in weights if w["date"] >= lo), key=lambda w: (w["date"], w["id"]))
+    if not readings:
+        return None
+    series = []
+    for w in readings:
+        q = quantity(w["weight"])
+        if q:
+            series.append({"date": w["date"], "weight": q[0], "unit": q[1], "text": w["weight"]})
+    latest = readings[-1]
+    change = None
+    if len(series) >= 2 and series[0]["unit"] == series[-1]["unit"]:
+        change = series[-1]["weight"] - series[0]["weight"]
+    return {
+        "latest": latest["weight"],
+        "latest_date": latest["date"],
+        "change": change,
+        "unit": series[-1]["unit"] if series else "",
+        "since": series[0]["date"] if len(series) >= 2 else None,
+        "series": series,
+    }
+
+
+def cardio_summary(cardio: list[dict]) -> list[dict]:
+    """Per activity: how often, total distance and time, and the last date."""
+    per: dict[str, list[dict]] = defaultdict(list)
+    for c in cardio:
+        per[c["activity"]].append(c)
+    out = []
+    for name, items in per.items():
+        st = cardio_stats(items)
+        out.append(
+            {
+                "activity": name,
+                "count": len(items),
+                "distance_text": st["distance_text"],
+                "minutes_text": st["minutes_text"],
+                "last": max(c["date"] for c in items),
+            }
+        )
+    out.sort(key=lambda a: (a["last"], a["activity"]), reverse=True)
+    return out
+
+
+def overview(
+    all_rows: list[dict],
+    today: date,
+    range_key: str,
+    by: str,
+    cardio: list[dict] = (),
+    weights: list[dict] = (),
+) -> dict:
+    rows = filter_range(all_rows, today, range_key)
+    activities = filter_range(list(cardio), today, range_key)
+    start = range_start(today, range_key)
+    totals = _totals(rows, activities)
 
     # Same-length window immediately before this one, for the deltas.
     previous = None
     if start is not None:
         days = RANGES[range_key] or 0
         prev_lo, prev_hi = (start - timedelta(days=days)).isoformat(), start.isoformat()
-        previous = _summarise([r for r in all_rows if prev_lo <= r["date"] < prev_hi])
+        previous = _totals(
+            [r for r in all_rows if prev_lo <= r["date"] < prev_hi],
+            [c for c in cardio if prev_lo <= c["date"] < prev_hi],
+        )
 
     # Activity per period, zero-filled across the whole range.
-    first = min((parse_date(r["date"]) for r in rows if parse_date(r["date"])), default=None)
+    dated = [parse_date(x["date"]) for x in rows + activities]
+    first = min((d for d in dated if d), default=None)
     chart_start = start or first
     by_period: dict[str, list[dict]] = defaultdict(list)
     for r in rows:
         d = parse_date(r["date"])
         if d:
             by_period[period_key(d, by)].append(r)
+    cardio_by_period: dict[str, list[dict]] = defaultdict(list)
+    for c in activities:
+        d = parse_date(c["date"])
+        if d:
+            cardio_by_period[period_key(d, by)].append(c)
+    unit = next(iter(distance_totals(activities)), "")  # the unit with the most distance
     activity = []
+    cardio_series = []
     if chart_start is not None:
         for key in period_keys(chart_start, today, by):
             s = _summarise(by_period.get(key, []))
             activity.append({"key": key, "label": period_short(key, by), **s})
+            st = cardio_stats(cardio_by_period.get(key, []))
+            cardio_series.append(
+                {
+                    "key": key,
+                    "label": period_short(key, by),
+                    "distance": st["distance"].get(unit, 0.0),
+                    "activities": st["count"],
+                    "minutes": st["minutes"],
+                }
+            )
 
-    # Calendar heatmap: sessions per day, Monday-aligned weeks ending today.
+    # Calendar heatmap: entries per day, Monday-aligned weeks ending today.
     heat_start = chart_start or today
     heat_start = max(heat_start, today - timedelta(weeks=HEATMAP_MAX_WEEKS - 1))
     heat_start -= timedelta(days=heat_start.weekday())
-    per_day = Counter(r["date"] for r in rows)
+    per_day = Counter(x["date"] for x in rows + activities)
     heatmap = [
         {"date": (heat_start + timedelta(days=i)).isoformat(), "count": 0}
         for i in range((today - heat_start).days + 1)
@@ -282,14 +478,14 @@ def overview(all_rows: list[dict], today: date, range_key: str, by: str) -> dict
         per_ex[r["exercise"]].append(r)
     top = []
     for name, members in sorted(per_ex.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:TOP_N]:
-        weights = [(weight_number(r["weight"]), r["weight"]) for r in members]
-        weights = [w for w in weights if w[0] is not None]
+        weighed = [(weight_number(r["weight"]), r["weight"]) for r in members]
+        weighed = [w for w in weighed if w[0] is not None]
         top.append(
             {
                 "exercise": name,
                 "entries": len(members),
                 "sessions": len({r["date"] for r in members}),
-                "best": max(weights)[1] if weights else "",
+                "best": max(weighed)[1] if weighed else "",
                 "last": max(r["date"] for r in members),
             }
         )
@@ -301,8 +497,13 @@ def overview(all_rows: list[dict], today: date, range_key: str, by: str) -> dict
         "totals": totals,
         "deltas": {
             k: _delta(totals[k], previous[k] if previous else None)
-            for k in ("sessions", "entries", "volume")
+            for k in ("sessions", "entries", "volume", "cardio")
         },
+        "cardio": cardio_stats(activities),
+        "cardio_series": cardio_series,
+        "distance_unit": unit,
+        "bodyweight": bodyweight_summary(list(weights), start),
+        "weights_total": len(weights),
         "streak": week_streak({r["date"] for r in all_rows}, today),
         "activity": activity,
         "heatmap": heatmap,

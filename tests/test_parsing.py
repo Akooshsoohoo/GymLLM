@@ -3,7 +3,14 @@ from datetime import date
 import pytest
 
 from gymllm.llm.client import BadOutputError, extract_json
-from gymllm.parsing import build_system_prompt, is_iso_date, normalize_entry, parse_workout
+from gymllm.parsing import (
+    build_system_prompt,
+    is_iso_date,
+    normalize_cardio,
+    normalize_entry,
+    parse_workout,
+    parsed_from_output,
+)
 from tests.conftest import FakeLLM
 
 
@@ -133,3 +140,70 @@ def test_extract_json_variants(text, expected):
 def test_extract_json_failures(text):
     with pytest.raises(BadOutputError):
         extract_json(text)
+
+
+# --- cardio and body weight ---------------------------------------------------
+
+
+def test_prompt_describes_cardio_and_bodyweight():
+    prompt = build_system_prompt(date(2026, 9, 14))
+    assert '"cardio"' in prompt and '"bodyweight"' in prompt
+    assert "never an exercise weight" in prompt
+
+
+def test_normalize_cardio():
+    assert normalize_cardio(
+        {"activity": " Walking ", "distance": 3.0, "duration": "45 min", "notes": None}
+    ) == {"activity": "walking", "distance": "3", "duration": "45 min", "notes": ""}
+    with pytest.raises(BadOutputError):
+        normalize_cardio("walk")
+
+
+def test_parsed_from_output_splits_the_three_kinds():
+    parsed = parsed_from_output(
+        {
+            "date": None,
+            "exercises": [
+                {
+                    "exercise": "pull up",
+                    "weight": "bodyweight",
+                    "sets": None,
+                    "reps": None,
+                    "notes": "",
+                },
+                {
+                    "exercise": "dumbbell bicep curl",
+                    "weight": "20 lb",
+                    "sets": 3,
+                    "reps": [10, 10, 10],
+                    "notes": "",
+                },
+            ],
+            "cardio": [{"activity": "walking", "distance": "3 miles", "duration": "", "notes": ""}],
+            "bodyweight": "130 lbs",
+        }
+    )
+    assert [e["exercise"] for e in parsed.entries] == ["pull up", "dumbbell bicep curl"]
+    assert parsed.cardio == [
+        {"activity": "walking", "distance": "3 miles", "duration": "", "notes": ""}
+    ]
+    assert parsed.bodyweight == "130 lbs" and not parsed.is_empty
+
+
+def test_parsed_from_output_tolerates_missing_or_odd_kinds():
+    # Only cardio: no "exercises" key at all is fine.
+    parsed = parsed_from_output({"cardio": [{"activity": "run", "distance": "5k"}]})
+    assert (
+        parsed.entries == [] and parsed.cardio[0]["activity"] == "run" and parsed.bodyweight == ""
+    )
+    # Only a weigh-in, as a number.
+    parsed = parsed_from_output({"exercises": [], "cardio": [], "bodyweight": 130})
+    assert parsed.bodyweight == "130" and parsed.cardio == []
+    # Nameless cardio rows are dropped; non-list cardio is ignored.
+    parsed = parsed_from_output(
+        {"exercises": [], "cardio": [{"distance": "3 mi"}], "bodyweight": None}
+    )
+    assert parsed.is_empty
+    assert parsed_from_output({"exercises": [], "cardio": "walk"}).cardio == []
+    with pytest.raises(BadOutputError):
+        parsed_from_output({"nope": 1})

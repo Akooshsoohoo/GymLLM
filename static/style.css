@@ -454,6 +454,13 @@ tr.row-dirty td { background: var(--accent-soft) !important; }
 tr.row-deleted td { background: var(--danger-soft) !important; }
 tr.row-deleted input[type="text"] { opacity: 0.4; text-decoration: line-through; }
 
+/* --- Review page sections ---------------------------------------------- */
+.review-section { margin-top: 18px; }
+.review-section .section-head { margin-bottom: 6px; }
+.review-section .section-head h2 { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.table-empty { margin: 6px 0 0; }
+.input-short { width: 160px; }
+
 /* --- Sessions (home) --------------------------------------------------- */
 .session-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .session-card {
@@ -474,6 +481,8 @@ tr.row-deleted input[type="text"] { opacity: 0.4; text-decoration: line-through;
 .session-exercise { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .session-exercise:hover { color: var(--accent); }
 .session-detail { color: var(--muted); white-space: nowrap; }
+.session-cardio { color: var(--text); }
+.session-weight { border-top: 1px solid var(--border); padding-top: 4px; margin-top: 2px; }
 
 /* --- Filters (one row, scopes everything below it) --------------------- */
 .filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 20px; }
@@ -508,11 +517,12 @@ tr.row-deleted input[type="text"] { opacity: 0.4; text-decoration: line-through;
 }
 .group-title { font-size: 0.95rem; }
 .group .table-wrap { margin-bottom: 0; }
+.group .table-wrap + .table-wrap { margin-top: 8px; }
 /* When grouped by day the heading already says the date; show the column only while editing. */
 .log-form:not(.editing) .table.by-day .date-col { display: none; }
 
 /* --- Stats ------------------------------------------------------------- */
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 20px; }
 .stat {
     background: var(--surface);
     border: 1px solid var(--border);

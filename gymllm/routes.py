@@ -30,10 +30,11 @@ from .llm.client import (
     test_connection,
 )
 from .llm.providers import PROVIDERS, LLMConfig
-from .models import FIELDS, Workout
+from .models import BODYWEIGHT_FIELDS, CARDIO_FIELDS, FIELDS, BodyWeight, Cardio, Workout
 from .parsing import (
     build_system_prompt,
     is_iso_date,
+    normalize_cardio,
     normalize_entry,
     parse_workout,
     parsed_from_output,
@@ -42,12 +43,31 @@ from .parsing import (
 bp = Blueprint("main", __name__)
 
 ENTRY_FIELDS = ("exercise", "weight", "sets", "reps", "notes")
+CARDIO_FORM_FIELDS = ("activity", "distance", "duration", "notes")
 MAX_ENTRIES = 100
 MAX_LLM_OUTPUT = 200_000
 MAX_SITE_TAG_CALLS = 10  # per save, so tagging cannot drain the shared allowance
 RECENT_SESSIONS = 5
-_CELL_RE = re.compile(r"^cell-(\d+)-(\w+)$")
-_DELETE_RE = re.compile(r"^delete-(\d+)$")
+
+# Editable tables on the Sessions page: (model, cell name regex, delete regex,
+# editable fields, the field that may never be blanked).
+EDITABLE = (
+    (Workout, re.compile(r"^cell-(\d+)-(\w+)$"), re.compile(r"^delete-(\d+)$"), FIELDS, "exercise"),
+    (
+        Cardio,
+        re.compile(r"^cardio-(\d+)-(\w+)$"),
+        re.compile(r"^cdelete-(\d+)$"),
+        CARDIO_FIELDS,
+        "activity",
+    ),
+    (
+        BodyWeight,
+        re.compile(r"^bw-(\d+)-(\w+)$"),
+        re.compile(r"^bwdelete-(\d+)$"),
+        BODYWEIGHT_FIELDS,
+        "weight",
+    ),
+)
 
 
 def _llm_config() -> LLMConfig | None:
@@ -87,13 +107,26 @@ def _period_args() -> tuple[str, str, date]:
     return range_key, by, _client_today()
 
 
-def _all_rows(user_email: str) -> list[dict]:
-    workouts = (
-        Workout.query.filter_by(user_email=user_email)
-        .order_by(Workout.date.desc(), Workout.id.desc())
+def _all_of(model, user_email: str) -> list[dict]:
+    """Every row of `model` for the user as dicts, newest first."""
+    rows = (
+        model.query.filter_by(user_email=user_email)
+        .order_by(model.date.desc(), model.id.desc())
         .all()
     )
-    return [w.as_dict() for w in workouts]
+    return [r.as_dict() for r in rows]
+
+
+def _all_rows(user_email: str) -> list[dict]:
+    return _all_of(Workout, user_email)
+
+
+def _all_cardio(user_email: str) -> list[dict]:
+    return _all_of(Cardio, user_email)
+
+
+def _all_weights(user_email: str) -> list[dict]:
+    return _all_of(BodyWeight, user_email)
 
 
 def _site_origin() -> str:
@@ -123,21 +156,25 @@ def _sets_summary(sets: str, reps: str) -> str:
 
 
 def _recent_sessions(user_email: str, limit: int = RECENT_SESSIONS) -> list[dict]:
-    """The user's most recent workout days, newest first, each with its entries."""
-    workouts = (
-        Workout.query.filter_by(user_email=user_email)
-        .order_by(Workout.date.desc(), Workout.id.desc())
-        .all()
-    )
-    sessions: list[dict] = []
-    for w in workouts:
-        if not sessions or sessions[-1]["date"] != w.date:
-            if len(sessions) == limit:
-                break
-            sessions.append({"date": w.date, "rows": []})
-        row = w.as_dict()
-        row["sets_reps"] = _sets_summary(row["sets"], row["reps"])
-        sessions[-1]["rows"].append(row)
+    """The user's most recent days with anything logged, newest first, each with
+    its strength entries, cardio, and weigh-in."""
+    rows = _all_rows(user_email)
+    cardio = _all_cardio(user_email)
+    weights = _all_weights(user_email)
+    dates = {r["date"] for r in rows} | {c["date"] for c in cardio} | {w["date"] for w in weights}
+    sessions = []
+    for day in sorted(dates, reverse=True)[:limit]:
+        strength = [
+            dict(r, sets_reps=_sets_summary(r["sets"], r["reps"])) for r in rows if r["date"] == day
+        ]
+        sessions.append(
+            {
+                "date": day,
+                "rows": strength,
+                "cardio": [c for c in cardio if c["date"] == day],
+                "weight": next((w for w in weights if w["date"] == day), None),
+            }
+        )
     return sessions
 
 
@@ -305,6 +342,8 @@ def review():
         "review.html",
         error=None,
         entries=parsed.entries,
+        cardio=parsed.cardio,
+        bodyweight=parsed.bodyweight,
         workout_date=parsed.date or today.isoformat(),
         date_from_text=parsed.date is not None,
         **context,
@@ -342,6 +381,32 @@ def _entries_from_form(form, with_tags: bool = False) -> list[dict]:
     return entries
 
 
+def _cardio_from_form(form) -> list[dict]:
+    try:
+        count = min(int(form.get("num_cardio", 0)), MAX_ENTRIES)
+    except ValueError:
+        count = 0
+    activities = []
+    for i in range(count):
+        if form.get(f"cardio-{i}-delete"):
+            continue
+        entry = normalize_cardio({f: form.get(f"cardio-{i}-{f}", "") for f in CARDIO_FORM_FIELDS})
+        if entry["activity"]:
+            activities.append(entry)
+    return activities
+
+
+def _save_bodyweight(user_email: str, when: str, weight: str) -> BodyWeight:
+    """One reading per day: a second weigh-in on the same date replaces the first."""
+    reading = BodyWeight.query.filter_by(user_email=user_email, date=when).first()
+    if reading is None:
+        reading = BodyWeight(user_email=user_email, date=when, weight=weight, notes="")
+        db.session.add(reading)
+    else:
+        reading.weight = weight
+    return reading
+
+
 @bp.route("/confirm", methods=["POST"])
 @login_required
 def confirm():
@@ -353,7 +418,9 @@ def confirm():
     config = _llm_config()
     in_browser = config is not None and config.runs_in_browser
     entries = _entries_from_form(request.form, with_tags=in_browser)
-    if not entries:
+    cardio = _cardio_from_form(request.form)
+    bodyweight = request.form.get("bodyweight", "").strip()
+    if not (entries or cardio or bodyweight):
         flash("Nothing to save: every row was empty or deleted.", "error")
         return redirect(url_for("main.home"))
 
@@ -385,8 +452,18 @@ def confirm():
         )
         db.session.add(workout)
         saved.append(workout)
+    saved_cardio = [Cardio(user_email=user_email, date=when, **c) for c in cardio]
+    db.session.add_all(saved_cardio)
+    reading = _save_bodyweight(user_email, when, bodyweight) if bodyweight else None
     db.session.commit()
-    return render_template("saved.html", rows=[w.as_dict() for w in saved], workout_date=when)
+    return render_template(
+        "saved.html",
+        rows=[w.as_dict() for w in saved],
+        cardio=[c.as_dict() for c in saved_cardio],
+        bodyweight=reading.as_dict() if reading else None,
+        count=len(saved) + len(saved_cardio) + (1 if reading else 0),
+        workout_date=when,
+    )
 
 
 # --- Search / edit ------------------------------------------------------------
@@ -400,70 +477,80 @@ def search():
         return _apply_search_edits(user_email)
     range_key = stats.clean_range(request.args.get("range"))
     by = stats.clean_grouping(request.args.get("by"), "7d")  # entries default to per-day
-    all_rows = _all_rows(user_email)
-    rows = stats.filter_range(all_rows, _client_today(), range_key)
+    today = _client_today()
+    all_rows, all_cardio, all_weights = (
+        _all_rows(user_email),
+        _all_cardio(user_email),
+        _all_weights(user_email),
+    )
+    rows = stats.filter_range(all_rows, today, range_key)
+    cardio = stats.filter_range(all_cardio, today, range_key)
+    weights = stats.filter_range(all_weights, today, range_key)
     return render_template(
         "search.html",
-        groups=stats.group_rows(rows, by),
-        total=len(all_rows),
-        shown=len(rows),
+        groups=stats.group_rows(rows, by, cardio=cardio, weights=weights),
+        total=len(all_rows) + len(all_cardio) + len(all_weights),
+        shown=len(rows) + len(cardio) + len(weights),
         range_key=range_key,
         by=by,
-        fields=FIELDS,
     )
 
 
-def _apply_search_edits(user_email: str):
+def _collect_edits(form, cell_re, delete_re, fields) -> tuple[dict, set]:
     edits: dict[int, dict[str, str]] = {}
     deletes: set[int] = set()
-    for key, value in request.form.items():
-        m = _CELL_RE.match(key)
-        if m and m.group(2) in FIELDS:
+    for key, value in form.items():
+        m = cell_re.match(key)
+        if m and m.group(2) in fields:
             edits.setdefault(int(m.group(1)), {})[m.group(2)] = value.strip()
             continue
-        m = _DELETE_RE.match(key)
+        m = delete_re.match(key)
         if m and value:
             deletes.add(int(m.group(1)))
+    return edits, deletes
 
-    ids = set(edits) | deletes
-    if not ids:
-        return redirect(url_for("main.search"))
-    rows = Workout.query.filter(Workout.user_email == user_email, Workout.id.in_(ids)).all()
-    by_id = {w.id: w for w in rows}
 
-    bad_dates = [
-        wid
-        for wid, cells in edits.items()
-        if wid in by_id
-        and wid not in deletes
-        and "date" in cells
-        and not is_iso_date(cells["date"])
-    ]
-    if bad_dates:
-        flash("Dates must be in YYYY-MM-DD format. No changes were saved.", "error")
-        return redirect(url_for("main.search"))
+def _apply_search_edits(user_email: str):
+    keep = {k: v for k, v in request.args.items() if k in ("range", "by")}
+    pending = []  # (rows by id, edits, deletes, required field) per table
+    for model, cell_re, delete_re, fields, required in EDITABLE:
+        edits, deletes = _collect_edits(request.form, cell_re, delete_re, fields)
+        ids = set(edits) | deletes
+        if not ids:
+            continue
+        rows = model.query.filter(model.user_email == user_email, model.id.in_(ids)).all()
+        pending.append(({r.id: r for r in rows}, edits, deletes, required))
+    if not pending:
+        return redirect(url_for("main.search", **keep))
+
+    for by_id, edits, deletes, _required in pending:
+        for rid, cells in edits.items():
+            if rid in by_id and rid not in deletes and "date" in cells:
+                if not is_iso_date(cells["date"]):
+                    flash("Dates must be in YYYY-MM-DD format. No changes were saved.", "error")
+                    return redirect(url_for("main.search", **keep))
 
     deleted = changed = 0
-    for wid, workout in by_id.items():
-        if wid in deletes:
-            db.session.delete(workout)
-            deleted += 1
-            continue
-        cells = edits.get(wid, {})
-        if "exercise" in cells and not cells["exercise"]:
-            cells.pop("exercise")  # never blank the exercise name
-        dirty = False
-        for field_name, value in cells.items():
-            if (getattr(workout, field_name) or "") != value:
-                setattr(workout, field_name, value)
-                dirty = True
-        changed += dirty
+    for by_id, edits, deletes, required in pending:
+        for rid, row in by_id.items():
+            if rid in deletes:
+                db.session.delete(row)
+                deleted += 1
+                continue
+            cells = edits.get(rid, {})
+            if required in cells and not cells[required]:
+                cells.pop(required)  # never blank the name / reading itself
+            dirty = False
+            for field_name, value in cells.items():
+                if (getattr(row, field_name) or "") != value:
+                    setattr(row, field_name, value)
+                    dirty = True
+            changed += dirty
     db.session.commit()
     if deleted or changed:
         flash(f"Saved: {changed} updated, {deleted} deleted.", "ok")
     else:
         flash("No changes to save.", "info")
-    keep = {k: v for k, v in request.args.items() if k in ("range", "by")}
     return redirect(url_for("main.search", **keep))
 
 
@@ -474,10 +561,17 @@ def _apply_search_edits(user_email: str):
 @login_required
 def progress():
     range_key, by, today = _period_args()
-    all_rows = _all_rows(current_user_email())
-    data = stats.overview(all_rows, today, range_key, by)
+    user_email = current_user_email()
+    all_rows = _all_rows(user_email)
+    cardio = _all_cardio(user_email)
+    weights = _all_weights(user_email)
+    data = stats.overview(all_rows, today, range_key, by, cardio=cardio, weights=weights)
     return render_template(
-        "progress.html", data=data, total=len(all_rows), range_key=range_key, by=by
+        "progress.html",
+        data=data,
+        total=len(all_rows) + len(cardio) + len(weights),
+        range_key=range_key,
+        by=by,
     )
 
 
@@ -485,8 +579,12 @@ def progress():
 @login_required
 def exercises():
     range_key = stats.clean_range(request.args.get("range"))
-    all_rows = _all_rows(current_user_email())
-    rows = stats.filter_range(all_rows, _client_today(), range_key)
+    user_email = current_user_email()
+    today = _client_today()
+    all_rows = _all_rows(user_email)
+    rows = stats.filter_range(all_rows, today, range_key)
+    all_cardio = _all_cardio(user_email)
+    cardio = stats.cardio_summary(stats.filter_range(all_cardio, today, range_key))
     per_ex: dict[str, list[dict]] = {}
     for r in rows:
         per_ex.setdefault(r["exercise"], []).append(r)
@@ -508,7 +606,11 @@ def exercises():
         )
     summary.sort(key=lambda s: (s["last"], s["exercise"]), reverse=True)
     return render_template(
-        "exercises.html", summary=summary, total=len(all_rows), range_key=range_key
+        "exercises.html",
+        summary=summary,
+        cardio=cardio,
+        total=len(all_rows) + len(all_cardio),
+        range_key=range_key,
     )
 
 

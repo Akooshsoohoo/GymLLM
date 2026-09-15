@@ -9,9 +9,10 @@
 </div>
 {% else %}
 {% include "_range_filter.html" %}
-{% if not summary %}
+{% if not summary and not cardio %}
 {% include "_empty_range.html" %}
 {% else %}
+{% if summary %}
 <div class="toolbar toolbar-split">
     <div class="toolbar-group">
         <input type="search" id="exercise-query" class="input input-filter" autocomplete="off"
@@ -46,6 +47,36 @@
     </tbody>
 </table>
 </div>
+{% endif %}
+{% if cardio %}
+<section class="section">
+    <div class="section-head"><h2>Cardio</h2></div>
+    <div class="table-wrap card card-flush">
+    <table class="table sortable">
+        <thead>
+        <tr>
+            <th data-sort="text">Activity</th>
+            <th data-sort="number" class="num">Times</th>
+            <th data-sort="number">Distance</th>
+            <th data-sort="text">Time</th>
+            <th data-sort="date">Last</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for a in cardio %}
+        <tr>
+            <td>{{ a.activity }}</td>
+            <td class="num">{{ a.count }}</td>
+            <td>{{ a.distance_text or '—' }}</td>
+            <td>{{ a.minutes_text or '—' }}</td>
+            <td class="muted">{{ a.last|nice_date }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+{% endif %}
 {% endif %}
 {% endif %}
 {% endblock %}

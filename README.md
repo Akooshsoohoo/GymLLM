@@ -2,10 +2,12 @@
 
 Log workouts in plain English. GymLLM sends your text to the LLM of your choice
 (OpenAI, Anthropic, Gemini, Groq, OpenRouter, a local Ollama or LM Studio, or any
-OpenAI-compatible server), shows you the parsed sets and reps to review and edit,
-then saves them to your personal log. A Progress section charts your training
-over any range (7 days to all time), grouped by day, week or month, with
-per-exercise trends and personal records.
+OpenAI-compatible server), shows you what it understood to review and edit, then
+saves each piece where it belongs: lifts with sets and reps, cardio with distance
+and time, and your body weight. "Today I walked 3 miles, did some pull ups, curled
+the 20 lb dumbbells for a few sets, and weighed in at 130 lbs" is one valid entry.
+A Progress section charts all of it over any range (7 days to all time), grouped
+by day, week or month, with per-exercise trends and personal records.
 
 Sign-in is via Google. Each user only ever sees their own entries.
 
@@ -23,14 +25,18 @@ with nothing to configure, which is what makes the app usable from a phone.
 3. On **Log**, type something like
    `yesterday: bench 185 for 5x5, lat pulldowns 3x10, felt strong`. Your most
    recent sessions are listed underneath.
-4. Review the parsed table, fix anything, adjust the date, and save.
+4. Review what was parsed (exercises, cardio, body weight), fix anything, adjust
+   the date, and save. Cardio keeps distance and duration as you wrote them; a
+   body-weight reading replaces any earlier one for the same day.
 5. **Progress** has three tabs, all scoped by the same range picker (7d, 30d,
-   90d, 1y, all time). *Overview* shows sessions, volume and streak, a chart of
-   exercises logged per day/week/month, a training-day calendar, muscle-group
+   90d, 1y, all time). *Overview* shows sessions, volume, streak, cardio totals
+   and current body weight, a chart of exercises logged per day/week/month, body
+   weight and cardio distance charts, a training-day calendar, muscle-group
    split, most-trained exercises and recent personal records. *Sessions* lists
-   every entry grouped by day, week or month; hit **Edit** to change cells or
-   delete rows in place. *Exercises* lists each exercise with its best weight and
-   a trend sparkline, and opens a page with top-weight and volume charts.
+   every entry (lifts, cardio, weigh-ins) grouped by day, week or month; hit
+   **Edit** to change cells or delete rows in place. *Exercises* lists each
+   exercise with its best weight and a trend sparkline (each opens a page with
+   top-weight and volume charts), plus a cardio activity summary.
 
 ## Running locally
 
@@ -149,7 +155,7 @@ gymllm/
   exercises.py            canonical exercise list, matching, LLM tag fallback
   llm/providers.py        provider registry + per-browser LLMConfig
   llm/client.py           OpenAI-compatible and Anthropic adapters, error mapping
-  models.py               Workout table
+  models.py               Workout, Cardio, BodyWeight tables
 data/taggedExerciseList.csv   canonical names and tags (edit to customise)
 templates/, static/       Jinja templates, CSS, and the small front-end script
 tests/                    pytest suite

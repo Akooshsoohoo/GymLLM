@@ -6,7 +6,7 @@ from gymllm import create_app
 from gymllm.exercises import TAG_SYSTEM
 from gymllm.extensions import db
 from gymllm.llm.client import AuthError
-from gymllm.models import Workout
+from gymllm.models import BodyWeight, Cardio, Workout
 from tests.conftest import OTHER, USER, base_test_config
 
 OLLAMA_SESSION = {"provider": "ollama", "model": "llama3.2", "api_key": "", "base_url": ""}
@@ -662,3 +662,204 @@ def test_quota_consume_handles_insert_race(site_app):
         finally:
             db.session.add = real_add
         assert quota.used("racer@example.com") == 1
+
+
+# --- cardio and body weight ---------------------------------------------------
+
+MIXED = {
+    "date": None,
+    "exercises": [
+        {"exercise": "pull up", "weight": "bodyweight", "sets": None, "reps": None, "notes": ""},
+        {
+            "exercise": "dumbbell bicep curl",
+            "weight": "20 lb",
+            "sets": 3,
+            "reps": [10, 10, 10],
+            "notes": "",
+        },
+    ],
+    "cardio": [{"activity": "walking", "distance": "3 miles", "duration": "", "notes": ""}],
+    "bodyweight": "130 lbs",
+}
+
+
+def test_review_shows_cardio_and_bodyweight(logged_in, fake_llm):
+    fake_llm.queue(MIXED)
+    r = logged_in.post(
+        "/review",
+        data={
+            "workout": "walked 3 miles, pullups, curled 20 lb, weighed 130",
+            "client_date": "2026-09-14",
+        },
+    )
+    body = r.data.decode()
+    assert r.status_code == 200
+    assert 'name="cardio-0-activity" value="walking"' in body
+    assert 'name="cardio-0-distance" value="3 miles"' in body
+    assert 'name="bodyweight" value="130 lbs"' in body
+    assert 'name="entry-1-exercise" value="dumbbell bicep curl"' in body
+
+
+def test_review_with_only_a_weigh_in_is_saveable(logged_in, fake_llm):
+    fake_llm.queue({"exercises": [], "cardio": [], "bodyweight": "82 kg"})
+    body = logged_in.post("/review", data={"workout": "weighed in at 82 kg"}).data.decode()
+    assert 'name="bodyweight" value="82 kg"' in body
+    assert "No lifts in this text" in body and "No cardio in this text" in body
+    assert 'class="btn btn-primary" disabled' not in body
+
+
+def test_confirm_routes_each_kind_to_its_table(logged_in, app):
+    data = {
+        "date": "2026-09-13",
+        "num_entries": "1",
+        "entry-0-exercise": "pull up",
+        "entry-0-weight": "bodyweight",
+        "num_cardio": "2",
+        "cardio-0-activity": "Walking",
+        "cardio-0-distance": "3 miles",
+        "cardio-0-duration": "45 min",
+        "cardio-0-notes": "easy",
+        "cardio-1-activity": "deleted run",
+        "cardio-1-delete": "1",
+        "bodyweight": "130 lbs",
+    }
+    r = logged_in.post("/confirm", data=data)
+    body = r.data.decode()
+    assert r.status_code == 200 and "Logged 3 entries" in body
+    assert "walking" in body and "3 miles" in body and "130 lbs" in body
+    with app.app_context():
+        assert Workout.query.count() == 1
+        c = Cardio.query.one()
+        assert (c.user_email, c.date, c.activity, c.distance, c.duration, c.notes) == (
+            USER,
+            "2026-09-13",
+            "walking",
+            "3 miles",
+            "45 min",
+            "easy",
+        )
+        w = BodyWeight.query.one()
+        assert (w.user_email, w.date, w.weight) == (USER, "2026-09-13", "130 lbs")
+
+    # A second weigh-in on the same day replaces the first.
+    r = logged_in.post("/confirm", data={"date": "2026-09-13", "bodyweight": "129 lbs"})
+    assert r.status_code == 200 and b"Logged 1 entry" in r.data
+    with app.app_context():
+        assert [w.weight for w in BodyWeight.query.all()] == ["129 lbs"]
+
+
+def test_confirm_with_nothing_at_all_redirects(logged_in, app):
+    r = logged_in.post(
+        "/confirm", data={"date": "2026-09-13", "num_cardio": "1", "cardio-0-activity": ""}
+    )
+    assert r.status_code == 302
+    with app.app_context():
+        assert Cardio.query.count() == 0
+
+
+@pytest.fixture
+def add_cardio(app):
+    def _add(**kwargs):
+        defaults = {
+            "user_email": USER,
+            "date": "2026-01-10",
+            "activity": "walking",
+            "distance": "3 miles",
+            "duration": "45 min",
+            "notes": "",
+        }
+        defaults.update(kwargs)
+        with app.app_context():
+            c = Cardio(**defaults)
+            db.session.add(c)
+            db.session.commit()
+            return c.id
+
+    return _add
+
+
+@pytest.fixture
+def add_weight(app):
+    def _add(**kwargs):
+        defaults = {"user_email": USER, "date": "2026-01-10", "weight": "130 lbs", "notes": ""}
+        defaults.update(kwargs)
+        with app.app_context():
+            w = BodyWeight(**defaults)
+            db.session.add(w)
+            db.session.commit()
+            return w.id
+
+    return _add
+
+
+def test_home_cards_show_cardio_and_weight(logged_in, add_workout, add_cardio, add_weight):
+    add_workout(date="2026-02-01", exercise="bench")
+    add_cardio(date="2026-02-01", activity="walking", distance="3 miles")
+    add_cardio(date="2026-02-03", activity="swimming", distance="20 laps")  # cardio-only day
+    add_weight(date="2026-02-01", weight="130 lbs")
+    body = logged_in.get("/").data.decode()
+    assert "walking" in body and "3 miles" in body and "130 lbs" in body
+    assert "swimming" in body and body.index("swimming") < body.index("bench")
+
+
+def test_sessions_page_lists_and_edits_cardio_and_weights(
+    logged_in, app, add_workout, add_cardio, add_weight
+):
+    add_workout(date="2026-03-10", exercise="bench")
+    c = add_cardio(date="2026-03-10", activity="walking", distance="3 miles")
+    theirs = add_cardio(date="2026-03-10", activity="not mine", user_email=OTHER)
+    w = add_weight(date="2026-03-12", weight="130 lbs")
+
+    body = logged_in.get("/search?today=2026-03-15").data.decode()
+    assert f'name="cardio-{c}-distance" value="3 miles"' in body
+    assert f'name="bw-{w}-weight" value="130 lbs"' in body
+    assert "not mine" not in body and "3 rows" in body
+    assert "1 cardio · 3 mi" in body and "weighed 130 lbs" in body
+
+    r = logged_in.post(
+        "/search",
+        data={
+            f"cardio-{c}-distance": "4 miles",
+            f"cardio-{c}-activity": "",
+            f"bwdelete-{w}": "1",
+            f"cdelete-{theirs}": "1",
+        },
+        follow_redirects=True,
+    )
+    assert b"1 updated, 1 deleted" in r.data
+    with app.app_context():
+        assert (
+            Cardio.query.get(c).distance == "4 miles" and Cardio.query.get(c).activity == "walking"
+        )
+        assert BodyWeight.query.get(w) is None
+        assert Cardio.query.get(theirs) is not None
+
+    # A bad date on any table blocks every change.
+    r = logged_in.post(
+        "/search",
+        data={f"cardio-{c}-date": "soon", f"cardio-{c}-distance": "9 miles"},
+        follow_redirects=True,
+    )
+    assert b"YYYY-MM-DD" in r.data
+    with app.app_context():
+        assert Cardio.query.get(c).distance == "4 miles"
+
+
+def test_progress_and_exercises_show_cardio_and_weight(logged_in, add_cardio, add_weight):
+    add_cardio(date="2026-03-12", activity="walking", distance="3 miles", duration="45 min")
+    add_cardio(date="2026-03-13", activity="running", distance="2 mi", duration="20 min")
+    add_weight(date="2026-03-09", weight="132 lbs")
+    add_weight(date="2026-03-14", weight="130 lbs")
+
+    body = logged_in.get("/progress?range=7d&today=2026-03-15").data.decode()
+    assert "Nothing logged in this range" not in body
+    assert "5 mi" in body and "2 activities" in body and "1 h 5 min" in body
+    assert "130 lbs" in body and "-2 lbs since" in body
+    assert (
+        'aria-label="Body weight over time"' in body
+        and 'aria-label="Cardio distance per day"' in body
+    )
+    assert 'aria-label="Exercises logged per day"' not in body  # no lifts in range
+
+    body = logged_in.get("/exercises?range=7d&today=2026-03-15").data.decode()
+    assert "walking" in body and "running" in body and "3 mi" in body and "45 min" in body
