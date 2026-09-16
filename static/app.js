@@ -7,11 +7,22 @@
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
   var csrfToken = function () { var m = $('meta[name="csrf-token"]'); return m ? m.content : ""; };
 
-  // Local date for the log/review forms, so "today" is the user's day, not the server's.
-  $$(".client-date").forEach(function (el) {
+  // Local date, so "today" is the user's day, not the server's.
+  function localDate() {
     var d = new Date();
     var pad = function (n) { return (n < 10 ? "0" : "") + n; };
-    el.value = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+  $$(".client-date").forEach(function (el) { el.value = localDate(); });
+
+  // ---------------------------------------------------------------- Day page navigation
+  $$("a[data-today-link]").forEach(function (a) {
+    a.href = a.href.replace(/\d{4}-\d{2}-\d{2}\/?$/, localDate());
+  });
+  $$("input[data-day-jump]").forEach(function (input) {
+    input.addEventListener("change", function () {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(input.value)) window.location.href = input.dataset.dayBase + input.value;
+    });
   });
 
   // ---------------------------------------------------------------- Browser-side LLM
@@ -676,15 +687,25 @@
         t.show(when, [[d.count === 1 ? "exercise logged" : "exercises logged", String(d.count)]],
           left + Math.floor(i / 7) * step + cell, top + (i % 7) * step);
       };
-      svg.addEventListener("pointermove", function (ev) {
+      var cellAt = function (ev) {
         var r = svg.getBoundingClientRect();
         var sx = w / r.width, x = (ev.clientX - r.left) * sx - left, y = (ev.clientY - r.top) * sx - top;
         var col = Math.floor(x / step), row = Math.floor(y / step);
         var i = col * 7 + row;
-        if (x < 0 || y < 0 || row > 6 || i >= days.length) i = -1;
+        return (x < 0 || y < 0 || row > 6 || i >= days.length) ? -1 : i;
+      };
+      svg.addEventListener("pointermove", function (ev) {
+        var i = cellAt(ev);
         if (i !== active) set(i);
       });
       svg.addEventListener("pointerleave", function () { set(-1); });
+      if (svg.dataset.dayBase) {
+        svg.style.cursor = "pointer";
+        svg.addEventListener("click", function (ev) {
+          var i = cellAt(ev);
+          if (i >= 0) window.location.href = svg.dataset.dayBase + days[i].date;
+        });
+      }
     }
 
     function spark(svg, values) {
@@ -715,6 +736,162 @@
     }
     return { renderAll: renderAll };
   })();
+  // ---------------------------------------------------------------- Share a day as an image
+  // The button carries a JSON payload the server built without the weigh-in, so the
+  // card can only ever show lifts and cardio. Drawn on a canvas, then handed to the
+  // phone's share sheet (Web Share API with files) or downloaded on desktop.
+  var shareBtn = $("#share-day");
+  if (shareBtn) {
+    var shareData = null;
+    try { shareData = JSON.parse(shareBtn.dataset.share); } catch (e) { shareData = null; }
+    var shareError = function (msg) {
+      var box = $("#share-error");
+      if (box) { box.textContent = msg; box.hidden = false; } else { window.alert(msg); }
+    };
+    var FONT = '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif';
+    var C = { bg: "#0f1012", surface: "#16171a", border: "#27292f", text: "#ececf1", muted: "#8b8e99", accent: "#4fd18b", accentFg: "#08150e" };
+    var fmtVolume = function (n) {
+      if (!n) return "—";
+      return n >= 100000 ? Math.round(n / 1000) + "k" : Math.round(n).toLocaleString();
+    };
+    var ellipsis = function (ctx, text, max) {
+      if (ctx.measureText(text).width <= max) return text;
+      while (text.length > 1 && ctx.measureText(text + "…").width > max) text = text.slice(0, -1);
+      return text.replace(/\s+$/, "") + "…";
+    };
+    var roundRect = function (ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    };
+
+    // 1080 wide; square for a short day, growing to 4:5 (1080x1350) for a long one so
+    // it fits a story, a feed post and a message bubble without a big empty bottom.
+    var renderShareCard = function (data) {
+      var W = 1080, P = 72, MAX_H = 1350, MIN_H = 1080;
+      var lines = [];
+      (data.lifts || []).forEach(function (l) {
+        var detail = [l.weight, l.sets_reps].filter(Boolean).join(" · ");
+        lines.push({ name: l.exercise, detail: detail, pr: !!l.pr });
+      });
+      (data.cardio || []).forEach(function (c) {
+        var detail = [c.distance, c.duration].filter(Boolean).join(" · ");
+        lines.push({ name: c.activity, detail: detail });
+      });
+      var gap = 20, tw = (W - 2 * P - gap) / 2, th = 150, ty = 310;
+      var top = ty + 2 * th + gap + 64, lineH = 58, room = Math.floor((MAX_H - 90 - top) / lineH);
+      var shown = lines.length > room ? lines.slice(0, room - 1) : lines;
+      var extra = shown.length < lines.length ? 1 : 0;
+      var H = Math.max(MIN_H, Math.min(MAX_H, top + 30 + (shown.length + extra) * lineH + 60));
+
+      var canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = C.accent; ctx.fillRect(0, 0, W, 12);
+
+      // Brand + date (the date shrinks to fit, then truncates)
+      ctx.fillStyle = C.accent; roundRect(ctx, P, 76, 22, 22, 6); ctx.fill();
+      ctx.fillStyle = C.text; ctx.font = "600 34px " + FONT; ctx.textBaseline = "middle";
+      ctx.fillText("GymLLM", P + 36, 87);
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = C.muted; ctx.font = "500 30px " + FONT;
+      ctx.fillText("WORKOUT", P, 180);
+      ctx.fillStyle = C.text;
+      var label = data.label || data.date, size = 64;
+      ctx.font = "600 " + size + "px " + FONT;
+      while (size > 44 && ctx.measureText(label).width > W - 2 * P) { size -= 4; ctx.font = "600 " + size + "px " + FONT; }
+      ctx.fillText(ellipsis(ctx, label, W - 2 * P), P, 250);
+
+      // Stat tiles, 2 x 2
+      var st = data.stats || {};
+      var tiles = [
+        ["Exercises", String(st.exercises || 0)],
+        ["Sets", String(st.sets || 0)],
+        ["Volume", fmtVolume(st.volume)],
+        st.cardio ? ["Cardio", st.cardio + (st.minutes ? " · " + st.minutes : "")] : ["Reps", String(st.reps || 0)]
+      ];
+      tiles.forEach(function (t, i) {
+        var x = P + (i % 2) * (tw + gap), y = ty + Math.floor(i / 2) * (th + gap);
+        ctx.fillStyle = C.surface; roundRect(ctx, x, y, tw, th, 18); ctx.fill();
+        ctx.strokeStyle = C.border; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = C.muted; ctx.font = "500 26px " + FONT; ctx.fillText(t[0], x + 28, y + 52);
+        ctx.fillStyle = C.text;
+        var vsize = t[1].length > 12 ? 36 : t[1].length > 8 ? 44 : 56;
+        ctx.font = "600 " + vsize + "px " + FONT;
+        ctx.fillText(ellipsis(ctx, t[1], tw - 56), x + 28, y + 114);
+      });
+
+      // Lifts and cardio, one line each
+      ctx.fillStyle = C.muted; ctx.font = "500 24px " + FONT;
+      ctx.fillText(lines.length === 1 ? "1 ENTRY" : lines.length + " ENTRIES", P, top - 20);
+      shown.forEach(function (ln, i) {
+        var y = top + 30 + i * lineH;
+        ctx.strokeStyle = C.border; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(P, y + 22); ctx.lineTo(W - P, y + 22); ctx.stroke();
+        ctx.font = "500 30px " + FONT;
+        var detailW = ctx.measureText(ln.detail).width;
+        ctx.fillStyle = C.muted; ctx.textAlign = "right"; ctx.fillText(ln.detail, W - P, y); ctx.textAlign = "left";
+        var nameMax = W - 2 * P - detailW - 40;
+        ctx.fillStyle = C.text; ctx.font = "500 30px " + FONT;
+        var name = ellipsis(ctx, ln.name, nameMax - (ln.pr ? 70 : 0));
+        ctx.fillText(name, P, y);
+        if (ln.pr) {
+          var nx = P + ctx.measureText(name).width + 14;
+          ctx.fillStyle = C.accent; roundRect(ctx, nx, y - 24, 54, 32, 8); ctx.fill();
+          ctx.fillStyle = C.accentFg; ctx.font = "600 20px " + FONT; ctx.fillText("PR", nx + 13, y - 1);
+        }
+      });
+      if (shown.length < lines.length) {
+        ctx.fillStyle = C.muted; ctx.font = "500 28px " + FONT;
+        ctx.fillText("+ " + (lines.length - shown.length) + " more", P, top + 30 + shown.length * lineH);
+      }
+      return canvas;
+    };
+
+    var toBlob = function (canvas) {
+      return new Promise(function (resolve, reject) {
+        canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error("Could not create the image.")); }, "image/png");
+      });
+    };
+    // Render as soon as the font is in, so the click can share right away (iOS drops the
+    // user activation if we do slow work first).
+    var ready = (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve())
+      .then(function () { return document.fonts && document.fonts.load ? document.fonts.load('600 64px "Inter"') : null; })
+      .catch(function () { /* fall back to the system font */ })
+      .then(function () { return shareData ? toBlob(renderShareCard(shareData)) : Promise.reject(new Error("Nothing to share.")); });
+
+    // Desktop (or a share sheet that refused): save the file and show it on the page.
+    var download = function (blob, name) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      var preview = $("#share-preview");
+      if (preview) { var img = $("img", preview); if (img) img.src = url; preview.hidden = false; }
+    };
+    shareBtn.addEventListener("click", function () {
+      shareBtn.disabled = true;
+      var idle = shareBtn.textContent;
+      shareBtn.textContent = "Sharing…";
+      var errBox = $("#share-error"); if (errBox) errBox.hidden = true;
+      var done = function () { shareBtn.disabled = false; shareBtn.textContent = idle; };
+      ready.then(function (blob) {
+        var name = "gymllm-" + shareData.date + ".png";
+        var file = new File([blob], name, { type: "image/png" });
+        if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+          return navigator.share({ files: [file], title: "Workout " + shareData.date }).catch(function (err) {
+            if (err && err.name === "AbortError") return; // user closed the sheet
+            download(blob, name); // the sheet would not open here; a file is the next best thing
+          });
+        }
+        download(blob, name);
+      }).then(done, function (err) {
+        done();
+        shareError((err && err.message) || "Could not share this workout.");
+      });
+    });
+  }
+
   if ($("svg[data-chart]")) {
     charts.renderAll();
     var resizeTimer = null, lastWidth = window.innerWidth;

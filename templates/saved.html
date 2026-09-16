@@ -45,6 +45,7 @@
 {% endif %}
 <div class="toolbar">
     <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log another</a>
+    <a href="{{ url_for('main.day', when=workout_date) }}" class="btn btn-ghost">View this day</a>
     <a href="{{ url_for('main.search') }}" class="btn btn-ghost">View sessions</a>
 </div>
 {% endblock %}

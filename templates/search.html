@@ -29,9 +29,9 @@
         </div>
     </div>
     {% for g in groups %}
-    <section class="group" data-group="{{ g.key }}">
+    <section class="group" data-group="{{ g.key }}" id="day-{{ g.key }}">
         <header class="group-head">
-            <h2 class="group-title">{{ g.label }}</h2>
+            <h2 class="group-title">{% if by == 'day' and g.key|length == 10 %}<a href="{{ url_for('main.day', when=g.key) }}" class="cell-link">{{ g.label }}</a>{% else %}{{ g.label }}{% endif %}</h2>
             <span class="muted small group-summary">
                 {%- set parts = [] -%}
                 {%- if by != 'day' %}{% set _ = parts.append(g.sessions ~ ' session' ~ ('' if g.sessions == 1 else 's')) %}{% endif -%}

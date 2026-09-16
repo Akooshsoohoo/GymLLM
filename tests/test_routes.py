@@ -34,6 +34,7 @@ def test_healthz(client):
         ("get", "/settings"),
         ("get", "/exercises"),
         ("get", "/progress"),
+        ("get", "/day/2026-01-10"),
         ("post", "/review"),
         ("post", "/confirm"),
         ("post", "/search"),
@@ -72,7 +73,7 @@ def test_home_lists_recent_sessions(logged_in, add_workout):
     assert r.status_code == 200
     assert body.index("newer lift") < body.index("older lift")
     assert "second newer lift" in body and "not mine" not in body
-    assert body.count("2026-02-01") == 1  # one session heading per date
+    assert body.count('datetime="2026-02-01"') == 1  # one session heading per date
 
 
 @pytest.mark.parametrize(
@@ -872,3 +873,95 @@ def test_progress_and_exercises_show_cardio_and_weight(logged_in, add_cardio, ad
 
     body = logged_in.get("/exercises?range=7d&today=2026-03-15").data.decode()
     assert "walking" in body and "running" in body and "3 mi" in body and "45 min" in body
+
+
+# --- day page -----------------------------------------------------------------
+
+
+def test_day_page_requires_iso_date(logged_in):
+    assert logged_in.get("/day/13-01-2026").status_code == 404
+    assert logged_in.get("/day/2026-13-01").status_code == 404
+
+
+def test_day_page_shows_one_day_with_neighbours(logged_in, add_workout, add_cardio, add_weight):
+    add_workout(date="2026-03-01", exercise="squat", weight="200 lbs")
+    add_workout(date="2026-03-10", exercise="barbell bench press", weight="185 lbs")
+    add_workout(date="2026-03-10", exercise="pull up", weight="bodyweight", sets="", reps="10, 8")
+    add_cardio(date="2026-03-10", activity="walking", distance="3 miles", duration="45 min")
+    add_weight(date="2026-03-10", weight="130 lbs")
+    add_workout(date="2026-03-12", exercise="row")
+    add_workout(date="2026-03-10", exercise="not mine", user_email=OTHER)
+
+    r = logged_in.get("/day/2026-03-10")
+    body = r.data.decode()
+    assert r.status_code == 200 and "Tue 10 Mar 2026" in body
+    assert "barbell bench press" in body and "pull up" in body and "walking" in body
+    assert "not mine" not in body
+    assert "130 lbs" in body and "not included when you share" in body
+    assert 'href="/day/2026-03-01"' in body and 'href="/day/2026-03-12"' in body
+    assert '<div class="stat-value">2</div>' in body  # exercises
+    assert '<div class="stat-value">7</div>' in body  # 5 + 2 sets
+    assert "4,625" in body  # 185 x 25
+    assert "3 mi" in body and "45 min" in body
+    assert 'href="/search?range=all&amp;by=day#day-2026-03-10"' in body
+
+
+def test_day_page_share_payload_excludes_body_weight(
+    logged_in, add_workout, add_cardio, add_weight
+):
+    add_workout(date="2026-03-10", exercise="barbell bench press", weight="185 lbs")
+    add_cardio(date="2026-03-10", activity="walking", distance="3 miles")
+    add_weight(date="2026-03-10", weight="130 lbs")
+    body = logged_in.get("/day/2026-03-10").data.decode()
+    start = body.index("data-share='") + len("data-share='")
+    share = json.loads(body[start : body.index("'", start)].replace("&#39;", "'"))
+    assert share["date"] == "2026-03-10" and share["label"] == "Tuesday 10 March 2026"
+    assert share["lifts"] == [
+        {"exercise": "barbell bench press", "weight": "185 lbs", "sets_reps": "5×5", "pr": False}
+    ]
+    assert share["cardio"] == [{"activity": "walking", "distance": "3 miles", "duration": "45 min"}]
+    assert share["stats"]["sets"] == 5 and share["stats"]["cardio"] == "3 mi"
+    assert "130" not in json.dumps(share)
+    assert set(share) == {"date", "label", "stats", "lifts", "cardio"}
+
+
+def test_day_page_marks_personal_records(logged_in, add_workout):
+    add_workout(date="2026-03-01", weight="185 lbs")
+    add_workout(date="2026-03-10", weight="190 lbs")
+    add_workout(date="2026-03-10", exercise="pull up", weight="bodyweight")
+    body = logged_in.get("/day/2026-03-10").data.decode()
+    assert body.count('class="chip chip-pr"') == 1
+    assert '"pr": true' in body
+    assert 'class="chip chip-pr"' not in logged_in.get("/day/2026-03-01").data.decode()
+
+
+def test_day_page_empty_states(logged_in, add_workout):
+    r = logged_in.get("/day/2026-03-10")
+    body = r.data.decode()
+    assert r.status_code == 200 and "Nothing logged on Tue 10 Mar 2026" in body
+    assert "Nothing logged yet at all" in body and "share-day" not in body
+    add_workout(date="2026-03-12")
+    body = logged_in.get("/day/2026-03-10").data.decode()
+    assert "Nothing logged on" in body and "Nothing logged yet at all" not in body
+    assert 'href="/day/2026-03-12"' in body  # next logged day is still reachable
+    # A cardio-only day still offers the share button; a weigh-in-only day does not.
+
+
+def test_day_page_share_needs_lifts_or_cardio(logged_in, add_weight, add_cardio):
+    add_weight(date="2026-03-10", weight="130 lbs")
+    assert "share-day" not in logged_in.get("/day/2026-03-10").data.decode()
+    add_cardio(date="2026-03-10")
+    assert "share-day" in logged_in.get("/day/2026-03-10").data.decode()
+
+
+def test_dates_link_to_the_day_page(logged_in, add_workout):
+    add_workout(date="2026-03-10")
+    assert 'href="/day/2026-03-10"' in logged_in.get("/").data.decode()
+    body = logged_in.get("/search?today=2026-03-15").data.decode()
+    assert 'href="/day/2026-03-10"' in body and 'id="day-2026-03-10"' in body
+    body = logged_in.get("/search?by=week&today=2026-03-15").data.decode()
+    assert 'href="/day/' not in body and 'id="day-2026-03-09"' in body
+    assert 'href="/day/2026-03-10"' in logged_in.get("/exercise/barbell bench press").data.decode()
+    assert 'data-day-base="/day/"' in logged_in.get("/progress").data.decode()
+    r = logged_in.post("/confirm", data={"date": "2026-03-11", "bodyweight": "130 lbs"})
+    assert 'href="/day/2026-03-11"' in r.data.decode()

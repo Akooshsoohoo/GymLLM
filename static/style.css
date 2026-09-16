@@ -618,6 +618,44 @@ tr.row-deleted input[type="text"] { opacity: 0.4; text-decoration: line-through;
 .spark .point { fill: var(--accent); }
 .spark-cell { width: 110px; }
 
+/* --- Day page ---------------------------------------------------------- */
+.day-head { align-items: center; }
+.day-nav { display: flex; align-items: center; gap: 14px; min-width: 0; flex-wrap: wrap; }
+.day-title { font-size: 1.35rem; white-space: nowrap; }
+.day-step {
+    color: var(--muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.day-step:hover { color: var(--text); text-decoration: none; }
+.day-step.is-disabled { color: var(--faint); }
+.day-jump { flex-wrap: nowrap; }
+.day-picker { width: 160px; min-height: 32px; padding: 4px 8px; font-size: 0.875rem; }
+.chip-pr {
+    margin-left: 8px;
+    padding: 1px 7px;
+    font-size: 0.7rem;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+    font-weight: 600;
+}
+.session-date-link { color: var(--text); }
+.session-date-link:hover { color: var(--accent); text-decoration: none; }
+.share-preview { margin: 16px 0 0; }
+.share-preview img {
+    display: block;
+    width: 100%;
+    max-width: 360px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 8px;
+}
+
 /* --- Welcome ----------------------------------------------------------- */
 body.welcome {
     display: flex;
@@ -660,4 +698,10 @@ body.welcome {
     .hbars li { grid-template-columns: 90px 1fr 36px; }
     .segmented a { padding: 5px 9px; }
     .login-box { padding: 32px 20px; }
+    .day-nav { width: 100%; justify-content: space-between; gap: 8px; }
+    .day-title { order: -1; width: 100%; font-size: 1.25rem; }
+    .day-step-label { display: none; }
+    .day-step { font-size: 1rem; padding: 4px 0; }
+    .day-jump { width: 100%; }
+    .day-jump .day-picker { flex: 1; width: auto; }
 }

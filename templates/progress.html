@@ -122,7 +122,8 @@
         <span class="muted small heat-legend" aria-hidden="true">less <i class="h0"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i> more</span>
     </div>
     <div class="heat-scroll">
-        <svg class="chart heatmap" data-chart="heatmap" data-series='{{ data.heatmap|tojson }}' role="img" aria-label="Calendar of training days"></svg>
+        <svg class="chart heatmap" data-chart="heatmap" data-series='{{ data.heatmap|tojson }}'
+             data-day-base="{{ url_for('main.day', when='0000-00-00')|replace('0000-00-00', '') }}" role="img" aria-label="Calendar of training days; click a day to open it"></svg>
     </div>
 </section>
 

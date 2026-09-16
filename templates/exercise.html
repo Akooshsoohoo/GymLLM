@@ -49,7 +49,7 @@
     <tbody>
     {% for r in rows %}
     <tr>
-        <td>{{ r.date }}</td><td>{{ r.weight }}</td><td class="num">{{ r.sets }}</td><td>{{ r.reps }}</td><td>{{ r.notes }}</td>
+        <td><a href="{{ url_for('main.day', when=r.date) }}" class="cell-link">{{ r.date }}</a></td><td>{{ r.weight }}</td><td class="num">{{ r.sets }}</td><td>{{ r.reps }}</td><td>{{ r.notes }}</td>
     </tr>
     {% endfor %}
     </tbody>

@@ -199,6 +199,86 @@ def home():
     )
 
 
+# --- One day ------------------------------------------------------------------
+
+
+def _neighbours(dates: set[str], when: str) -> tuple[str | None, str | None]:
+    """The nearest logged dates before and after `when` (either may be None)."""
+    before = [d for d in dates if d < when]
+    after = [d for d in dates if d > when]
+    return (max(before) if before else None, min(after) if after else None)
+
+
+@bp.route("/day/<when>")
+@login_required
+def day(when: str):
+    if not is_iso_date(when):
+        abort(404)
+    user_email = current_user_email()
+    all_rows, all_cardio, all_weights = (
+        _all_rows(user_email),
+        _all_cardio(user_email),
+        _all_weights(user_email),
+    )
+    dates = {x["date"] for x in all_rows + all_cardio + all_weights}
+    prev, nxt = _neighbours(dates, when)
+
+    prs = {
+        r["id"]
+        for r in stats.personal_records(all_rows, date.fromisoformat(when))
+        if r["date"] == when
+    }
+    rows = [
+        dict(r, sets_reps=_sets_summary(r["sets"], r["reps"]), pr=r["id"] in prs)
+        for r in all_rows
+        if r["date"] == when
+    ]
+    rows.reverse()  # in the order they were logged
+    cardio = [c for c in reversed(all_cardio) if c["date"] == when]
+    weight = next((w for w in all_weights if w["date"] == when), None)
+    summary = stats.day_summary(rows, cardio)
+
+    # Everything the share card may show. The weigh-in is deliberately not here.
+    share = {
+        "date": when,
+        "label": f"{date.fromisoformat(when):%A %d %B %Y}".replace(" 0", " "),
+        "stats": {
+            "exercises": summary["entries"],
+            "sets": summary["sets"],
+            "reps": summary["reps"],
+            "volume": summary["volume"],
+            "cardio": summary["cardio"]["distance_text"],
+            "minutes": summary["cardio"]["minutes_text"],
+        },
+        "lifts": [
+            {
+                "exercise": r["exercise"],
+                "weight": r["weight"],
+                "sets_reps": r["sets_reps"],
+                "pr": r["pr"],
+            }
+            for r in rows
+        ],
+        "cardio": [
+            {"activity": c["activity"], "distance": c["distance"], "duration": c["duration"]}
+            for c in cardio
+        ],
+    }
+    return render_template(
+        "day.html",
+        when=when,
+        rows=rows,
+        cardio=cardio,
+        weight=weight,
+        summary=summary,
+        share=share,
+        prev=prev,
+        nxt=nxt,
+        total=len(all_rows) + len(all_cardio) + len(all_weights),
+        edit_url=url_for("main.search", range="all", by="day") + "#day-" + when,
+    )
+
+
 # --- Settings -----------------------------------------------------------------
 
 

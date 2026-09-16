@@ -35,7 +35,11 @@ with nothing to configure, which is what makes the app usable from a phone.
    month, with a table of every period underneath), a training-day calendar,
    muscle-group split, most-trained exercises and recent personal records. *Sessions* lists
    every entry (lifts, cardio, weigh-ins) grouped by day, week or month; hit
-   **Edit** to change cells or delete rows in place. *Exercises* lists each
+   **Edit** to change cells or delete rows in place. Every date in the app (session
+   cards, the calendar, exercise history) opens that day's own page, with
+   previous/next-day links and a date picker; its **Share** button turns the
+   day's lifts and cardio into an image for your phone's share sheet (your body
+   weight is never included). *Exercises* lists each
    exercise with its best weight and a trend sparkline (each opens a page with
    top-weight and volume charts), plus a cardio activity summary.
 

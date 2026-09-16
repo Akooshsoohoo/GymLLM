@@ -80,6 +80,13 @@ def total_reps(sets: str | None, reps: str | None) -> int | None:
     return sum(per_set)
 
 
+def set_count(sets: str | None, reps: str | None) -> int:
+    """'5', '5, 5, 5, 5, 5' -> 5; '', '10, 8, 6' -> 3; '', '' -> 0."""
+    if (sets or "").strip().isdigit():
+        return int(sets)
+    return len(reps_list(reps))
+
+
 def entry_volume(row: dict) -> float | None:
     """weight x total reps, or None when either is not a number (e.g. bodyweight)."""
     weight = weight_number(row.get("weight"))
@@ -297,6 +304,15 @@ def group_rows(
         )
         groups.append(summary)
     return groups
+
+
+def day_summary(rows: list[dict], cardio: list[dict]) -> dict:
+    """Totals for one day: exercises, sets, reps, volume and the cardio stats."""
+    summary = _summarise(rows)
+    summary["sets"] = sum(set_count(r.get("sets"), r.get("reps")) for r in rows)
+    summary["reps"] = sum(total_reps(r.get("sets"), r.get("reps")) or 0 for r in rows)
+    summary["cardio"] = cardio_stats(list(cardio))
+    return summary
 
 
 # --- Overview dashboard --------------------------------------------------------

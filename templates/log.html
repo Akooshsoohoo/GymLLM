@@ -56,7 +56,7 @@
     <div class="session-list">
         {% for s in sessions %}
         <article class="session-card">
-            <h3 class="session-date"><time datetime="{{ s.date }}">{{ s.date|nice_date }}</time></h3>
+            <h3 class="session-date"><a href="{{ url_for('main.day', when=s.date) }}" class="session-date-link"><time datetime="{{ s.date }}">{{ s.date|nice_date }}</time></a></h3>
             <ul class="session-rows">
                 {% for r in s.rows %}
                 <li>

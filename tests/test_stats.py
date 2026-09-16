@@ -379,3 +379,28 @@ def test_cardio_summary():
         "last": "2026-03-12",
     }
     assert summary[1]["distance_text"] == "20 laps" and summary[1]["minutes_text"] == ""
+
+
+@pytest.mark.parametrize(
+    "sets,reps,expected",
+    [("5", "5, 5, 5, 5, 5", 5), ("", "10, 8, 6", 3), ("4", "", 4), ("", "", 0), ("x", "12", 1)],
+)
+def test_set_count(sets, reps, expected):
+    assert stats.set_count(sets, reps) == expected
+
+
+def test_day_summary():
+    rows = [
+        row(id=1, sets="3", reps="5, 5, 5"),  # 15 reps, 2775 volume
+        row(id=2, exercise="pull up", weight="bodyweight", sets="", reps="10, 8"),  # 18 reps
+        row(id=3, exercise="squat", weight="225 lbs", sets="2", reps="5"),  # 10 reps, 2250
+    ]
+    cardio = [
+        {"date": "2026-03-10", "activity": "walking", "distance": "3 miles", "duration": "45 min"}
+    ]
+    s = stats.day_summary(rows, cardio)
+    assert (s["entries"], s["exercises"], s["sets"], s["reps"]) == (3, 3, 7, 43)
+    assert s["volume"] == 2775 + 2250
+    assert s["cardio"]["lead"] == "3 mi" and s["cardio"]["minutes_text"] == "45 min"
+    empty = stats.day_summary([], [])
+    assert empty["sets"] == 0 and empty["volume"] == 0 and empty["cardio"]["count"] == 0
