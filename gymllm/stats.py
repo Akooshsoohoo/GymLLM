@@ -347,8 +347,12 @@ def _totals(rows: list[dict], cardio: list[dict]) -> dict:
     return totals
 
 
-def bodyweight_summary(weights: list[dict], start: date | None) -> dict | None:
-    """Latest reading in the range and its change since the first one in the range."""
+def bodyweight_summary(
+    weights: list[dict], start: date | None, today: date | None = None, by: str = "day"
+) -> dict | None:
+    """Latest reading in the range, its change since the first one in the range, and
+    a per-period series (average of the readings in each day/week/month) spanning
+    the whole range so the chart shares the axis of the other Overview charts."""
     lo = start.isoformat() if start else ""
     readings = sorted((w for w in weights if w["date"] >= lo), key=lambda w: (w["date"], w["id"]))
     if not readings:
@@ -362,6 +366,11 @@ def bodyweight_summary(weights: list[dict], start: date | None) -> dict | None:
     change = None
     if len(series) >= 2 and series[0]["unit"] == series[-1]["unit"]:
         change = series[-1]["weight"] - series[0]["weight"]
+    # Chart in the unit used most often (ties go to the latest reading's unit);
+    # readings in another unit are left out of the chart.
+    uses = Counter(p["unit"] for p in series)
+    unit = max(uses, key=lambda u: (uses[u], u == series[-1]["unit"])) if uses else ""
+    periods = bodyweight_periods([p for p in series if p["unit"] == unit], start, today, by)
     return {
         "latest": latest["weight"],
         "latest_date": latest["date"],
@@ -369,7 +378,42 @@ def bodyweight_summary(weights: list[dict], start: date | None) -> dict | None:
         "unit": series[-1]["unit"] if series else "",
         "since": series[0]["date"] if len(series) >= 2 else None,
         "series": series,
+        "chart_unit": unit,
+        "periods": periods,
+        "charted": sum(1 for p in periods if p["weight"] is not None),
     }
+
+
+def bodyweight_periods(
+    points: list[dict], start: date | None, today: date | None, by: str
+) -> list[dict]:
+    """One point per period from `start` (or the first reading) to `today`: the
+    average weight of that period's readings, or None when there were none."""
+    dated = [(d, p["weight"]) for p in points for d in [parse_date(p["date"])] if d]
+    if not dated:
+        return []
+    first = min(d for d, _ in dated)
+    end = max([today or first] + [d for d, _ in dated])
+    per_key: dict[str, list[float]] = defaultdict(list)
+    for d, w in dated:
+        per_key[period_key(d, by)].append(w)
+    out = []
+    for key in period_keys(start or first, end, by):
+        values = per_key.get(key, [])
+        many = len(values) > 1
+        out.append(
+            {
+                "key": key,
+                "label": period_short(key, by),
+                "weight": round(sum(values) / len(values), 1) if values else None,
+                "readings": len(values)
+                if many
+                else None,  # tooltip row only when it adds something
+                "low": min(values) if many else None,
+                "high": max(values) if many else None,
+            }
+        )
+    return out
 
 
 def cardio_summary(cardio: list[dict]) -> list[dict]:
@@ -502,7 +546,7 @@ def overview(
         "cardio": cardio_stats(activities),
         "cardio_series": cardio_series,
         "distance_unit": unit,
-        "bodyweight": bodyweight_summary(list(weights), start),
+        "bodyweight": bodyweight_summary(list(weights), start, today, by),
         "weights_total": len(weights),
         "streak": week_streak({r["date"] for r in all_rows}, today),
         "activity": activity,

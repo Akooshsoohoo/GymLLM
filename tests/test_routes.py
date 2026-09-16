@@ -856,10 +856,19 @@ def test_progress_and_exercises_show_cardio_and_weight(logged_in, add_cardio, ad
     assert "5 mi" in body and "2 activities" in body and "1 h 5 min" in body
     assert "130 lbs" in body and "-2 lbs since" in body
     assert (
-        'aria-label="Body weight over time"' in body
+        'aria-label="Body weight per day"' in body
         and 'aria-label="Cardio distance per day"' in body
     )
+    assert '"weight": 132.0' in body and '"weight": 130.0' in body  # each on its own day
     assert 'aria-label="Exercises logged per day"' not in body  # no lifts in range
+
+    body = logged_in.get("/progress?range=30d&by=week&today=2026-03-15").data.decode()
+    assert 'aria-label="Body weight per week"' in body and "average of the week" in body
+    assert "<th>Week</th>" in body and "Readings" in body
+
+    # One reading still gets the chart (a single point on the period axis).
+    body = logged_in.get("/progress?range=7d&today=2026-03-10").data.decode()
+    assert 'aria-label="Body weight per day"' in body and "132 lbs" in body
 
     body = logged_in.get("/exercises?range=7d&today=2026-03-15").data.decode()
     assert "walking" in body and "running" in body and "3 mi" in body and "45 min" in body

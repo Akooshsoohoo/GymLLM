@@ -293,6 +293,41 @@ def test_bodyweight_summary():
     assert mixed["change"] is None  # units differ, so no delta
 
 
+def test_bodyweight_periods_follow_the_grouping():
+    weights = [
+        reading(id=1, date="2026-03-02", weight="134 lbs"),
+        reading(id=2, date="2026-03-04", weight="132 lbs"),
+        reading(id=3, date="2026-03-14", weight="130 lbs"),
+        reading(id=4, date="2026-03-13", weight="60 kg"),  # odd unit out: not charted
+    ]
+    by_day = stats.bodyweight_summary(weights, date(2026, 3, 12), TODAY, "day")
+    assert by_day["chart_unit"] == "lbs" and by_day["charted"] == 1
+    assert [p["key"] for p in by_day["periods"]] == [
+        "2026-03-12", "2026-03-13", "2026-03-14", "2026-03-15"
+    ]  # fmt: skip
+    assert [p["weight"] for p in by_day["periods"]] == [None, None, 130.0, None]
+    assert by_day["periods"][2]["readings"] is None  # a single reading needs no extra rows
+
+    by_week = stats.bodyweight_summary(weights, None, TODAY, "week")
+    assert [p["key"] for p in by_week["periods"]] == ["2026-03-02", "2026-03-09"]
+    assert by_week["periods"][0] == {
+        "key": "2026-03-02",
+        "label": "2 Mar",
+        "weight": 133.0,
+        "readings": 2,
+        "low": 132.0,
+        "high": 134.0,
+    }
+    assert by_week["periods"][1]["weight"] == 130.0 and by_week["charted"] == 2
+
+    by_month = stats.bodyweight_summary(weights, None, date(2026, 5, 1), "month")
+    assert [p["label"] for p in by_month["periods"]] == ["Mar 2026", "Apr 2026", "May 2026"]
+    assert by_month["periods"][0]["weight"] == 132.0
+
+    unparsable = stats.bodyweight_summary([reading(id=1, weight="a lot")], None, TODAY, "day")
+    assert unparsable["periods"] == [] and unparsable["charted"] == 0
+
+
 def test_overview_with_cardio_and_weights():
     rows = [row(id=1, date="2026-03-14")]
     activities = [
@@ -311,6 +346,15 @@ def test_overview_with_cardio_and_weights():
     assert [p["distance"] for p in data["cardio_series"]] == [0, 0, 0, 3, 2, 0, 0]
     assert data["cardio_series"][3]["activities"] == 1 and data["cardio_series"][3]["minutes"] == 45
     assert data["bodyweight"]["latest"] == "130 lbs" and data["bodyweight"]["change"] == -2
+    assert [p["weight"] for p in data["bodyweight"]["periods"]] == [
+        132.0,
+        None,
+        None,
+        None,
+        None,
+        130.0,
+        None,
+    ]
     assert {c["date"]: c["count"] for c in data["heatmap"] if c["count"]} == {
         "2026-03-12": 1,
         "2026-03-13": 1,

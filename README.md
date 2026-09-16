@@ -30,9 +30,10 @@ with nothing to configure, which is what makes the app usable from a phone.
    body-weight reading replaces any earlier one for the same day.
 5. **Progress** has three tabs, all scoped by the same range picker (7d, 30d,
    90d, 1y, all time). *Overview* shows sessions, volume, streak, cardio totals
-   and current body weight, a chart of exercises logged per day/week/month, body
-   weight and cardio distance charts, a training-day calendar, muscle-group
-   split, most-trained exercises and recent personal records. *Sessions* lists
+   and current body weight, then charts of exercises logged, body weight and
+   cardio distance per day/week/month (body weight is averaged within a week or
+   month, with a table of every period underneath), a training-day calendar,
+   muscle-group split, most-trained exercises and recent personal records. *Sessions* lists
    every entry (lifts, cardio, weigh-ins) grouped by day, week or month; hit
    **Edit** to change cells or delete rows in place. *Exercises* lists each
    exercise with its best weight and a trend sparkline (each opens a page with

@@ -443,7 +443,7 @@
   // One accent hue, hairline grid, thin marks, a hover/keyboard tooltip. Re-renders on resize.
   var charts = (function () {
     var ns = "http://www.w3.org/2000/svg";
-    var NAMES = { sessions: "sessions", entries: "exercises", volume: "volume", weight: "weight", reps: "reps", distance: "distance", activities: "activities", minutes: "minutes" };
+    var NAMES = { sessions: "sessions", entries: "exercises", volume: "volume", weight: "weight", reps: "reps", distance: "distance", activities: "activities", minutes: "minutes", readings: "readings", low: "low", high: "high" };
     function el(tag, attrs, text) {
       var e = document.createElementNS(ns, tag);
       Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
@@ -546,45 +546,54 @@
       svg.addEventListener("blur", function () { set(-1); });
     }
 
+    // A point whose y is null (a period with no reading) keeps its slot on the axis but
+    // draws nothing; the line runs straight between the readings on either side.
     function line(svg, series, opts) {
       var W = width(svg), H = 220, L = 48, R = 20, T = 14, B = 30;
       svg.setAttribute("viewBox", "0 0 " + W + " " + H);
       svg.setAttribute("height", H);
-      var ys = series.map(function (p) { return p[opts.y]; });
-      var sc = scale(Math.min.apply(null, ys), Math.max.apply(null, ys), false);
       var n = series.length;
+      var valid = [];
+      series.forEach(function (p, i) { if (typeof p[opts.y] === "number") valid.push(i); });
+      if (!valid.length) { svg.hidden = true; return; }
+      var ys = valid.map(function (i) { return series[i][opts.y]; });
+      var sc = scale(Math.min.apply(null, ys), Math.max.apply(null, ys), false);
       var x = function (i) { return n === 1 ? (L + W - R) / 2 : L + (i / (n - 1)) * (W - L - R); };
       var y = function (v) { return T + (1 - (v - sc.min) / (sc.max - sc.min)) * (H - T - B); };
       sc.ticks.forEach(function (v) {
         svg.appendChild(el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "grid" }));
         svg.appendChild(el("text", { x: L - 8, y: y(v) + 4, class: "axis-label", "text-anchor": "end" }, fmt(v)));
       });
-      var d = series.map(function (p, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[opts.y]).toFixed(1); }).join(" ");
-      if (n > 1) {
+      var d = valid.map(function (i, k) { return (k ? "L" : "M") + x(i).toFixed(1) + " " + y(series[i][opts.y]).toFixed(1); }).join(" ");
+      var first = valid[0], last = valid[valid.length - 1];
+      if (valid.length > 1) {
         var floor = (H - B).toFixed(1);
-        svg.appendChild(el("path", { d: d + " L" + x(n - 1).toFixed(1) + " " + floor + " L" + x(0).toFixed(1) + " " + floor + " Z", class: "area" }));
+        svg.appendChild(el("path", { d: d + " L" + x(last).toFixed(1) + " " + floor + " L" + x(first).toFixed(1) + " " + floor + " Z", class: "area" }));
       }
       svg.appendChild(el("path", { d: d, class: "line" }));
       var cross = el("line", { y1: T, y2: H - B, class: "crosshair" }); cross.style.display = "none"; svg.appendChild(cross);
       var every = labelEvery(n, W - L - R);
-      var dotR = n > 60 ? 0 : 4;
-      var points = series.map(function (p, i) {
+      var dotR = valid.length > 60 ? 0 : 4;
+      series.forEach(function (p, i) {
         if (i % every === 0 || i === n - 1) {
           svg.appendChild(el("text", { x: x(i), y: H - B + 18, class: "axis-label", "text-anchor": "middle" }, axisLabel(p[opts.x])));
         }
-        var c = el("circle", { cx: x(i), cy: y(p[opts.y]), r: dotR, class: "point" });
+      });
+      var points = valid.map(function (i) {
+        var c = el("circle", { cx: x(i), cy: y(series[i][opts.y]), r: dotR, class: "point" });
         svg.appendChild(c);
         return c;
       });
       // Selective direct label: the latest value only.
-      var last = series[n - 1];
-      svg.appendChild(el("text", { x: Math.min(x(n - 1), W - R - 4), y: y(last[opts.y]) - 10, class: "value-label", "text-anchor": n > 1 ? "end" : "middle" }, fmt(last[opts.y])));
+      var lastP = series[last];
+      svg.appendChild(el("text", { x: Math.min(x(last), W - R - 4), y: y(lastP[opts.y]) - 10, class: "value-label", "text-anchor": n > 1 ? "end" : "middle" }, fmt(lastP[opts.y])));
       var t = tip(svg);
-      interactive(svg, n, x, function (i) {
-        points.forEach(function (c, j) { c.setAttribute("r", j === i ? 6 : dotR); });
-        if (i < 0) { cross.style.display = "none"; t.hide(); return; }
+      interactive(svg, valid.length, function (k) { return x(valid[k]); }, function (k) {
+        points.forEach(function (c, j) { c.setAttribute("r", j === k ? 6 : dotR); });
+        if (k < 0) { cross.style.display = "none"; t.hide(); return; }
+        var i = valid[k], p = series[i];
         cross.style.display = ""; cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i));
-        t.show(titleLabel(series[i][opts.x]), rowsFor(series[i], opts.y), x(i), y(series[i][opts.y]));
+        t.show(titleLabel(p[opts.x]), rowsFor(p, opts.y), x(i), y(p[opts.y]));
       });
     }
 

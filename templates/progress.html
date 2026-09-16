@@ -84,13 +84,23 @@
 </section>
 {% endif %}
 
-{% if bw and bw.series|length > 1 or data.cardio_series|selectattr('distance')|list %}
+{% if bw and bw.charted or data.cardio_series|selectattr('distance')|list %}
 <div class="two-col">
-{% if bw and bw.series|length > 1 %}
+{% if bw and bw.charted %}
 <section class="card chart-card">
-    <h2 class="card-title">Body weight</h2>
-    <svg class="chart" data-chart="line" data-y="weight" data-x="date"
-         data-series='{{ bw.series|tojson }}' role="img" aria-label="Body weight over time"></svg>
+    <div class="card-head">
+        <h2 class="card-title">Body weight per {{ by }}</h2>
+        <span class="muted small">{{ bw.chart_unit }}{% if by != 'day' %} · average of the {{ by }}'s readings{% endif %}</span>
+    </div>
+    <svg class="chart" data-chart="line" data-y="weight" data-x="label"
+         data-series='{{ bw.periods|tojson }}' role="img" aria-label="Body weight per {{ by }}"></svg>
+    <details class="chart-table">
+        <summary class="muted small">Show as table</summary>
+        <div class="table-wrap"><table class="table">
+            <thead><tr><th>{{ by|capitalize }}</th><th class="num">Weight</th>{% if by != 'day' %}<th class="num">Readings</th><th class="num">Low</th><th class="num">High</th>{% endif %}</tr></thead>
+            <tbody>{% for p in bw.periods|reverse if p.weight is not none %}<tr><td>{{ p.label }}</td><td class="num">{{ p.weight|fmt_num }} {{ bw.chart_unit }}</td>{% if by != 'day' %}<td class="num">{{ p.readings or 1 }}</td><td class="num">{{ p.low|fmt_num if p.low is not none else '—' }}</td><td class="num">{{ p.high|fmt_num if p.high is not none else '—' }}</td>{% endif %}</tr>{% endfor %}</tbody>
+        </table></div>
+    </details>
 </section>
 {% endif %}
 {% if data.cardio_series|selectattr('distance')|list %}
