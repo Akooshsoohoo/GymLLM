@@ -26,11 +26,16 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="client_date" class="client-date" value="">
     <input type="hidden" name="llm_output" value="">
+    <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
     <label for="workout" class="sr-only">Describe your workout</label>
     <textarea id="workout" name="workout" rows="6" required autofocus class="textarea textarea-plain"
         placeholder="today I walked 3 miles, did some pull ups, curled the 20 lb dumbbells for a few sets, and weighed in at 130 lbs"></textarea>
     <div class="toolbar">
         <button type="submit" class="btn btn-primary">Parse workout</button>
+        <div class="unit-toggle" role="group" aria-label="Default weight unit for exercises with no unit stated">
+            <button type="button" class="unit-btn{{ ' is-active' if weight_unit != 'kg' else '' }}" data-unit="lbs" aria-pressed="{{ 'true' if weight_unit != 'kg' else 'false' }}">lbs</button>
+            <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
+        </div>
         <span class="muted small" data-llm-status>You review and edit before anything is saved.</span>
     </div>
 </form>

@@ -378,6 +378,27 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 .chip-link:hover { color: var(--text); border-color: var(--border-strong); text-decoration: none; }
 .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
+/* --- Default weight-unit toggle ----------------------------------------- */
+.unit-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    padding: 2px;
+    gap: 2px;
+}
+.unit-btn {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.unit-btn:hover { color: var(--text); }
+.unit-btn.is-active { background: var(--accent); color: var(--accent-fg); }
+
 /* --- Tables ------------------------------------------------------------ */
 .table-wrap { overflow-x: auto; margin-bottom: 12px; }
 .table {
@@ -406,6 +427,10 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 .card-flush .table th { background: var(--surface-2); }
 .table tbody tr:last-child td { border-bottom: none; }
 .table tbody tr:hover td { background: var(--surface-2); }
+/* Day view: rows sharing an exercise cell (rowspan) get a stronger top border
+   between groups since the exercise name no longer repeats to mark the break. */
+.table tbody tr.group-start td { border-top: 1px solid var(--border-strong); }
+.table tbody tr.group-start:first-child td { border-top: none; }
 .table th.num, .table td.num { text-align: right; }
 .table .col-actions { width: 1%; text-align: center; }
 .cell-link { color: var(--text); }

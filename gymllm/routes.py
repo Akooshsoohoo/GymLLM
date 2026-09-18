@@ -18,7 +18,7 @@ from flask import (
 )
 from sqlalchemy import func
 
-from . import quota, stats
+from . import preferences, quota, stats
 from .auth import current_user_email, login_required
 from .exercises import TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
@@ -146,12 +146,14 @@ def welcome():
 
 
 def _sets_summary(sets: str, reps: str) -> str:
-    """Compact 'sets x reps' for the session cards: '5, 5, 5' with 3 sets -> '3x5'."""
-    parts = [r.strip() for r in reps.split(",") if r.strip()]
-    if parts and len(set(parts)) == 1 and (not sets or sets == str(len(parts))):
-        return f"{len(parts)}×{parts[0]}"
-    if sets and reps:
-        return f"{sets}×{reps}"
+    """Reps per set, comma-separated: sets='3', reps='10, 8, 6' -> '10, 8, 6'. A
+    single reps number is repeated across the set count: sets='5', reps='12' ->
+    '12, 12, 12, 12, 12'."""
+    parts = stats.reps_list(reps)
+    if len(parts) == 1 and (sets or "").strip().isdigit() and int(sets) > 1:
+        parts = parts * int(sets)
+    if parts:
+        return ", ".join(str(p) for p in parts)
     return sets or reps
 
 
@@ -196,7 +198,15 @@ def home():
         sessions=_recent_sessions(user_email),
         quota_left=quota_left,
         quota_limit=quota_limit,
+        weight_unit=preferences.get_weight_unit(user_email),
     )
+
+
+@bp.route("/weight-unit", methods=["POST"])
+@login_required
+def weight_unit():
+    unit = preferences.set_weight_unit(current_user_email(), request.form.get("unit", ""))
+    return jsonify(unit=unit)
 
 
 # --- One day ------------------------------------------------------------------
@@ -207,6 +217,22 @@ def _neighbours(dates: set[str], when: str) -> tuple[str | None, str | None]:
     before = [d for d in dates if d < when]
     after = [d for d in dates if d > when]
     return (max(before) if before else None, min(after) if after else None)
+
+
+def _group_by_exercise(rows: list[dict]) -> list[dict]:
+    """rows (already in log order) -> [{"exercise", "entries": [...]}], grouping every
+    entry that shares an exercise name that day, in first-appearance order."""
+    groups: dict[str, dict] = {}
+    order: list[str] = []
+    for r in rows:
+        exercise = r["exercise"]
+        if exercise not in groups:
+            groups[exercise] = {"exercise": exercise, "entries": []}
+            order.append(exercise)
+        groups[exercise]["entries"].append(
+            {"weight": r["weight"], "sets_reps": r["sets_reps"], "notes": r["notes"], "pr": r["pr"]}
+        )
+    return [groups[k] for k in order]
 
 
 @bp.route("/day/<when>")
@@ -234,6 +260,7 @@ def day(when: str):
         if r["date"] == when
     ]
     rows.reverse()  # in the order they were logged
+    grouped_rows = _group_by_exercise(rows)
     cardio = [c for c in reversed(all_cardio) if c["date"] == when]
     weight = next((w for w in all_weights if w["date"] == when), None)
     summary = stats.day_summary(rows, cardio)
@@ -268,6 +295,7 @@ def day(when: str):
         "day.html",
         when=when,
         rows=rows,
+        grouped_rows=grouped_rows,
         cardio=cardio,
         weight=weight,
         summary=summary,
@@ -341,13 +369,18 @@ def settings_test():
 # endpoints hand the page the same prompts the server would have used.
 
 
+def _clean_unit(value: str) -> str:
+    return value if value in preferences.UNITS else preferences.DEFAULT_UNIT
+
+
 @bp.route("/llm/prompt")
 @login_required
 def llm_prompt():
     when = request.args.get("date", "")
     if not is_iso_date(when):
         return jsonify(error="date must be YYYY-MM-DD"), 400
-    return jsonify(system=build_system_prompt(date.fromisoformat(when)))
+    unit = _clean_unit(request.args.get("unit", ""))
+    return jsonify(system=build_system_prompt(date.fromisoformat(when), default_unit=unit))
 
 
 @bp.route("/llm/tag-targets", methods=["POST"])
@@ -381,7 +414,18 @@ def review():
         return redirect(url_for("main.settings"))
 
     today = _client_today()
-    context = {"workout_text": workout_text, "client_date": today.isoformat(), "config": config}
+    user_email = current_user_email()
+    posted_unit = request.form.get("weight_unit", "")
+    if posted_unit in preferences.UNITS:
+        unit = preferences.set_weight_unit(user_email, posted_unit)
+    else:
+        unit = preferences.get_weight_unit(user_email)
+    context = {
+        "workout_text": workout_text,
+        "client_date": today.isoformat(),
+        "config": config,
+        "weight_unit": unit,
+    }
     if config.is_site:
         limit = _site_limit()
         if not quota.consume(current_user_email(), limit):
@@ -399,7 +443,9 @@ def review():
         if config.runs_in_browser:
             parsed = _parse_browser_output(request.form.get("llm_output", ""))
         else:
-            parsed = parse_workout(workout_text, _llm_client(config), today=today)
+            parsed = parse_workout(
+                workout_text, _llm_client(config), today=today, default_unit=unit
+            )
     except RateLimitError as e:
         message = e.user_message
         if config.is_site:

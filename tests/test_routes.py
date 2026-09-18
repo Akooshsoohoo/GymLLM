@@ -79,9 +79,10 @@ def test_home_lists_recent_sessions(logged_in, add_workout):
 @pytest.mark.parametrize(
     "sets,reps,expected",
     [
-        ("5", "5, 5, 5, 5, 5", "5×5"),
-        ("3", "10, 8, 6", "3×10, 8, 6"),
-        ("", "8, 8", "2×8"),
+        ("5", "5, 5, 5, 5, 5", "5, 5, 5, 5, 5"),
+        ("3", "10, 8, 6", "10, 8, 6"),
+        ("", "8, 8", "8, 8"),
+        ("5", "12", "12, 12, 12, 12, 12"),
         ("4", "", "4"),
         ("", "", ""),
     ],
@@ -182,6 +183,15 @@ def test_llm_prompt_requires_login(client):
     assert r.status_code == 302 and r.headers["Location"].endswith("/welcome")
 
 
+def test_llm_prompt_uses_default_unit(logged_in):
+    kg = logged_in.get("/llm/prompt?date=2026-09-14&unit=kg").get_json()["system"]
+    assert 'weight: "185 kg"' in kg
+    default = logged_in.get("/llm/prompt?date=2026-09-14").get_json()["system"]  # no unit -> lbs
+    assert 'weight: "185 lbs"' in default
+    bogus = logged_in.get("/llm/prompt?date=2026-09-14&unit=bogus").get_json()["system"]
+    assert 'weight: "185 lbs"' in bogus  # unrecognised unit falls back to lbs
+
+
 def test_llm_tag_targets(logged_in):
     r = logged_in.post(
         "/llm/tag-targets",
@@ -226,6 +236,27 @@ def test_review_renders_editable_table(logged_in, fake_llm):
     assert b'name="entry-1-exercise"' in r.data and b"lat pulldown" in r.data
     assert b'value="5, 5, 5, 5, 5"' in r.data
     assert "2026-09-14" in fake_llm.calls[0][0]  # browser date reaches the prompt
+
+
+def test_review_uses_and_persists_weight_unit(logged_in, fake_llm):
+    fake_llm.queue(PARSED)
+    r = logged_in.post(
+        "/review",
+        data={
+            "workout": "bench 185 5x5 yesterday",
+            "client_date": "2026-09-14",
+            "weight_unit": "kg",
+        },
+    )
+    assert r.status_code == 200
+    assert 'weight: "185 kg"' in fake_llm.calls[0][0]  # the saved unit reached the prompt
+    assert b'value="kg"' in r.data  # reflected back in the hidden field / toggle
+
+    fake_llm.queue(PARSED)
+    r2 = logged_in.post(
+        "/review", data={"workout": "bench 185 5x5", "client_date": "2026-09-14"}
+    )  # weight_unit omitted this time -> the earlier saved kg pick is still used, not reset to lbs
+    assert 'weight: "185 kg"' in fake_llm.calls[1][0]
 
 
 def test_review_defaults_date_to_today_when_llm_gives_none(logged_in, fake_llm):
@@ -917,7 +948,12 @@ def test_day_page_share_payload_excludes_body_weight(
     share = json.loads(body[start : body.index("'", start)].replace("&#39;", "'"))
     assert share["date"] == "2026-03-10" and share["label"] == "Tuesday 10 March 2026"
     assert share["lifts"] == [
-        {"exercise": "barbell bench press", "weight": "185 lbs", "sets_reps": "5×5", "pr": False}
+        {
+            "exercise": "barbell bench press",
+            "weight": "185 lbs",
+            "sets_reps": "5, 5, 5, 5, 5",
+            "pr": False,
+        }
     ]
     assert share["cardio"] == [{"activity": "walking", "distance": "3 miles", "duration": "45 min"}]
     assert share["stats"]["sets"] == 5 and share["stats"]["cardio"] == "3 mi"
@@ -933,6 +969,24 @@ def test_day_page_marks_personal_records(logged_in, add_workout):
     assert body.count('class="chip chip-pr"') == 1
     assert '"pr": true' in body
     assert 'class="chip chip-pr"' not in logged_in.get("/day/2026-03-01").data.decode()
+
+
+def test_day_page_stacks_same_exercise_rows(logged_in, add_workout):
+    add_workout(
+        date="2026-03-10",
+        exercise="barbell bench press",
+        weight="135 lbs",
+        sets="5",
+        reps="5, 5, 5, 5, 5",
+    )
+    add_workout(
+        date="2026-03-10", exercise="barbell bench press", weight="185 lbs", sets="3", reps="3, 3, 3"
+    )
+    add_workout(date="2026-03-10", exercise="squat", weight="225 lbs")
+    body = logged_in.get("/day/2026-03-10").data.decode()
+    assert body.count(">barbell bench press<") == 1  # one exercise cell, not one per weight
+    assert 'rowspan="2"' in body
+    assert "135 lbs" in body and "185 lbs" in body and "3, 3, 3" in body
 
 
 def test_day_page_empty_states(logged_in, add_workout):

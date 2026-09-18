@@ -67,16 +67,19 @@
     <tr><th>Exercise</th><th>Weight</th><th>Sets × reps</th><th>Notes</th></tr>
     </thead>
     <tbody>
-    {% for r in rows %}
-    <tr>
-        <td class="exercise-cell">
-            <a href="{{ url_for('main.exercise_history', name=r.exercise) }}" class="cell-link">{{ r.exercise }}</a>
-            {% if r.pr %}<span class="chip chip-pr" title="Heaviest you have logged for this exercise">PR</span>{% endif %}
+    {% for g in grouped_rows %}
+    {% for e in g.entries %}
+    <tr{% if loop.first %} class="group-start"{% endif %}>
+        {% if loop.first %}
+        <td class="exercise-cell" rowspan="{{ g.entries|length }}">
+            <a href="{{ url_for('main.exercise_history', name=g.exercise) }}" class="cell-link">{{ g.exercise }}</a>
         </td>
-        <td>{{ r.weight }}</td>
-        <td class="num">{{ r.sets_reps }}</td>
-        <td class="muted">{{ r.notes }}</td>
+        {% endif %}
+        <td>{{ e.weight }}{% if e.pr %} <span class="chip chip-pr" title="Heaviest you have logged for this exercise">PR</span>{% endif %}</td>
+        <td class="num">{{ e.sets_reps }}</td>
+        <td class="muted">{{ e.notes }}</td>
     </tr>
+    {% endfor %}
     {% endfor %}
     </tbody>
 </table>

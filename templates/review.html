@@ -16,10 +16,15 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="client_date" class="client-date" value="{{ client_date }}">
     <input type="hidden" name="llm_output" value="">
+    <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
     <label for="workout" class="card-title">Original text</label>
     <textarea id="workout" name="workout" rows="3" class="textarea">{{ workout_text }}</textarea>
     <div class="toolbar">
         <button type="submit" class="btn btn-ghost btn-sm">Re-parse</button>
+        <div class="unit-toggle" role="group" aria-label="Default weight unit for exercises with no unit stated">
+            <button type="button" class="unit-btn{{ ' is-active' if weight_unit != 'kg' else '' }}" data-unit="lbs" aria-pressed="{{ 'true' if weight_unit != 'kg' else 'false' }}">lbs</button>
+            <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
+        </div>
         <span class="muted small" data-llm-status></span>
     </div>
 </form>

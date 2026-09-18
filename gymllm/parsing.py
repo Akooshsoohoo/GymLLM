@@ -42,9 +42,9 @@ SETS & REPS - interpret shorthand as follows:
 
 WEIGHT:
   Include units if stated ('185 lbs', '80 kg'). Keep the unit the user used.
-  A bare number next to the exercise is the weight ('bench 185 5x5' -> weight: "185"); keep it as written, do not invent a unit.
+  A number given with no unit ('bench 185 5x5', 'curled the 20s') -> append the default unit: weight: "185 {default_unit}".
   'bodyweight' or 'BW' -> weight: "bodyweight".
-  Not mentioned -> weight: "".
+  No number given -> weight: "".
 
 NOTES: anything that is not exercise/weight/sets/reps (e.g. "felt easy", "paused reps"). Otherwise "".
 
@@ -79,11 +79,12 @@ class ParsedWorkout:
         return not (self.entries or self.cardio or self.bodyweight)
 
 
-def build_system_prompt(today: date) -> str:
+def build_system_prompt(today: date, default_unit: str = "lbs") -> str:
     return SYSTEM_PROMPT.format(
         today=today.isoformat(),
         weekday=today.strftime("%A"),
         exercise_list=exercise_list_text(),
+        default_unit=default_unit,
     )
 
 
@@ -186,10 +187,12 @@ def parsed_from_output(data) -> ParsedWorkout:
     )
 
 
-def parse_workout(text: str, client, today: date | None = None) -> ParsedWorkout:
+def parse_workout(
+    text: str, client, today: date | None = None, default_unit: str = "lbs"
+) -> ParsedWorkout:
     """Parse `text` with `client`, retrying once if the output is unusable."""
     today = today or date.today()
-    system = build_system_prompt(today)
+    system = build_system_prompt(today, default_unit=default_unit)
     last: BadOutputError | None = None
     for _ in range(2):
         try:

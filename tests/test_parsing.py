@@ -21,6 +21,11 @@ def test_prompt_contains_today_and_weekday():
     assert "barbell bench press" in prompt  # exercise list is injected
 
 
+def test_prompt_default_unit_defaults_to_lbs_and_is_overridable():
+    assert 'weight: "185 lbs"' in build_system_prompt(date(2026, 9, 14))
+    assert 'weight: "185 kg"' in build_system_prompt(date(2026, 9, 14), default_unit="kg")
+
+
 @pytest.mark.parametrize(
     "value,expected",
     [
@@ -92,6 +97,12 @@ def test_parse_workout_returns_date_and_entries():
     assert parsed.date == "2026-09-13"
     assert parsed.entries[0]["reps"] == "5, 5, 5, 5, 5"
     assert "2026-09-14" in llm.calls[0][0]
+
+
+def test_parse_workout_threads_default_unit_into_the_prompt():
+    llm = FakeLLM().queue({"date": None, "exercises": []})
+    parse_workout("curled the 20s", llm, today=date(2026, 9, 14), default_unit="kg")
+    assert 'weight: "185 kg"' in llm.calls[0][0]
 
 
 def test_parse_workout_accepts_bare_list_and_ignores_bad_date():

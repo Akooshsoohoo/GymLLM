@@ -76,3 +76,13 @@ class LLMUsage(db.Model):
     user_email = db.Column(db.String, nullable=False, index=True)
     day = db.Column(db.String, nullable=False)  # YYYY-MM-DD, UTC
     count = db.Column(db.Integer, nullable=False, default=0)
+
+
+class UserPreference(db.Model):
+    """Small per-account settings that aren't the LLM provider config (that one
+    lives in a session cookie, see LLMConfig)."""
+
+    __tablename__ = "user_preference"
+
+    user_email = db.Column(db.String, primary_key=True)
+    weight_unit = db.Column(db.String, nullable=False, default="lbs")

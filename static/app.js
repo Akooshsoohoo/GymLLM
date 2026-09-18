@@ -122,9 +122,10 @@
       var text = ($("textarea[name=workout]", form) || {}).value || "";
       if (!text.trim()) return;
       var when = ($("input[name=client_date]", form) || {}).value || "";
+      var unit = ($("input[name=weight_unit]", form) || {}).value || "lbs";
       var errBox = $("#llm-error"); if (errBox) errBox.hidden = true;
       setBusy(form, true, "Parsing with " + cfg.model + " in your browser\u2026");
-      fetch("/llm/prompt?date=" + encodeURIComponent(when), { credentials: "same-origin" })
+      fetch("/llm/prompt?date=" + encodeURIComponent(when) + "&unit=" + encodeURIComponent(unit), { credentials: "same-origin" })
         .then(function (r) { if (!r.ok) throw new Error("Could not load the prompt from the server."); return r.json(); })
         .then(function (data) { return browserLLM.chat(cfg, data.system, text); })
         .then(function (content) {
@@ -136,6 +137,30 @@
           setBusy(form, false);
           showLLMError(browserLLM.describe(cfg, err));
         });
+    });
+  });
+
+  // ---------------------------------------------------------------- Default weight unit
+  // A small lbs/kg toggle next to the workout textarea. Every hidden .weight-unit-field
+  // on the page is kept in sync so it rides along with whichever form gets submitted,
+  // and the choice is saved server-side right away so it's there next time too.
+  $$(".unit-toggle").forEach(function (group) {
+    $$(".unit-btn", group).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var unit = btn.dataset.unit;
+        $$(".unit-btn", group).forEach(function (b) {
+          var active = b === btn;
+          b.classList.toggle("is-active", active);
+          b.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        $$(".weight-unit-field").forEach(function (input) { input.value = unit; });
+        fetch("/weight-unit", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", "X-CSRFToken": csrfToken() },
+          body: "unit=" + encodeURIComponent(unit)
+        }).catch(function () { /* the choice still posts with the next parse */ });
+      });
     });
   });
 
