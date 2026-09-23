@@ -535,16 +535,22 @@ def test_progress_overview(logged_in, add_workout):
 
     body = logged_in.get("/progress?range=7d&today=2026-03-15").data.decode()
     assert "Progress" in body and "Overview" in body and "Sessions" in body
-    assert 'data-chart="columns"' in body and 'data-chart="heatmap"' in body
-    assert '"key": "2026-03-09"' in body and '"key": "2026-03-15"' in body  # zero-filled week
+    assert 'data-chart="heatmap"' in body and 'data-chart="columns"' not in body
+    # This week: Mon 9 – Sun 15 March, the 10th and 14th logged and linked, today ringed.
+    assert body.count('class="week-day logged') == 2 and 'href="/day/2026-03-14"' in body
+    assert 'class="week-day logged today"' not in body and 'class="week-day today"' in body
+    assert "<strong>2</strong> of 7 days" in body
+    assert "Exercise progress" in body
+    assert 'aria-label="barbell bench press: top weight per session"' in body
+    assert "190 &rarr; <strong>185</strong> lbs" in body  # first → latest in the range
     assert "chest" in body and "back" in body  # muscle groups
+    assert "Most trained" in body
     assert "Personal records" in body and "190 lbs" in body and "up from 180" in body
-    assert "+2 vs previous 7d" in body  # sessions delta: 2 this week, none the week before
     assert '"count": 2' in body  # heatmap cell for the 14th
+    assert "vs previous" not in body  # the stat tiles are gone
 
     body = logged_in.get("/progress?range=all&by=month&today=2026-03-15").data.decode()
-    assert "per month" in body and '"label": "Jan 2026"' in body and '"label": "Feb 2026"' in body
-    assert "vs previous" not in body  # no deltas for all time
+    assert "180 &rarr; <strong>185</strong> lbs" in body  # all time starts from January
 
     body = logged_in.get("/progress?range=7d&today=2026-06-01").data.decode()
     assert "Nothing logged in this range" in body
@@ -886,14 +892,11 @@ def test_progress_and_exercises_show_cardio_and_weight(logged_in, add_cardio, ad
 
     body = logged_in.get("/progress?range=7d&today=2026-03-15").data.decode()
     assert "Nothing logged in this range" not in body
-    assert "5 mi" in body and "2 activities" in body and "1 h 5 min" in body
+    assert body.count('class="week-day logged') == 4  # cardio and weigh-in days count
     assert "130 lbs" in body and "-2 lbs since" in body
-    assert (
-        'aria-label="Body weight per day"' in body
-        and 'aria-label="Cardio distance per day"' in body
-    )
+    assert 'aria-label="Body weight per day"' in body
     assert '"weight": 132.0' in body and '"weight": 130.0' in body  # each on its own day
-    assert 'aria-label="Exercises logged per day"' not in body  # no lifts in range
+    assert "Log an exercise with a weight" in body  # no lifts in range
 
     body = logged_in.get("/progress?range=30d&by=week&today=2026-03-15").data.decode()
     assert 'aria-label="Body weight per week"' in body and "average of the week" in body

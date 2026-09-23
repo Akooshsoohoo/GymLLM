@@ -642,7 +642,7 @@
     // A point whose y is null (a period with no reading) keeps its slot on the axis but
     // draws nothing; the line runs straight between the readings on either side.
     function line(svg, series, opts) {
-      var W = width(svg), H = 220, L = 48, R = 20, T = 14, B = 30;
+      var W = width(svg), H = opts.h, L = 48, R = 20, T = 14, B = 30;
       svg.setAttribute("viewBox", "0 0 " + W + " " + H);
       svg.setAttribute("height", H);
       var n = series.length;
@@ -813,7 +813,7 @@
         // Swap in a fresh node so old listeners go with the old render.
         var fresh = svg.cloneNode(false);
         svg.parentNode.replaceChild(fresh, svg);
-        fn(fresh, series, { x: fresh.dataset.x || "label", y: fresh.dataset.y || "value" });
+        fn(fresh, series, { x: fresh.dataset.x || "label", y: fresh.dataset.y || "value", h: parseInt(fresh.dataset.height, 10) || 220 });
       });
     }
     return { renderAll: renderAll };

@@ -20,6 +20,7 @@ GROUPINGS = ("day", "week", "month")
 DEFAULT_GROUPING = {"7d": "day", "30d": "day", "90d": "week", "1y": "month", "all": "month"}
 HEATMAP_MAX_WEEKS = 53
 TOP_N = 8
+LIFTS_N = 6  # exercise progress charts on the Overview
 TAGS_N = 10  # muscle tags shown before the rest fold into "other"
 # Tags that describe the movement rather than a muscle; left out of the muscle-group chart.
 MOVEMENT_TAGS = {"compound", "isolation", "isolated", "push", "pull", "upper", "lower", "rowing"}
@@ -351,8 +352,61 @@ def personal_records(all_rows: list[dict], start: date | None) -> list[dict]:
     return prs
 
 
-def _delta(current: float, previous: float | None) -> float | None:
-    return None if previous is None else current - previous
+def week_strip(dates: set[str], today: date) -> list[dict]:
+    """Monday to Sunday of today's week, each day flagged if anything was logged."""
+    monday = date.fromisoformat(period_key(today, "week"))
+    days = []
+    for i in range(7):
+        d = monday + timedelta(days=i)
+        days.append(
+            {
+                "date": d.isoformat(),
+                "letter": "MTWTFSS"[i],
+                "day": d.day,
+                "logged": d.isoformat() in dates,
+                "today": d == today,
+                "future": d > today,
+            }
+        )
+    return days
+
+
+def lift_progress(rows: list[dict], n: int = LIFTS_N) -> list[dict]:
+    """The most-trained lifts with at least two weighed sessions: their top weight
+    per session and the change from the first session to the latest."""
+    per_ex: dict[str, list[dict]] = defaultdict(list)
+    for r in rows:
+        per_ex[r["exercise"]].append(r)
+    lifts = []
+    for name, members in per_ex.items():
+        series = [p for p in exercise_series(members) if p["weight"] is not None]
+        if len(series) < 2:
+            continue
+        units = {
+            r["date"]: q[1]
+            for r in sorted(members, key=lambda r: (r["date"], r["id"]))
+            for q in [quantity(r["weight"])]
+            if q
+        }
+        first, latest = series[0], series[-1]
+        unit = units.get(latest["date"], "")
+        change = pct = None
+        if units.get(first["date"], "") == unit:
+            change = latest["weight"] - first["weight"]
+            pct = round(100 * change / first["weight"]) if first["weight"] else None
+        lifts.append(
+            {
+                "exercise": name,
+                "series": series,
+                "first": first["weight"],
+                "latest": latest["weight"],
+                "change": change,
+                "pct": pct,
+                "unit": unit,
+            }
+        )
+    lifts.sort(key=lambda x: (len(x["series"]), x["series"][-1]["date"]), reverse=True)
+    return lifts[:n]
 
 
 def _totals(rows: list[dict], cardio: list[dict]) -> dict:
@@ -465,51 +519,11 @@ def overview(
     activities = filter_range(list(cardio), today, range_key)
     start = range_start(today, range_key)
     totals = _totals(rows, activities)
-
-    # Same-length window immediately before this one, for the deltas.
-    previous = None
-    if start is not None:
-        days = RANGES[range_key] or 0
-        prev_lo, prev_hi = (start - timedelta(days=days)).isoformat(), start.isoformat()
-        previous = _totals(
-            [r for r in all_rows if prev_lo <= r["date"] < prev_hi],
-            [c for c in cardio if prev_lo <= c["date"] < prev_hi],
-        )
-
-    # Activity per period, zero-filled across the whole range.
     dated = [parse_date(x["date"]) for x in rows + activities]
     first = min((d for d in dated if d), default=None)
-    chart_start = start or first
-    by_period: dict[str, list[dict]] = defaultdict(list)
-    for r in rows:
-        d = parse_date(r["date"])
-        if d:
-            by_period[period_key(d, by)].append(r)
-    cardio_by_period: dict[str, list[dict]] = defaultdict(list)
-    for c in activities:
-        d = parse_date(c["date"])
-        if d:
-            cardio_by_period[period_key(d, by)].append(c)
-    unit = next(iter(distance_totals(activities)), "")  # the unit with the most distance
-    activity = []
-    cardio_series = []
-    if chart_start is not None:
-        for key in period_keys(chart_start, today, by):
-            s = _summarise(by_period.get(key, []))
-            activity.append({"key": key, "label": period_short(key, by), **s})
-            st = cardio_stats(cardio_by_period.get(key, []))
-            cardio_series.append(
-                {
-                    "key": key,
-                    "label": period_short(key, by),
-                    "distance": st["distance"].get(unit, 0.0),
-                    "activities": st["count"],
-                    "minutes": st["minutes"],
-                }
-            )
 
     # Calendar heatmap: entries per day, Monday-aligned weeks ending today.
-    heat_start = chart_start or today
+    heat_start = start or first or today
     heat_start = max(heat_start, today - timedelta(weeks=HEATMAP_MAX_WEEKS - 1))
     heat_start -= timedelta(days=heat_start.weekday())
     per_day = Counter(x["date"] for x in rows + activities)
@@ -555,17 +569,10 @@ def overview(
         "by": by,
         "start": start,
         "totals": totals,
-        "deltas": {
-            k: _delta(totals[k], previous[k] if previous else None)
-            for k in ("sessions", "entries", "volume", "cardio")
-        },
-        "cardio": cardio_stats(activities),
-        "cardio_series": cardio_series,
-        "distance_unit": unit,
         "bodyweight": bodyweight_summary(list(weights), start, today, by),
-        "weights_total": len(weights),
         "streak": week_streak({r["date"] for r in all_rows}, today),
-        "activity": activity,
+        "week": week_strip({x["date"] for x in [*all_rows, *cardio, *weights]}, today),
+        "lifts": lift_progress(rows),
         "heatmap": heatmap,
         "tags": tags,
         "top_exercises": top,

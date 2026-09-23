@@ -9,111 +9,89 @@
 </div>
 {% else %}
 {% set t = data.totals %}
-{% set d = data.deltas %}
+{% set bw = data.bodyweight %}
+
+<section class="card">
+    <div class="card-head">
+        <h2 class="card-title">This week</h2>
+        <span class="muted small">
+            <span class="week-count"><strong>{{ data.week|selectattr('logged')|list|length }}</strong> of 7 days</span>
+            {%- if data.streak %} · {{ data.streak }}-week streak{% endif %}
+        </span>
+    </div>
+    <div class="week-strip">
+        {% for d in data.week %}
+        {% set cls = 'week-day' ~ (' logged' if d.logged else '') ~ (' today' if d.today else '') ~ (' future' if d.future else '') %}
+        {% if d.logged %}
+        <a href="{{ url_for('main.day', when=d.date) }}" class="{{ cls }}" title="{{ d.date|nice_date }}: open this day">
+        {% else %}
+        <div class="{{ cls }}" title="{{ d.date|nice_date }}">
+        {% endif %}
+            <span class="week-letter">{{ d.letter }}</span>
+            <span class="week-num">{{ d.day }}</span>
+        {% if d.logged %}</a>{% else %}</div>{% endif %}
+        {% endfor %}
+    </div>
+</section>
+
 {% include "_range_filter.html" %}
 
-{% set bw = data.bodyweight %}
 {% if not t.entries and not t.cardio and not bw %}
 {% include "_empty_range.html" %}
 {% else %}
-{% macro delta(value, unit='') -%}
-    {% if value is not none %}
-    <div class="stat-delta {{ 'up' if value > 0 else 'down' if value < 0 else '' }}">
-        {{ '+' if value > 0 }}{{ value|fmt_num }}{{ unit }} vs previous {{ range_key }}
-    </div>
-    {% endif %}
-{%- endmacro %}
-<div class="stat-grid">
-    <div class="stat">
-        <div class="stat-label">Sessions</div>
-        <div class="stat-value">{{ t.sessions }}</div>
-        {{ delta(d.sessions) }}
-    </div>
-    <div class="stat">
-        <div class="stat-label">Exercises logged</div>
-        <div class="stat-value">{{ t.entries }}</div>
-        {{ delta(d.entries) }}
-    </div>
-    <div class="stat">
-        <div class="stat-label" title="Weight × reps, summed">Volume</div>
-        <div class="stat-value">{{ t.volume|fmt_num }}</div>
-        {{ delta(d.volume) }}
-    </div>
-    <div class="stat">
-        <div class="stat-label">Week streak</div>
-        <div class="stat-value">{{ data.streak }}</div>
-        <div class="stat-delta">consecutive week{{ '' if data.streak == 1 else 's' }} trained</div>
-    </div>
-    {% if t.cardio or d.cardio %}
-    <div class="stat">
-        <div class="stat-label">Cardio</div>
-        <div class="stat-value">{{ data.cardio.lead or t.cardio }}</div>
-        <div class="stat-delta">
-            {%- if data.cardio.rest %}+ {{ data.cardio.rest }} · {% endif -%}
-            {{ t.cardio }} activit{{ 'y' if t.cardio == 1 else 'ies' }}{% if data.cardio.minutes_text %} · {{ data.cardio.minutes_text }}{% endif %}
-            {%- if d.cardio is not none %} · {{ '+' if d.cardio > 0 }}{{ d.cardio }} vs previous {{ range_key }}{% endif %}
-        </div>
-    </div>
-    {% endif %}
-    {% if bw %}
-    <div class="stat">
-        <div class="stat-label">Body weight</div>
-        <div class="stat-value">{{ bw.latest }}</div>
-        <div class="stat-delta">
-            {%- if bw.change is not none %}{{ '+' if bw.change > 0 }}{{ bw.change|fmt_num }} {{ bw.unit }} since {{ bw.since|nice_date }}{% else %}{{ bw.latest_date|nice_date }}{% endif -%}
-        </div>
-    </div>
-    {% endif %}
-</div>
 
-{% if t.entries %}
 <section class="card chart-card">
     <div class="card-head">
-        <h2 class="card-title">Exercises logged per {{ by }}</h2>
-        <span class="muted small">{{ t.exercises }} distinct exercise{{ '' if t.exercises == 1 else 's' }}</span>
+        <h2 class="card-title">Body weight</h2>
+        {% if bw %}
+        <span class="lift-trend">
+            <strong>{{ bw.latest }}</strong>
+            {%- if bw.change is not none %}
+            {#- Neutral colour: whether gaining or losing is good depends on the goal. #}
+            <span class="change-badge">{{ '+' if bw.change > 0 }}{{ bw.change|fmt_num }} {{ bw.unit }} since {{ bw.since|nice_date }}</span>
+            {%- endif %}
+        </span>
+        {% endif %}
     </div>
-    <svg class="chart" data-chart="columns" data-y="entries" data-x="label"
-         data-series='{{ data.activity|tojson }}' role="img" aria-label="Exercises logged per {{ by }}"></svg>
-    <details class="chart-table">
-        <summary class="muted small">Show as table</summary>
-        <div class="table-wrap"><table class="table">
-            <thead><tr><th>{{ by|capitalize }}</th><th class="num">Sessions</th><th class="num">Exercises</th><th class="num">Volume</th></tr></thead>
-            <tbody>{% for p in data.activity if p.entries %}<tr><td>{{ p.label }}</td><td class="num">{{ p.sessions }}</td><td class="num">{{ p.entries }}</td><td class="num">{{ p.volume|fmt_num }}</td></tr>{% endfor %}</tbody>
-        </table></div>
-    </details>
-</section>
-{% endif %}
-
-{% if bw and bw.charted or data.cardio_series|selectattr('distance')|list %}
-<div class="two-col">
-{% if bw and bw.charted %}
-<section class="card chart-card">
-    <div class="card-head">
-        <h2 class="card-title">Body weight per {{ by }}</h2>
-        <span class="muted small">{{ bw.chart_unit }}{% if by != 'day' %} · average of the {{ by }}'s readings{% endif %}</span>
-    </div>
+    {% if bw and bw.charted %}
     <svg class="chart" data-chart="line" data-y="weight" data-x="label"
          data-series='{{ bw.periods|tojson }}' role="img" aria-label="Body weight per {{ by }}"></svg>
     <details class="chart-table">
-        <summary class="muted small">Show as table</summary>
+        <summary class="muted small">{{ bw.chart_unit }}{% if by != 'day' %} · average of the {{ by }}'s readings{% endif %} · show as table</summary>
         <div class="table-wrap"><table class="table">
             <thead><tr><th>{{ by|capitalize }}</th><th class="num">Weight</th>{% if by != 'day' %}<th class="num">Readings</th><th class="num">Low</th><th class="num">High</th>{% endif %}</tr></thead>
             <tbody>{% for p in bw.periods|reverse if p.weight is not none %}<tr><td>{{ p.label }}</td><td class="num">{{ p.weight|fmt_num }} {{ bw.chart_unit }}</td>{% if by != 'day' %}<td class="num">{{ p.readings or 1 }}</td><td class="num">{{ p.low|fmt_num if p.low is not none else '—' }}</td><td class="num">{{ p.high|fmt_num if p.high is not none else '—' }}</td>{% endif %}</tr>{% endfor %}</tbody>
         </table></div>
     </details>
+    {% else %}
+    <p class="muted">Log your weight to see a trend.</p>
+    {% endif %}
 </section>
-{% endif %}
-{% if data.cardio_series|selectattr('distance')|list %}
-<section class="card chart-card">
-    <div class="card-head">
-        <h2 class="card-title">Cardio distance per {{ by }}</h2>
-        <span class="muted small">{{ data.distance_unit }}</span>
-    </div>
-    <svg class="chart" data-chart="columns" data-y="distance" data-x="label"
-         data-series='{{ data.cardio_series|tojson }}' role="img" aria-label="Cardio distance per {{ by }}"></svg>
-</section>
-{% endif %}
+
+<div class="section-head-row">
+    <h2>Exercise progress</h2>
+    <a href="{{ url_for('main.exercises', range=range_key) }}" class="small">See all exercises &rarr;</a>
 </div>
+{% if data.lifts %}
+<div class="lift-grid">
+    {% for l in data.lifts %}
+    <section class="card chart-card">
+        <div class="card-head">
+            <a href="{{ url_for('main.exercise_history', name=l.exercise, range=range_key) }}" class="lift-name">{{ l.exercise }}</a>
+            <span class="lift-trend">
+                {{ l.first|fmt_num }} &rarr; <strong>{{ l.latest|fmt_num }}</strong> {{ l.unit }}
+                {%- if l.change is not none %}
+                <span class="change-badge {{ 'up' if l.change > 0 else 'down' if l.change < 0 else '' }}">{{ '+' if l.change > 0 }}{{ l.change|fmt_num }}{% if l.pct is not none %} · {{ '+' if l.pct > 0 }}{{ l.pct }}%{% endif %}</span>
+                {%- endif %}
+            </span>
+        </div>
+        <svg class="chart" data-chart="line" data-y="weight" data-x="date" data-height="170"
+             data-series='{{ l.series|tojson }}' role="img" aria-label="{{ l.exercise }}: top weight per session"></svg>
+    </section>
+    {% endfor %}
+</div>
+{% else %}
+<p class="muted card">Log an exercise with a weight in two or more sessions to see its progress here.</p>
 {% endif %}
 
 <section class="card chart-card">
