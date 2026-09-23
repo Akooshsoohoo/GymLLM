@@ -20,7 +20,7 @@ from sqlalchemy import func
 
 from . import preferences, quota, stats
 from .auth import current_user_email, login_required
-from .exercises import TAG_SYSTEM, clean_tags, llm_tags, match_exercise
+from .exercises import EXERCISE_NAMES, TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
 from .llm.client import (
     BadOutputError,
@@ -196,6 +196,7 @@ def home():
         "log.html",
         config=config,
         sessions=_recent_sessions(user_email),
+        exercise_names=[n.title() for n in EXERCISE_NAMES],
         quota_left=quota_left,
         quota_limit=quota_limit,
         weight_unit=preferences.get_weight_unit(user_email),

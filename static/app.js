@@ -368,6 +368,63 @@
     });
   }
 
+  // ---------------------------------------------------------------- Classic logger (Log page)
+  // Search/pick an exercise to add a row; rows post to /confirm with the same field names
+  // the review page uses.
+  var classicForm = $("#classic-form");
+  if (classicForm) {
+    var esc = function (s) { return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"); };
+    // One search box + table per kind. columns: [field, extra attrs]; the first is filled from the search.
+    var classicList = function (o) {
+      var table = $(o.table), count = $(o.count), search = $(o.search);
+      var add = function () {
+        var name = search.value.trim();
+        if (!name) return;
+        var i = parseInt(count.value, 10) || 0;
+        var tr = document.createElement("tr");
+        tr.innerHTML = o.columns.map(function (col, idx) {
+          return "<td" + (idx === 0 ? ' class="exercise-cell"' : "") + '><input type="text" name="' + o.prefix + "-" + i + "-" + col[0] +
+            '" aria-label="' + col[0].charAt(0).toUpperCase() + col[0].slice(1) + '"' + (idx === 0 ? ' value="' + esc(name) + '"' : col[1] || "") + "></td>";
+        }).join("") + '<td class="col-actions"><button type="button" class="btn btn-text row-remove">Remove</button></td>';
+        table.tBodies[0].appendChild(tr);
+        count.value = i + 1;
+        table.hidden = false;
+        search.value = "";
+        tr.querySelectorAll("input")[1].focus();
+      };
+      $(o.button).addEventListener("click", add);
+      search.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") { ev.preventDefault(); add(); }
+      });
+      // A removed row is blanked, not deleted, so indexes stay contiguous; the server skips empty names.
+      table.addEventListener("click", function (ev) {
+        var btn = ev.target.closest(".row-remove");
+        if (!btn) return;
+        var tr = btn.closest("tr");
+        tr.querySelector("input").value = "";
+        tr.hidden = true;
+      });
+      return function () {
+        return $$("tbody tr input:first-child", table).some(function (i) { return i.value.trim(); });
+      };
+    };
+    var hasLifts = classicList({
+      table: "#classic-table", count: "#classic-count", search: "#classic-search", button: "#classic-add", prefix: "entry",
+      columns: [["exercise"], ["weight", ' placeholder="185 lbs"'], ["sets", ' class="narrow" inputmode="numeric"'],
+                ["reps", ' placeholder="10, 8, 6"'], ["notes", ""]]
+    });
+    var hasCardio = classicList({
+      table: "#classic-cardio-table", count: "#classic-cardio-count", search: "#classic-cardio-search", button: "#classic-cardio-add", prefix: "cardio",
+      columns: [["activity"], ["distance", ' placeholder="3 miles"'], ["duration", ' placeholder="45 min"'], ["notes", ""]]
+    });
+    classicForm.addEventListener("submit", function (ev) {
+      if (!hasLifts() && !hasCardio() && !$("#classic-bodyweight").value.trim()) {
+        ev.preventDefault();
+        $("#classic-search").focus();
+      }
+    });
+  }
+
   // ---------------------------------------------------------------- Settings page
   var settingsForm = $("#settings-form");
   if (settingsForm) {

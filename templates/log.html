@@ -40,6 +40,80 @@
     </div>
 </form>
 
+<section class="section">
+    <div class="section-head">
+        <h2>Or log it the classic way</h2>
+    </div>
+    <form method="post" action="{{ url_for('main.confirm') }}" id="classic-form" class="card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="card-head">
+            <div class="field-inline">
+                <label for="classic-date">Date</label>
+                <input type="date" id="classic-date" name="date" value="" required class="input date-input client-date">
+            </div>
+            <span class="muted small">No AI involved. Saved as you enter it.</span>
+        </div>
+
+        <div class="review-section">
+            <div class="field-inline">
+                <label for="classic-search">Search exercise</label>
+                <input type="text" id="classic-search" class="input" list="exercise-names" placeholder="e.g. bench press" autocomplete="off">
+                <button type="button" class="btn btn-text" id="classic-add">Add</button>
+                <span class="muted small">Pick from the list or type your own, then press Enter.</span>
+            </div>
+            <div class="table-wrap">
+            <table id="classic-table" class="table table-editing" hidden>
+                <thead>
+                <tr>
+                    <th>Exercise</th><th>Weight</th><th>Sets</th><th>Reps</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            </div>
+            <input type="hidden" name="num_entries" id="classic-count" value="0">
+        </div>
+
+        <div class="review-section">
+            <div class="field-inline">
+                <label for="classic-cardio-search">Add cardio</label>
+                <input type="text" id="classic-cardio-search" class="input" list="cardio-names" placeholder="e.g. running" autocomplete="off">
+                <button type="button" class="btn btn-text" id="classic-cardio-add">Add</button>
+                <span class="muted small">Pick from the list or type your own, then press Enter.</span>
+            </div>
+            <div class="table-wrap">
+            <table id="classic-cardio-table" class="table table-editing" hidden>
+                <thead>
+                <tr>
+                    <th>Activity</th><th>Distance</th><th>Duration</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            </div>
+            <input type="hidden" name="num_cardio" id="classic-cardio-count" value="0">
+        </div>
+
+        <div class="review-section">
+            <div class="field-inline">
+                <label for="classic-bodyweight">Body weight</label>
+                <input type="text" id="classic-bodyweight" name="bodyweight" placeholder="130 lbs" class="input input-short">
+                <span class="muted small">Optional. One reading per day; a new one replaces the old.</span>
+            </div>
+        </div>
+
+        <div class="toolbar toolbar-end">
+            <button type="submit" class="btn btn-primary">Save to log</button>
+        </div>
+    </form>
+    <datalist id="exercise-names">
+        {%- for n in exercise_names %}<option value="{{ n }}">{% endfor -%}
+    </datalist>
+    <datalist id="cardio-names">
+        {%- for n in ("Walking", "Running", "Jogging", "Cycling", "Swimming", "Rowing", "Hiking", "Elliptical", "Stair climber", "Jump rope") %}<option value="{{ n }}">{% endfor -%}
+    </datalist>
+</section>
+
 <details class="hint">
     <summary>Writing tips</summary>
     <ul>

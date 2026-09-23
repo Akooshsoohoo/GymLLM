@@ -830,6 +830,7 @@ def test_home_cards_show_cardio_and_weight(logged_in, add_workout, add_cardio, a
     add_cardio(date="2026-02-03", activity="swimming", distance="20 laps")  # cardio-only day
     add_weight(date="2026-02-01", weight="130 lbs")
     body = logged_in.get("/").data.decode()
+    body = body[body.index("Recent sessions") :]  # skip the exercise-search datalist
     assert "walking" in body and "3 miles" in body and "130 lbs" in body
     assert "swimming" in body and body.index("swimming") < body.index("bench")
 
