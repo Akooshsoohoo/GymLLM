@@ -29,6 +29,13 @@
         {% endif %}
             <span class="week-letter">{{ d.letter }}</span>
             <span class="week-num">{{ d.day }}</span>
+            {% if d.logged %}
+            <span class="week-stats">
+                {%- if d.exercises %}<span>{{ d.exercises }} ex</span><span>{{ d.sets }} set{{ '' if d.sets == 1 else 's' }}</span>{% endif -%}
+                {%- if d.cardio_text %}<span>{{ d.cardio_text }}</span>{% endif -%}
+                {%- if d.weight and not (d.exercises and d.cardio_text) %}<span>{{ d.weight }}</span>{% endif -%}
+            </span>
+            {% endif %}
         {% if d.logged %}</a>{% else %}</div>{% endif %}
         {% endfor %}
     </div>
@@ -93,17 +100,6 @@
 {% else %}
 <p class="muted card">Log an exercise with a weight in two or more sessions to see its progress here.</p>
 {% endif %}
-
-<section class="card chart-card">
-    <div class="card-head">
-        <h2 class="card-title">Training days</h2>
-        <span class="muted small heat-legend" aria-hidden="true">less <i class="h0"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i> more</span>
-    </div>
-    <div class="heat-scroll">
-        <svg class="chart heatmap" data-chart="heatmap" data-series='{{ data.heatmap|tojson }}'
-             data-day-base="{{ url_for('main.day', when='0000-00-00')|replace('0000-00-00', '') }}" role="img" aria-label="Calendar of training days; click a day to open it"></svg>
-    </div>
-</section>
 
 <div class="two-col">
     <section class="card">

@@ -18,7 +18,6 @@ RANGE_LABELS = {
 }
 GROUPINGS = ("day", "week", "month")
 DEFAULT_GROUPING = {"7d": "day", "30d": "day", "90d": "week", "1y": "month", "all": "month"}
-HEATMAP_MAX_WEEKS = 53
 TOP_N = 8
 LIFTS_N = 6  # exercise progress charts on the Overview
 TAGS_N = 10  # muscle tags shown before the rest fold into "other"
@@ -352,20 +351,37 @@ def personal_records(all_rows: list[dict], start: date | None) -> list[dict]:
     return prs
 
 
-def week_strip(dates: set[str], today: date) -> list[dict]:
-    """Monday to Sunday of today's week, each day flagged if anything was logged."""
+def week_strip(
+    today: date, rows: list[dict], cardio: list[dict] = (), weights: list[dict] = ()
+) -> list[dict]:
+    """Monday to Sunday of today's week: whether anything was logged each day, plus
+    that day's exercise count, sets, cardio and weigh-in for the labels under it."""
     monday = date.fromisoformat(period_key(today, "week"))
+    lo, hi = monday.isoformat(), (monday + timedelta(days=6)).isoformat()
+    per_day: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
+    for kind, items in (("rows", rows), ("cardio", cardio), ("weights", weights)):
+        for x in items:
+            if lo <= x["date"] <= hi:
+                per_day[x["date"]][kind].append(x)
     days = []
     for i in range(7):
         d = monday + timedelta(days=i)
+        logged = per_day.get(d.isoformat(), {})
+        lifts, activities = logged.get("rows", []), logged.get("cardio", [])
+        readings = sorted(logged.get("weights", []), key=lambda w: w["id"])
+        st = cardio_stats(activities)
         days.append(
             {
                 "date": d.isoformat(),
                 "letter": "MTWTFSS"[i],
                 "day": d.day,
-                "logged": d.isoformat() in dates,
+                "logged": bool(logged),
                 "today": d == today,
                 "future": d > today,
+                "exercises": len({r["exercise"] for r in lifts}),
+                "sets": sum(set_count(r.get("sets"), r.get("reps")) for r in lifts),
+                "cardio_text": st["lead"] or st["minutes_text"] or ("cardio" if activities else ""),
+                "weight": readings[-1]["weight"] if readings else "",
             }
         )
     return days
@@ -519,20 +535,6 @@ def overview(
     activities = filter_range(list(cardio), today, range_key)
     start = range_start(today, range_key)
     totals = _totals(rows, activities)
-    dated = [parse_date(x["date"]) for x in rows + activities]
-    first = min((d for d in dated if d), default=None)
-
-    # Calendar heatmap: entries per day, Monday-aligned weeks ending today.
-    heat_start = start or first or today
-    heat_start = max(heat_start, today - timedelta(weeks=HEATMAP_MAX_WEEKS - 1))
-    heat_start -= timedelta(days=heat_start.weekday())
-    per_day = Counter(x["date"] for x in rows + activities)
-    heatmap = [
-        {"date": (heat_start + timedelta(days=i)).isoformat(), "count": 0}
-        for i in range((today - heat_start).days + 1)
-    ]
-    for cell in heatmap:
-        cell["count"] = per_day.get(cell["date"], 0)
 
     # Muscle groups: entries per tag, top N and the rest folded into "other".
     tag_counts: Counter[str] = Counter()
@@ -571,9 +573,8 @@ def overview(
         "totals": totals,
         "bodyweight": bodyweight_summary(list(weights), start, today, by),
         "streak": week_streak({r["date"] for r in all_rows}, today),
-        "week": week_strip({x["date"] for x in [*all_rows, *cardio, *weights]}, today),
+        "week": week_strip(today, all_rows, list(cardio), list(weights)),
         "lifts": lift_progress(rows),
-        "heatmap": heatmap,
         "tags": tags,
         "top_exercises": top,
         "prs": personal_records(all_rows, start)[:TOP_N],

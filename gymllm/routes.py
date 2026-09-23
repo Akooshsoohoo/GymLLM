@@ -780,5 +780,6 @@ def exercise_history(name: str):
         last_date=rows[-1]["date"] if rows else None,
         tags=tags,
         series=series,
+        lift=next(iter(stats.lift_progress(rows, n=1)), None),
         range_key=range_key,
     )

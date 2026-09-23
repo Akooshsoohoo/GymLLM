@@ -122,13 +122,32 @@ def test_personal_records_need_an_earlier_entry_to_beat():
 
 
 def test_week_strip():
-    strip = stats.week_strip({"2026-03-11", "2026-03-04"}, date(2026, 3, 12))  # a Thursday
+    rows = [
+        row(id=1, date="2026-03-11", sets="3", reps="5, 5, 5"),
+        row(id=2, date="2026-03-11", sets="3", reps="5, 5, 5"),  # same exercise again
+        row(
+            id=3, date="2026-03-11", exercise="pull up", weight="bodyweight", sets="", reps="10, 8"
+        ),
+        row(id=4, date="2026-03-04"),  # last week: not in the strip
+    ]
+    activities = [
+        cardio(id=1, date="2026-03-09", distance="5 km"),
+        cardio(id=2, date="2026-03-10", distance="", duration="30 min"),
+    ]
+    weights = [reading(id=1, date="2026-03-12", weight="160 lbs")]
+    strip = stats.week_strip(date(2026, 3, 12), rows, activities, weights)  # a Thursday
     assert [d["date"] for d in strip] == [f"2026-03-{d:02d}" for d in range(9, 16)]
     assert "".join(d["letter"] for d in strip) == "MTWTFSS"
-    assert [d["logged"] for d in strip] == [False, False, True, False, False, False, False]
+    assert [d["logged"] for d in strip] == [True, True, True, True, False, False, False]
     assert [d["today"] for d in strip].index(True) == 3
     assert [d["future"] for d in strip] == [False] * 4 + [True] * 3
     assert strip[0]["day"] == 9
+    mon, tue, wed, thu = strip[:4]
+    assert (wed["exercises"], wed["sets"], wed["cardio_text"], wed["weight"]) == (2, 8, "", "")
+    assert (mon["exercises"], mon["cardio_text"]) == (0, "5 km")
+    assert tue["cardio_text"] == "30 min"  # no distance: the time instead
+    assert (thu["weight"], thu["exercises"]) == ("160 lbs", 0)
+    assert strip[4]["sets"] == 0 and strip[4]["weight"] == ""
 
 
 def test_lift_progress():
@@ -178,14 +197,7 @@ def test_overview_totals_and_series():
     assert [d["date"] for d in data["week"] if d["logged"]] == ["2026-03-10", "2026-03-14"]
     assert [x["exercise"] for x in data["lifts"]] == ["barbell bench press"]
     assert data["lifts"][0]["first"] == 190 and data["lifts"][0]["latest"] == 185
-    # Heatmap starts on the Monday of the range and runs to today.
-    assert (
-        data["heatmap"][0]["date"] == "2026-03-09" and data["heatmap"][-1]["date"] == "2026-03-15"
-    )
-    assert {c["date"]: c["count"] for c in data["heatmap"] if c["count"]} == {
-        "2026-03-14": 2,
-        "2026-03-10": 1,
-    }
+    assert "heatmap" not in data
     assert data["tags"][0] == {"tag": "chest", "count": 2}
     assert data["top_exercises"][0]["exercise"] == "barbell bench press"
     assert data["top_exercises"][0]["best"] == "190 lbs"
@@ -204,7 +216,6 @@ def test_overview_with_no_rows():
     data = stats.overview([], TODAY, "all", "month")
     assert data["totals"]["entries"] == 0 and data["lifts"] == [] and data["streak"] == 0
     assert len(data["week"]) == 7 and not any(d["logged"] for d in data["week"])
-    assert len(data["heatmap"]) == (TODAY - date(2026, 3, 9)).days + 1
 
 
 def test_exercise_series():
@@ -388,11 +399,8 @@ def test_overview_with_cardio_and_weights():
         130.0,
         None,
     ]
-    assert {c["date"]: c["count"] for c in data["heatmap"] if c["count"]} == {
-        "2026-03-12": 1,
-        "2026-03-13": 1,
-        "2026-03-14": 1,
-    }
+    fri = data["week"][4]
+    assert fri["cardio_text"] == "2 mi" and fri["exercises"] == 0
 
 
 def test_cardio_summary():

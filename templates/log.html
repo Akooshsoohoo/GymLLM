@@ -29,7 +29,7 @@
     <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
     <label for="workout" class="sr-only">Describe your workout</label>
     <textarea id="workout" name="workout" rows="6" required autofocus class="textarea textarea-plain"
-        placeholder="today I walked 3 miles, did some pull ups, curled the 20 lb dumbbells for a few sets, and weighed in at 130 lbs"></textarea>
+        placeholder="today I walked 3 miles, did some pull ups, curled the 20 lb dumbbells for a few sets, and weighed in at 160 lbs"></textarea>
     <div class="toolbar">
         <button type="submit" class="btn btn-primary">Parse workout</button>
         <div class="unit-toggle" role="group" aria-label="Default weight unit for exercises with no unit stated">
@@ -42,7 +42,7 @@
 
 <section class="section">
     <div class="section-head">
-        <h2>Or log it the classic way</h2>
+        <h2>Manual log</h2>
     </div>
     <form method="post" action="{{ url_for('main.confirm') }}" id="classic-form" class="card">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -97,7 +97,7 @@
         <div class="review-section">
             <div class="field-inline">
                 <label for="classic-bodyweight">Body weight</label>
-                <input type="text" id="classic-bodyweight" name="bodyweight" placeholder="130 lbs" class="input input-short">
+                <input type="text" id="classic-bodyweight" name="bodyweight" placeholder="160 lbs" class="input input-short">
                 <span class="muted small">Optional. One reading per day; a new one replaces the old.</span>
             </div>
         </div>

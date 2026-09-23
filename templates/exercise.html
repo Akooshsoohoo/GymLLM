@@ -16,29 +16,42 @@
 {% if not rows %}
 {% include "_empty_range.html" %}
 {% else %}
-<div class="stat-grid">
-    <div class="stat"><div class="stat-label">Sessions</div><div class="stat-value">{{ sessions }}</div></div>
-    <div class="stat"><div class="stat-label">Best weight</div><div class="stat-value">{{ best.weight if best else '—' }}</div>{% if best %}<div class="stat-delta">{{ best.date|nice_date }}</div>{% endif %}</div>
-    <div class="stat"><div class="stat-label">Volume <span class="muted">weight × reps</span></div><div class="stat-value">{{ volume|fmt_num if volume else '—' }}</div></div>
-    <div class="stat"><div class="stat-label">Last done</div><div class="stat-value stat-value-sm">{{ last_date|nice_date }}</div></div>
-</div>
+<p class="muted exercise-summary">
+    {{ sessions }} session{{ '' if sessions == 1 else 's' }}
+    {%- if best %} · best <strong>{{ best.weight }}</strong> ({{ best.date|nice_date }}){% endif %}
+    {%- if volume %} · {{ volume|fmt_num }} total volume{% endif %}
+    · last done {{ last_date|nice_date }}
+</p>
 
 {% set weighted = series|selectattr('weight', 'ne', none)|list %}
-{% if weighted %}
-<div class="two-col">
 <section class="card chart-card">
-    <h2 class="card-title">Top weight per session</h2>
+    <div class="card-head">
+        <h2 class="card-title">Top weight per session</h2>
+        {% if lift %}
+        <span class="lift-trend">
+            {{ lift.first|fmt_num }} &rarr; <strong>{{ lift.latest|fmt_num }}</strong> {{ lift.unit }}
+            {%- if lift.change is not none %}
+            <span class="change-badge {{ 'up' if lift.change > 0 else 'down' if lift.change < 0 else '' }}">{{ '+' if lift.change > 0 }}{{ lift.change|fmt_num }}{% if lift.pct is not none %} · {{ '+' if lift.pct > 0 }}{{ lift.pct }}%{% endif %}</span>
+            {%- endif %}
+        </span>
+        {% endif %}
+    </div>
+    {% if weighted %}
     <svg class="chart" data-chart="line" data-y="weight" data-x="date"
          data-series='{{ weighted|tojson }}' role="img" aria-label="Top weight per session"></svg>
+    {% else %}
+    <p class="muted small">Weights without a leading number (e.g. "bodyweight") are not charted.</p>
+    {% endif %}
 </section>
+{% if weighted %}
 <section class="card chart-card">
-    <h2 class="card-title">Volume per session</h2>
+    <div class="card-head">
+        <h2 class="card-title">Volume per session</h2>
+        <span class="muted small">weight × reps</span>
+    </div>
     <svg class="chart" data-chart="columns" data-y="volume" data-x="date"
          data-series='{{ weighted|tojson }}' role="img" aria-label="Volume per session"></svg>
 </section>
-</div>
-{% else %}
-<p class="muted small">Weights without a leading number (e.g. "bodyweight") are not charted.</p>
 {% endif %}
 
 <div class="table-wrap card card-flush">

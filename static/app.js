@@ -176,7 +176,7 @@
     if (type === "number") { var m = text.match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : -Infinity; }
     return text.toLowerCase();
   }
-  $$("table.sortable").forEach(function (table) {
+  function initSortable(root) { $$("table.sortable", root).forEach(function (table) {
     var tbody = table.tBodies[0];
     if (!tbody) return;
     $$("th[data-sort]", table).forEach(function (th, idx) {
@@ -197,12 +197,12 @@
         rows.forEach(function (r) { tbody.appendChild(r); });
       });
     });
-  });
+  }); }
 
   // ---------------------------------------------------------------- Table filter
   // <input data-filter="table selector" data-count="#counter" data-group=".group">
   // hides rows that don't match; groups left with no visible rows are hidden too.
-  $$("input[data-filter]").forEach(function (input) {
+  function initFilters(root) { $$("input[data-filter]", root).forEach(function (input) {
     var tables = $$(input.dataset.filter).filter(function (t) { return t.tBodies[0]; });
     if (!tables.length) return;
     var counter = input.dataset.count ? $(input.dataset.count) : null;
@@ -224,7 +224,7 @@
       if (counter) counter.textContent = shown + " " + noun + (shown === 1 ? "" : "s") + (q ? " match" : "");
     };
     input.addEventListener("input", apply);
-  });
+  }); }
 
   // ---------------------------------------------------------------- History: edit mode + dirty tracking
   var logForm = $("#log-edit-form");
@@ -403,6 +403,7 @@
         var tr = btn.closest("tr");
         tr.querySelector("input").value = "";
         tr.hidden = true;
+        if (!$$("tr", table.tBodies[0]).some(function (r) { return !r.hidden; })) table.hidden = true;
       });
       return function () {
         return $$("tbody tr input:first-child", table).some(function (i) { return i.value.trim(); });
@@ -532,7 +533,7 @@
   }
 
   // ---------------------------------------------------------------- Charts (inline SVG, no library)
-  // <svg data-chart="line|columns|heatmap|spark" data-series='[...]' data-x="label" data-y="value">
+  // <svg data-chart="line|columns|spark" data-series='[...]' data-x="label" data-y="value">
   // One accent hue, hairline grid, thin marks, a hover/keyboard tooltip. Re-renders on resize.
   var charts = (function () {
     var ns = "http://www.w3.org/2000/svg";
@@ -668,7 +669,7 @@
       var every = labelEvery(n, W - L - R);
       var dotR = valid.length > 60 ? 0 : 4;
       series.forEach(function (p, i) {
-        if (i % every === 0 || i === n - 1) {
+        if ((i % every === 0 && n - 1 - i >= every) || i === n - 1) { // skip one that would crowd the last
           svg.appendChild(el("text", { x: x(i), y: H - B + 18, class: "axis-label", "text-anchor": "middle" }, axisLabel(p[opts.x])));
         }
       });
@@ -716,7 +717,7 @@
           : "M" + left + " " + (base - 1) + " h" + bw + " v1 h-" + bw + " Z";
         var bar = el("path", { d: d, class: "bar" + (v > 0 ? "" : " empty") });
         svg.appendChild(bar);
-        if (i % every === 0 || i === n - 1) {
+        if ((i % every === 0 && n - 1 - i >= every) || i === n - 1) { // skip one that would crowd the last
           svg.appendChild(el("text", { x: x(i), y: H - B + 18, class: "axis-label", "text-anchor": "middle" }, axisLabel(p[opts.x])));
         }
         return bar;
@@ -728,66 +729,6 @@
         if (i < 0) { t.hide(); return; }
         t.show(titleLabel(series[i][opts.x]), rowsFor(series[i], opts.y), x(i), y(ys[i]));
       });
-    }
-
-    function heatmap(svg, days) {
-      var weeks = Math.ceil(days.length / 7);
-      var W = width(svg), left = 30, top = 18;
-      var cell = Math.max(9, Math.min(16, Math.floor((W - left) / weeks) - 3)), gap = 3, step = cell + gap;
-      var w = left + weeks * step, h = top + 7 * step;
-      svg.setAttribute("viewBox", "0 0 " + w + " " + h);
-      svg.setAttribute("width", w); svg.setAttribute("height", h);
-      ["Mon", "Wed", "Fri"].forEach(function (d, i) {
-        svg.appendChild(el("text", { x: 0, y: top + (i * 2) * step + cell - 2, class: "cal-label" }, d));
-      });
-      var lastMonth = "", lastLabelCol = -3;
-      var cells = days.map(function (d, i) {
-        var col = Math.floor(i / 7), row = i % 7;
-        var month = d.date.slice(0, 7);
-        if (row === 0 && month !== lastMonth) {
-          if (col - lastLabelCol >= 3) {
-            var dt = new Date(d.date + "T00:00:00");
-            svg.appendChild(el("text", { x: left + col * step, y: 11, class: "cal-label" }, dt.toLocaleString(undefined, { month: "short" })));
-            lastLabelCol = col;
-          }
-          lastMonth = month;
-        }
-        var level = d.count === 0 ? 0 : d.count < 3 ? 1 : d.count < 6 ? 2 : 3;
-        var r = el("rect", { x: left + col * step, y: top + row * step, width: cell, height: cell, rx: 2, class: "cell h" + level });
-        svg.appendChild(r);
-        return r;
-      });
-      var t = tip(svg);
-      var active = -1;
-      var set = function (i) {
-        if (active >= 0) cells[active].classList.remove("active");
-        active = i;
-        if (i < 0) { t.hide(); return; }
-        cells[i].classList.add("active");
-        var d = days[i], dt = new Date(d.date + "T00:00:00");
-        var when = dt.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-        t.show(when, [[d.count === 1 ? "exercise logged" : "exercises logged", String(d.count)]],
-          left + Math.floor(i / 7) * step + cell, top + (i % 7) * step);
-      };
-      var cellAt = function (ev) {
-        var r = svg.getBoundingClientRect();
-        var sx = w / r.width, x = (ev.clientX - r.left) * sx - left, y = (ev.clientY - r.top) * sx - top;
-        var col = Math.floor(x / step), row = Math.floor(y / step);
-        var i = col * 7 + row;
-        return (x < 0 || y < 0 || row > 6 || i >= days.length) ? -1 : i;
-      };
-      svg.addEventListener("pointermove", function (ev) {
-        var i = cellAt(ev);
-        if (i !== active) set(i);
-      });
-      svg.addEventListener("pointerleave", function () { set(-1); });
-      if (svg.dataset.dayBase) {
-        svg.style.cursor = "pointer";
-        svg.addEventListener("click", function (ev) {
-          var i = cellAt(ev);
-          if (i >= 0) window.location.href = svg.dataset.dayBase + days[i].date;
-        });
-      }
     }
 
     function spark(svg, values) {
@@ -803,7 +744,7 @@
       svg.appendChild(el("title", {}, values.map(fmt).join(" → ")));
     }
 
-    var renderers = { line: line, columns: columns, heatmap: heatmap, spark: spark };
+    var renderers = { line: line, columns: columns, spark: spark };
     function renderAll() {
       $$("svg[data-chart]").forEach(function (svg) {
         var fn = renderers[svg.dataset.chart];
@@ -974,14 +915,361 @@
     });
   }
 
-  if ($("svg[data-chart]")) {
+  // ---------------------------------------------------------------- Popover
+  // One floating panel at a time (calendar, suggestions, select list), placed under
+  // the control that opened it. Lives on <body> so table wrappers can't clip it.
+  var popover = (function () {
+    var node = null, owner = null, onClose = null, matchWidth = false;
+    function place() {
+      if (!node) return;
+      var r = owner.getBoundingClientRect();
+      node.style.minWidth = matchWidth ? r.width + "px" : "";
+      var maxLeft = window.scrollX + document.documentElement.clientWidth - node.offsetWidth - 8;
+      node.style.left = Math.max(window.scrollX + 8, Math.min(r.left + window.scrollX, maxLeft)) + "px";
+      node.style.top = (r.bottom + window.scrollY + 4) + "px";
+    }
+    function close(refocus) {
+      if (!node) return;
+      var o = owner, cb = onClose;
+      node.remove();
+      node = owner = onClose = null;
+      if (cb) cb();
+      if (refocus && o) o.focus();
+    }
+    function open(anchor, panel, opts) {
+      close(false);
+      opts = opts || {};
+      node = panel; owner = anchor; onClose = opts.onClose; matchWidth = !!opts.matchWidth;
+      panel.classList.add("popover");
+      document.body.appendChild(panel);
+      place();
+    }
+    document.addEventListener("pointerdown", function (ev) {
+      if (node && !node.contains(ev.target) && !owner.contains(ev.target)) close(false);
+    }, true);
+    window.addEventListener("resize", place);
+    return { open: open, close: close, place: place, node: function () { return node; }, isOpenFor: function (a) { return !!node && owner === a; } };
+  })();
+
+  var escHtml = function (s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"); };
+  var MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  var DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function isoOf(d) {
+    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+  function parseIso(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || "");
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+  }
+  function niceDate(v) {
+    var d = parseIso(v);
+    return d ? DOW[d.getDay()] + " " + d.getDate() + " " + MONTH_NAMES[d.getMonth()].slice(0, 3) + " " + d.getFullYear() : "Pick a date";
+  }
+  // Point a <label for=…> at the button that now stands in for a hidden control.
+  function relabel(control, btn) {
+    if (!control.id) return;
+    btn.id = control.id + "-btn";
+    var label = $('label[for="' + control.id + '"]');
+    if (label) label.htmlFor = btn.id;
+  }
+
+  // ---------------------------------------------------------------- Date picker
+  // Each <input type="date"> is hidden (it still submits) behind a button that opens
+  // a month calendar. Picking sets the input and fires "change".
+  function openCalendar(input, btn) {
+    var today = parseIso(localDate()), sel = parseIso(input.value), focus = sel || today;
+    var box = document.createElement("div");
+    box.className = "cal";
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-label", "Choose a date");
+    var render = function () {
+      var first = new Date(focus.getFullYear(), focus.getMonth(), 1);
+      var start = new Date(first.getFullYear(), first.getMonth(), 1 - ((first.getDay() + 6) % 7));
+      var html = '<div class="cal-head"><button type="button" class="cal-nav" data-step="-1" aria-label="Previous month">&lsaquo;</button>' +
+        '<span class="cal-title">' + MONTH_NAMES[first.getMonth()] + " " + first.getFullYear() + "</span>" +
+        '<button type="button" class="cal-nav" data-step="1" aria-label="Next month">&rsaquo;</button></div><div class="cal-grid">';
+      "MTWTFSS".split("").forEach(function (l) { html += '<span class="cal-dow" aria-hidden="true">' + l + "</span>"; });
+      for (var i = 0; i < 42; i++) {
+        var d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i), v = isoOf(d);
+        var cls = "cal-day" + (d.getMonth() !== first.getMonth() ? " is-outside" : "") +
+          (sel && v === isoOf(sel) ? " is-selected" : "") + (v === isoOf(today) ? " is-today" : "");
+        html += '<button type="button" class="' + cls + '" data-date="' + v + '" aria-label="' + niceDate(v) + '"' +
+          (sel && v === isoOf(sel) ? ' aria-pressed="true"' : "") + ' tabindex="' + (v === isoOf(focus) ? 0 : -1) + '">' + d.getDate() + "</button>";
+      }
+      html += '</div><div class="cal-foot"><button type="button" class="btn btn-text btn-sm" data-date="' + isoOf(today) + '">Today</button></div>';
+      box.innerHTML = html;
+    };
+    var focusDay = function () {
+      var b = box.querySelector('.cal-day[data-date="' + isoOf(focus) + '"]');
+      if (b) b.focus();
+    };
+    var pick = function (v) {
+      input.value = v;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      popover.close(true);
+    };
+    box.addEventListener("click", function (ev) {
+      var nav = ev.target.closest("[data-step]");
+      if (nav) {
+        focus = new Date(focus.getFullYear(), focus.getMonth() + parseInt(nav.dataset.step, 10), 1);
+        render();
+        box.querySelector('[data-step="' + nav.dataset.step + '"]').focus();
+        return;
+      }
+      var day = ev.target.closest("[data-date]");
+      if (day) pick(day.dataset.date);
+    });
+    box.addEventListener("keydown", function (ev) {
+      var moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+      if (ev.key === "Escape") { ev.preventDefault(); popover.close(true); return; }
+      if (!ev.target.classList.contains("cal-day")) return;
+      if (moves[ev.key]) focus = new Date(focus.getFullYear(), focus.getMonth(), focus.getDate() + moves[ev.key]);
+      else if (ev.key === "PageUp" || ev.key === "PageDown") focus = new Date(focus.getFullYear(), focus.getMonth() + (ev.key === "PageUp" ? -1 : 1), 1);
+      else return;
+      ev.preventDefault();
+      render();
+      focusDay();
+    });
+    render();
+    btn.setAttribute("aria-expanded", "true");
+    popover.open(btn, box, { onClose: function () { btn.setAttribute("aria-expanded", "false"); } });
+    focusDay();
+  }
+  function initDatePickers(root) {
+    $$('input[type="date"]', root).forEach(function (input) {
+      if (input.dataset.enhanced) return;
+      input.dataset.enhanced = "1";
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = (input.className.replace(/\bclient-date\b/, "") + " date-trigger").trim();
+      btn.setAttribute("aria-haspopup", "dialog");
+      relabel(input, btn);
+      var sync = function () { btn.textContent = niceDate(input.value); };
+      sync();
+      input.addEventListener("change", sync);
+      input.hidden = true;
+      input.parentNode.insertBefore(btn, input.nextSibling);
+      btn.addEventListener("click", function () {
+        if (popover.isOpenFor(btn)) popover.close(true); else openCalendar(input, btn);
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------- Autocomplete
+  // Inputs with list="…" get a styled suggestion panel instead of the browser's
+  // datalist popup. Options are read from the datalist each time, so lists filled
+  // later by script (Settings models) still work.
+  var suggest = { input: null, items: [], active: -1 };
+  function suggestItems(input) {
+    var dl = document.getElementById(input.dataset.suggest);
+    if (!dl) return [];
+    var q = input.value.trim().toLowerCase(), seen = {}, out = [];
+    $$("option", dl).forEach(function (o) {
+      var k = o.value.toLowerCase();
+      if (!o.value || seen[k] || k === q || (q && k.indexOf(q) === -1)) return;
+      seen[k] = true;
+      out.push(o.value);
+    });
+    // Matches at the start of the name first; otherwise keep the list's order.
+    out.sort(function (a, b) { return (a.toLowerCase().indexOf(q) !== 0) - (b.toLowerCase().indexOf(q) !== 0); });
+    return out.slice(0, 8);
+  }
+  function suggestSetActive(i) {
+    var box = popover.node();
+    suggest.active = i;
+    $$(".suggest-item", box).forEach(function (li, j) { li.classList.toggle("is-active", j === i); li.setAttribute("aria-selected", j === i ? "true" : "false"); });
+    if (i >= 0) {
+      suggest.input.setAttribute("aria-activedescendant", "suggest-" + i);
+      box.children[i].scrollIntoView({ block: "nearest" });
+    } else {
+      suggest.input.removeAttribute("aria-activedescendant");
+    }
+  }
+  function showSuggest(input) {
+    var items = suggestItems(input);
+    if (!items.length) { if (popover.isOpenFor(input)) popover.close(false); return; }
+    var open = popover.isOpenFor(input);
+    var box = open ? popover.node() : document.createElement("ul");
+    box.id = "suggest-list";
+    box.className = "popover suggest";
+    box.setAttribute("role", "listbox");
+    box.innerHTML = items.map(function (v, i) {
+      return '<li role="option" id="suggest-' + i + '" class="suggest-item" aria-selected="false" data-value="' + escHtml(v) + '">' + escHtml(v) + "</li>";
+    }).join("");
+    suggest.input = input; suggest.items = items; suggest.active = -1;
+    input.setAttribute("aria-expanded", "true");
+    input.removeAttribute("aria-activedescendant");
+    if (open) { popover.place(); return; }
+    box.addEventListener("pointerdown", function (ev) { ev.preventDefault(); }); // keep focus in the input
+    box.addEventListener("click", function (ev) {
+      var li = ev.target.closest(".suggest-item");
+      if (li) pickSuggest(li.dataset.value);
+    });
+    popover.open(input, box, {
+      matchWidth: true,
+      onClose: function () { input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); suggest.input = null; }
+    });
+  }
+  function pickSuggest(value) {
+    var input = suggest.input;
+    input.value = value;
+    popover.close(false);
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  function enhanceSuggest(input) {
+    input.dataset.suggest = input.getAttribute("list");
+    input.removeAttribute("list");
+    input.setAttribute("autocomplete", "off");
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-controls", "suggest-list");
+    input.setAttribute("aria-expanded", "false");
+  }
+  function initSuggest(root) { $$("input[list]", root).forEach(enhanceSuggest); }
+  document.addEventListener("focusin", function (ev) {
+    var t = ev.target;
+    if (!t.matches || !t.matches("input[list], input[data-suggest]")) return;
+    if (t.hasAttribute("list")) enhanceSuggest(t); // rows added after load
+    showSuggest(t);
+  });
+  document.addEventListener("focusout", function (ev) {
+    if (suggest.input && ev.target === suggest.input) popover.close(false);
+  });
+  document.addEventListener("input", function (ev) {
+    if (ev.target.dataset && ev.target.dataset.suggest) showSuggest(ev.target);
+  });
+  // Capture phase, so an Enter that picks a suggestion lands before the page's own
+  // Enter handlers (the Log page adds the picked exercise straight away).
+  document.addEventListener("keydown", function (ev) {
+    var input = ev.target;
+    if (!input.dataset || !input.dataset.suggest) return;
+    var open = popover.isOpenFor(input);
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      ev.preventDefault();
+      if (!open) { showSuggest(input); return; }
+      var n = suggest.items.length, step = ev.key === "ArrowDown" ? 1 : -1;
+      suggestSetActive(suggest.active < 0 ? (step > 0 ? 0 : n - 1) : (suggest.active + step + n) % n);
+    } else if (ev.key === "Enter" && open) {
+      if (suggest.active >= 0) { ev.preventDefault(); pickSuggest(suggest.items[suggest.active]); }
+      else popover.close(false);
+    } else if (ev.key === "Escape" && open) {
+      ev.preventDefault();
+      popover.close(false);
+    }
+  }, true);
+
+  // ---------------------------------------------------------------- Select
+  // <select class="select"> becomes a button + styled list; the hidden select keeps
+  // the value and still fires "change" for the page's own logic.
+  function openSelect(select, btn) {
+    var opts = Array.prototype.filter.call(select.options, function (o) { return !o.disabled; });
+    var box = document.createElement("ul");
+    box.className = "select-list";
+    box.setAttribute("role", "listbox");
+    box.innerHTML = opts.map(function (o) {
+      var on = o.value === select.value;
+      return '<li role="option" tabindex="-1" class="suggest-item' + (on ? " is-selected" : "") + '" aria-selected="' + on + '" data-value="' + escHtml(o.value) + '">' + escHtml(o.text) + "</li>";
+    }).join("");
+    var items = $$("li", box);
+    var pick = function (v) {
+      if (select.value !== v) { select.value = v; select.dispatchEvent(new Event("change", { bubbles: true })); }
+      popover.close(true);
+    };
+    box.addEventListener("click", function (ev) {
+      var li = ev.target.closest("li");
+      if (li) pick(li.dataset.value);
+    });
+    box.addEventListener("keydown", function (ev) {
+      var i = items.indexOf(document.activeElement);
+      if (ev.key === "ArrowDown" || ev.key === "ArrowUp") { ev.preventDefault(); items[(i + (ev.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus(); }
+      else if (ev.key === "Home" || ev.key === "End") { ev.preventDefault(); items[ev.key === "Home" ? 0 : items.length - 1].focus(); }
+      else if ((ev.key === "Enter" || ev.key === " ") && i >= 0) { ev.preventDefault(); pick(items[i].dataset.value); }
+      else if (ev.key === "Escape" || ev.key === "Tab") { ev.preventDefault(); popover.close(true); }
+    });
+    btn.setAttribute("aria-expanded", "true");
+    popover.open(btn, box, { matchWidth: true, onClose: function () { btn.setAttribute("aria-expanded", "false"); } });
+    (items.filter(function (li) { return li.classList.contains("is-selected"); })[0] || items[0]).focus();
+  }
+  function initSelects(root) {
+    $$("select.select", root).forEach(function (select) {
+      if (select.dataset.enhanced) return;
+      select.dataset.enhanced = "1";
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "select select-trigger";
+      btn.setAttribute("aria-haspopup", "listbox");
+      relabel(select, btn);
+      var sync = function () { var o = select.options[select.selectedIndex]; btn.textContent = o ? o.text : ""; };
+      sync();
+      select.addEventListener("change", sync);
+      select.hidden = true;
+      select.parentNode.insertBefore(btn, select.nextSibling);
+      btn.addEventListener("click", function () {
+        if (popover.isOpenFor(btn)) popover.close(true); else openSelect(select, btn);
+      });
+      btn.addEventListener("keydown", function (ev) {
+        if ((ev.key === "ArrowDown" || ev.key === "ArrowUp") && !popover.isOpenFor(btn)) { ev.preventDefault(); openSelect(select, btn); }
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------- Page setup
+  // Everything that has to run again when <main> is swapped in without a reload.
+  function enhance(root) {
+    initSortable(root);
+    initFilters(root);
+    initDatePickers(root);
+    initSuggest(root);
+    initSelects(root);
     charts.renderAll();
-    var resizeTimer = null, lastWidth = window.innerWidth;
-    window.addEventListener("resize", function () {
-      if (window.innerWidth === lastWidth) return;
-      lastWidth = window.innerWidth;
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(charts.renderAll, 150);
+  }
+  enhance(document);
+  var resizeTimer = null, lastWidth = window.innerWidth;
+  window.addEventListener("resize", function () {
+    if (window.innerWidth === lastWidth) return;
+    lastWidth = window.innerWidth;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(charts.renderAll, 150);
+  });
+
+  // ---------------------------------------------------------------- Filters without a reload
+  // Range and grouping links fetch the page and swap <main> in place. The Sessions
+  // edit form has state of its own, so its links still load a fresh page.
+  var main = $("main");
+  function swapTo(url, push) {
+    main.classList.add("is-loading");
+    return fetch(url, { credentials: "same-origin" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text().then(function (html) { return { html: html, url: r.url }; });
+    }).then(function (res) {
+      var doc = new DOMParser().parseFromString(res.html, "text/html");
+      var next = doc.querySelector("main");
+      if (!next || new URL(res.url).pathname !== new URL(url, location.href).pathname) throw new Error("unexpected page");
+      var y = window.scrollY;
+      popover.close(false);
+      main.innerHTML = next.innerHTML;
+      document.title = doc.title;
+      if (push) history.pushState({ swap: true }, "", url);
+      enhance(main);
+      window.scrollTo(0, y);
+    }).catch(function () {
+      window.location.href = url;
+    }).then(function () {
+      main.classList.remove("is-loading");
+    });
+  }
+  if (main && $(".filters", main)) {
+    history.replaceState({ swap: true }, "");
+    main.addEventListener("click", function (ev) {
+      var a = ev.target.closest(".filters .segmented a");
+      if (!a || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+      if ($("#log-edit-form")) return;
+      ev.preventDefault();
+      swapTo(a.href, true);
+    });
+    window.addEventListener("popstate", function (ev) {
+      if (ev.state && ev.state.swap) swapTo(location.href, false);
     });
   }
 })();

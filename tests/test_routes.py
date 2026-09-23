@@ -61,6 +61,7 @@ def test_home_without_llm_config_goes_to_settings(client):
 def test_home_shows_provider_in_use(logged_in):
     r = logged_in.get("/")
     assert r.status_code == 200 and b"OpenAI" in r.data and b"gpt-4o-mini" in r.data
+    assert b"<h2>Manual log</h2>" in r.data and b'placeholder="160 lbs"' in r.data
 
 
 def test_home_lists_recent_sessions(logged_in, add_workout):
@@ -465,7 +466,9 @@ def test_exercises_index_and_history_page(logged_in, add_workout):
     r = logged_in.get("/exercise/Barbell Bench Press")
     body = r.data.decode()
     assert r.status_code == 200
-    assert "190 lbs" in body and '<div class="stat-value">2</div>' in body
+    assert "2 sessions" in body and "best <strong>190 lbs</strong>" in body
+    assert 'class="stat-grid"' not in body  # no stat tiles, like the Overview
+    assert "185 &rarr; <strong>190</strong> lbs" in body and "+5 · +3%" in body
     assert '"date": "2026-01-01"' in body and '"weight": 185.0' in body
     assert '"volume": 4625.0' in body  # 185 x 25 reps
     assert 'data-chart="line"' in body and 'data-chart="columns"' in body
@@ -535,7 +538,10 @@ def test_progress_overview(logged_in, add_workout):
 
     body = logged_in.get("/progress?range=7d&today=2026-03-15").data.decode()
     assert "Progress" in body and "Overview" in body and "Sessions" in body
-    assert 'data-chart="heatmap"' in body and 'data-chart="columns"' not in body
+    assert 'data-chart="heatmap"' not in body and "Training days" not in body
+    assert 'data-chart="columns"' not in body
+    # Stats under the 14th: bench and pull ups, 5 sets each.
+    assert "<span>2 ex</span><span>10 sets</span>" in body
     # This week: Mon 9 – Sun 15 March, the 10th and 14th logged and linked, today ringed.
     assert body.count('class="week-day logged') == 2 and 'href="/day/2026-03-14"' in body
     assert 'class="week-day logged today"' not in body and 'class="week-day today"' in body
@@ -546,7 +552,6 @@ def test_progress_overview(logged_in, add_workout):
     assert "chest" in body and "back" in body  # muscle groups
     assert "Most trained" in body
     assert "Personal records" in body and "190 lbs" in body and "up from 180" in body
-    assert '"count": 2' in body  # heatmap cell for the 14th
     assert "vs previous" not in body  # the stat tiles are gone
 
     body = logged_in.get("/progress?range=all&by=month&today=2026-03-15").data.decode()
@@ -1020,6 +1025,5 @@ def test_dates_link_to_the_day_page(logged_in, add_workout):
     body = logged_in.get("/search?by=week&today=2026-03-15").data.decode()
     assert 'href="/day/' not in body and 'id="day-2026-03-09"' in body
     assert 'href="/day/2026-03-10"' in logged_in.get("/exercise/barbell bench press").data.decode()
-    assert 'data-day-base="/day/"' in logged_in.get("/progress").data.decode()
     r = logged_in.post("/confirm", data={"date": "2026-03-11", "bodyweight": "130 lbs"})
     assert 'href="/day/2026-03-11"' in r.data.decode()
