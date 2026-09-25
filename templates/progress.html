@@ -13,10 +13,19 @@
 
 <section class="card">
     <div class="card-head">
-        <h2 class="card-title">This week</h2>
+        <div class="week-nav">
+            <a href="{{ period_url(week=prev_week) }}" class="week-arrow" aria-label="Previous week" title="Previous week">&lsaquo;</a>
+            <h2 class="card-title">Week of {{ week_start.day }} {{ week_start.strftime('%b') }} to {{ week_end.day }} {{ week_end.strftime('%b') }}{% if week_end.year != this_year %} {{ week_end.year }}{% endif %}</h2>
+            {% if next_week %}
+            <a href="{{ period_url(week=next_week) }}" class="week-arrow" aria-label="Next week" title="Next week">&rsaquo;</a>
+            {% else %}
+            <span class="week-arrow is-disabled" aria-hidden="true">&rsaquo;</span>
+            {% endif %}
+        </div>
         <span class="muted small">
             <span class="week-count"><strong>{{ data.week|selectattr('logged')|list|length }}</strong> of 7 days</span>
-            {%- if data.streak %} · {{ data.streak }}-week streak{% endif %}
+            {%- if is_this_week and data.streak %} · {{ data.streak }}-week streak{% endif %}
+            {%- if not is_this_week %} · <a href="{{ period_url(week=None) }}" class="week-jump">This week</a>{% endif %}
         </span>
     </div>
     <div class="week-strip">

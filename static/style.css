@@ -657,6 +657,22 @@ tr.row-deleted input[type="text"] { opacity: 0.4; text-decoration: line-through;
 .stat-delta.down { color: var(--warn); }
 
 /* --- This week strip --------------------------------------------------- */
+.week-nav { display: flex; align-items: center; gap: 6px; }
+.week-nav .card-title { margin: 0; }
+.week-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 1.3rem;
+    line-height: 1;
+    text-decoration: none;
+}
+a.week-arrow:hover { background: var(--surface-3); }
+.week-arrow.is-disabled { opacity: 0.3; }
 .week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
 .week-day {
     display: flex;

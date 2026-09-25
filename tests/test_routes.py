@@ -561,6 +561,38 @@ def test_progress_overview(logged_in, add_workout):
     assert "Nothing logged in this range" in body
 
 
+def test_progress_week_arrows(logged_in, add_workout):
+    add_workout(date="2026-03-03", exercise="barbell bench press", weight="185 lbs")
+    body = logged_in.get("/progress?today=2026-03-15").data.decode()
+    assert "Week of 9 Mar to 15 Mar" in body
+    assert "week=2026-03-02" in body and 'aria-label="Next week"' not in body  # no future weeks
+    assert "<strong>0</strong> of 7 days" in body
+
+    body = logged_in.get("/progress?today=2026-03-15&week=2026-03-04").data.decode()
+    assert "Week of 2 Mar to 8 Mar" in body and "<strong>1</strong> of 7 days" in body
+    assert "week=2026-03-09" in body and 'class="week-jump"' in body
+
+    body = logged_in.get("/progress?today=2026-03-15&week=2026-04-20").data.decode()
+    assert "Week of 9 Mar to 15 Mar" in body  # clamped to the current week
+
+
+def test_progress_today_from_tz_cookie(logged_in, add_workout, monkeypatch):
+    from datetime import datetime, timezone
+
+    from gymllm import routes
+
+    class FakeDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 9, 24, 2, 0, tzinfo=timezone.utc)  # Wed 9pm in UTC-5
+
+    monkeypatch.setattr(routes, "datetime", FakeDateTime)
+    add_workout(date="2026-09-22", exercise="barbell bench press", weight="185 lbs")
+    logged_in.set_cookie("tz_offset", "300")
+    body = logged_in.get("/progress").data.decode()
+    assert 'title="Wed 23 Sep 2026"' in body.split('week-day today')[1][:60]
+
+
 def test_404_page(logged_in):
     r = logged_in.get("/does-not-exist")
     assert r.status_code == 404 and b"Page not found" in r.data

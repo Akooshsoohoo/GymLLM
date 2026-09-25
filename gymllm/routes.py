@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from flask import (
     Blueprint,
@@ -93,11 +93,18 @@ def _llm_client(config: LLMConfig):
 
 
 def _client_today() -> date:
-    """Prefer the browser's local date (sent by app.js) over the server's."""
+    """Prefer the browser's local date (sent by app.js) over the server's: a form
+    field or ?today= first, then the `tz_offset` cookie app.js sets on every page."""
     value = request.form.get("client_date", "") or request.args.get("today", "")
     if is_iso_date(value):
         return date.fromisoformat(value)
-    return date.today()
+    try:
+        offset = int(request.cookies.get("tz_offset", ""))  # minutes, as JS getTimezoneOffset()
+    except ValueError:
+        return date.today()
+    if abs(offset) > 16 * 60:
+        return date.today()
+    return (datetime.now(timezone.utc) - timedelta(minutes=offset)).date()
 
 
 def _period_args() -> tuple[str, str, date]:
@@ -688,14 +695,29 @@ def _apply_search_edits(user_email: str):
 @login_required
 def progress():
     range_key, by, today = _period_args()
+    this_monday = date.fromisoformat(stats.period_key(today, "week"))
+    picked = stats.parse_date(request.args.get("week"))
+    monday = (
+        min(date.fromisoformat(stats.period_key(picked, "week")), this_monday)
+        if picked
+        else this_monday
+    )
     user_email = current_user_email()
     all_rows = _all_rows(user_email)
     cardio = _all_cardio(user_email)
     weights = _all_weights(user_email)
-    data = stats.overview(all_rows, today, range_key, by, cardio=cardio, weights=weights)
+    data = stats.overview(
+        all_rows, today, range_key, by, cardio=cardio, weights=weights, week=monday
+    )
     return render_template(
         "progress.html",
         data=data,
+        week_start=monday,
+        week_end=monday + timedelta(days=6),
+        prev_week=(monday - timedelta(days=7)).isoformat(),
+        next_week=(monday + timedelta(days=7)).isoformat() if monday < this_monday else None,
+        is_this_week=monday == this_monday,
+        this_year=today.year,
         total=len(all_rows) + len(cardio) + len(weights),
         range_key=range_key,
         by=by,

@@ -352,11 +352,16 @@ def personal_records(all_rows: list[dict], start: date | None) -> list[dict]:
 
 
 def week_strip(
-    today: date, rows: list[dict], cardio: list[dict] = (), weights: list[dict] = ()
+    today: date,
+    rows: list[dict],
+    cardio: list[dict] = (),
+    weights: list[dict] = (),
+    week: date | None = None,
 ) -> list[dict]:
-    """Monday to Sunday of today's week: whether anything was logged each day, plus
-    that day's exercise count, sets, cardio and weigh-in for the labels under it."""
-    monday = date.fromisoformat(period_key(today, "week"))
+    """Monday to Sunday of the week holding `week` (default: today): whether anything
+    was logged each day, plus that day's exercise count, sets, cardio and weigh-in
+    for the labels under it."""
+    monday = date.fromisoformat(period_key(week or today, "week"))
     lo, hi = monday.isoformat(), (monday + timedelta(days=6)).isoformat()
     per_day: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
     for kind, items in (("rows", rows), ("cardio", cardio), ("weights", weights)):
@@ -530,6 +535,7 @@ def overview(
     by: str,
     cardio: list[dict] = (),
     weights: list[dict] = (),
+    week: date | None = None,
 ) -> dict:
     rows = filter_range(all_rows, today, range_key)
     activities = filter_range(list(cardio), today, range_key)
@@ -573,7 +579,7 @@ def overview(
         "totals": totals,
         "bodyweight": bodyweight_summary(list(weights), start, today, by),
         "streak": week_streak({r["date"] for r in all_rows}, today),
-        "week": week_strip(today, all_rows, list(cardio), list(weights)),
+        "week": week_strip(today, all_rows, list(cardio), list(weights), week),
         "lifts": lift_progress(rows),
         "tags": tags,
         "top_exercises": top,

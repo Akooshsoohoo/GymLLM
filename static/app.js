@@ -14,6 +14,8 @@
     return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
   }
   $$(".client-date").forEach(function (el) { el.value = localDate(); });
+  // Lets the server work out the user's "today" on plain page loads too.
+  try { document.cookie = "tz_offset=" + new Date().getTimezoneOffset() + "; path=/; max-age=31536000; samesite=lax"; } catch (e) { /* cookies blocked */ }
 
   // ---------------------------------------------------------------- Day page navigation
   $$("a[data-today-link]").forEach(function (a) {
@@ -1262,7 +1264,7 @@
   if (main && $(".filters", main)) {
     history.replaceState({ swap: true }, "");
     main.addEventListener("click", function (ev) {
-      var a = ev.target.closest(".filters .segmented a");
+      var a = ev.target.closest(".filters .segmented a, a.week-arrow, a.week-jump");
       if (!a || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
       if ($("#log-edit-form")) return;
       ev.preventDefault();
