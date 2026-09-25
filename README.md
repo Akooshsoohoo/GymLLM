@@ -9,7 +9,8 @@ the 20 lb dumbbells for a few sets, and weighed in at 130 lbs" is one valid entr
 A Progress section charts all of it over any range (7 days to all time), grouped
 by day, week or month, with per-exercise trends and personal records.
 
-Sign-in is via Google. Each user only ever sees their own entries.
+Sign-in is via Google. Your log is private unless you add friends: friends see
+your lifts and cardio (never your notes, and body weight only if you opt in).
 
 If the site owner sets up a shared model (see below), visitors can log workouts
 with nothing to configure, which is what makes the app usable from a phone.
@@ -42,6 +43,15 @@ with nothing to configure, which is what makes the app usable from a phone.
    weight is never included). *Exercises* lists each
    exercise with its best weight and a trend sparkline (each opens a page with
    top-weight and volume charts), plus a cardio activity summary.
+6. **Friends** (optional) starts with a one-time profile: a unique @handle, a
+   name and an optional bio. Add friends by handle or share your invite link
+   (anyone who opens it and signs in becomes your friend). Friends' sessions
+   show beside the log form and on the full activity feed, where you can give
+   kudos and comment; replies to your own sessions appear on that day's page. A
+   friend's profile shows their week, 30-day totals, favourite exercises and
+   recent records, and **Compare** puts you side by side: totals, best weights on
+   lifts you both do (only compared when the units match), favourites, muscle
+   split and sessions per week.
 
 ## Running locally
 
@@ -155,12 +165,16 @@ gymllm/
   config.py               environment -> Flask config
   auth.py                 Google sign-in, session caching, login_required
   routes.py               all pages: log, review, confirm, progress, sessions, exercises, settings
+  social_routes.py        profiles, friends, invite links, feed, kudos, comments, compare
+  social.py               friendships and the privacy rules (visible_data), feed assembly
+  sessions.py             loading a user's log and grouping it into per-day sessions
+  compare.py              side-by-side stats for you and a friend
   stats.py                ranges, day/week/month grouping, volume, overview aggregation
   parsing.py              system prompt + normalisation of LLM output
   exercises.py            canonical exercise list, matching, LLM tag fallback
   llm/providers.py        provider registry + per-browser LLMConfig
   llm/client.py           OpenAI-compatible and Anthropic adapters, error mapping
-  models.py               Workout, Cardio, BodyWeight tables
+  models.py               Workout, Cardio, BodyWeight, Profile, Friendship, Kudos, Comment tables
 data/taggedExerciseList.csv   canonical names and tags (edit to customise)
 templates/, static/       Jinja templates, CSS, and the small front-end script
 tests/                    pytest suite

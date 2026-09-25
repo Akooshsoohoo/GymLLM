@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "_social.html" as social with context %}
+{% block title %}GymLLM | Activity{% endblock %}
+{% block content %}
+<div class="page-head">
+    <h1>Friends' activity</h1>
+    <a href="{{ url_for('social.friends') }}" class="btn btn-ghost btn-sm">Friends</a>
+</div>
+
+{% if not has_friends %}
+<div class="empty">
+    <p class="muted">When you have friends, their workouts show up here.</p>
+    <a href="{{ url_for('social.friends') }}" class="btn btn-primary">Find friends</a>
+</div>
+{% elif not cards %}
+<p class="muted">{{ 'Nothing older than this.' if before else 'Your friends haven\'t logged anything yet.' }}</p>
+{% else %}
+<div class="feed-list feed-column">
+    {% for c in cards %}{{ social.session_card(c, request.full_path.rstrip('?')) }}{% endfor %}
+</div>
+{% if next_before %}
+<div class="toolbar"><a href="{{ url_for('social.feed', before=next_before) }}" class="btn btn-ghost">Older activity</a></div>
+{% endif %}
+{% endif %}
+{% endblock %}

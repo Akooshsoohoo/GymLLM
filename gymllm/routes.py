@@ -18,7 +18,7 @@ from flask import (
 )
 from sqlalchemy import func
 
-from . import preferences, quota, sessions, stats
+from . import preferences, quota, sessions, social, stats
 from .auth import current_user_email, login_required
 from .exercises import EXERCISE_NAMES, TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
@@ -47,6 +47,7 @@ CARDIO_FORM_FIELDS = ("activity", "distance", "duration", "notes")
 MAX_ENTRIES = 100
 MAX_LLM_OUTPUT = 200_000
 MAX_SITE_TAG_CALLS = 10  # per save, so tagging cannot drain the shared allowance
+HOME_FEED = 5  # friends' sessions beside the log form
 
 # Editable tables on the Sessions page: (model, cell name regex, delete regex,
 # editable fields, the field that may never be blanked).
@@ -141,10 +142,18 @@ def home():
     if config.is_site:
         quota_limit = _site_limit()
         quota_left = quota.remaining(user_email, quota_limit)
+    profile = social.get_profile(user_email)
+    recent = sessions.recent_sessions(user_email)
+    friend_cards = []
+    if profile:
+        recent = social.attach_social([dict(s, owner=profile) for s in recent], user_email)
+        friend_cards = social.feed(user_email, limit=HOME_FEED)[0][:HOME_FEED]
     return render_template(
         "log.html",
         config=config,
-        sessions=sessions.recent_sessions(user_email),
+        sessions=recent,
+        friend_cards=friend_cards,
+        has_friends=bool(profile and social.friend_emails(user_email)),
         exercise_names=[n.title() for n in EXERCISE_NAMES],
         quota_left=quota_left,
         quota_limit=quota_limit,
@@ -241,9 +250,14 @@ def day(when: str):
             for c in cardio
         ],
     }
+    profile = social.get_profile(user_email)
+    thread = None
+    if profile and (rows or cardio):
+        thread = social.attach_social([{"owner": profile, "date": when}], user_email)[0]
     return render_template(
         "day.html",
         when=when,
+        thread=thread,
         rows=rows,
         grouped_rows=grouped_rows,
         cardio=cardio,

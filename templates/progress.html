@@ -28,26 +28,7 @@
             {%- if not is_this_week %} · <a href="{{ period_url(week=None) }}" class="week-jump">This week</a>{% endif %}
         </span>
     </div>
-    <div class="week-strip">
-        {% for d in data.week %}
-        {% set cls = 'week-day' ~ (' logged' if d.logged else '') ~ (' today' if d.today else '') ~ (' future' if d.future else '') %}
-        {% if d.logged %}
-        <a href="{{ url_for('main.day', when=d.date) }}" class="{{ cls }}" title="{{ d.date|nice_date }}: open this day">
-        {% else %}
-        <div class="{{ cls }}" title="{{ d.date|nice_date }}">
-        {% endif %}
-            <span class="week-letter">{{ d.letter }}</span>
-            <span class="week-num">{{ d.day }}</span>
-            {% if d.logged %}
-            <span class="week-stats">
-                {%- if d.exercises %}<span>{{ d.exercises }} ex</span><span>{{ d.sets }} set{{ '' if d.sets == 1 else 's' }}</span>{% endif -%}
-                {%- if d.cardio_text %}<span>{{ d.cardio_text }}</span>{% endif -%}
-                {%- if d.weight and not (d.exercises and d.cardio_text) %}<span>{{ d.weight }}</span>{% endif -%}
-            </span>
-            {% endif %}
-        {% if d.logged %}</a>{% else %}</div>{% endif %}
-        {% endfor %}
-    </div>
+    {% set week, link_days = data.week, True %}{% include "_week_strip.html" %}
 </section>
 
 {% include "_range_filter.html" %}

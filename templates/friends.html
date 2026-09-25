@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% import "_social.html" as social with context %}
+{% block title %}GymLLM | Friends{% endblock %}
+{% block content %}
+<div class="page-head">
+    <h1>Friends</h1>
+    <a href="{{ url_for('social.feed') }}" class="btn btn-ghost btn-sm">Activity feed</a>
+</div>
+
+<div class="two-col">
+    <section class="card">
+        <h2 class="card-title">Find people</h2>
+        <form method="get" action="{{ url_for('social.friends') }}" class="input-group" role="search">
+            <label for="q" class="sr-only">Search by handle</label>
+            <input type="search" id="q" name="q" class="input" value="{{ q }}" placeholder="@handle" autocomplete="off" spellcheck="false">
+            <button type="submit" class="btn btn-ghost">Search</button>
+        </form>
+        {% if q %}
+        {% if results %}
+        <ul class="people-list">
+            {% for p, rel in results %}
+            <li>{{ social.person(p) }}{{ social.rel_actions(p, rel) }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted small people-empty">No one with a handle starting "{{ q }}".</p>
+        {% endif %}
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <h2 class="card-title">Your invite link</h2>
+        <p class="muted small">Anyone who opens it and signs in becomes your friend straight away.</p>
+        <div class="input-group">
+            <label for="invite-url" class="sr-only">Invite link</label>
+            <input type="text" id="invite-url" class="input" value="{{ invite_url }}" readonly>
+            <button type="button" class="btn btn-ghost" data-copy="#invite-url">Copy</button>
+        </div>
+        <form method="post" action="{{ url_for('social.invite_reset') }}" class="invite-reset">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-text btn-sm">Make a new link</button>
+            <span class="muted small">The old one stops working.</span>
+        </form>
+    </section>
+</div>
+
+{% if incoming %}
+<section class="section">
+    <div class="section-head"><h2>Requests</h2></div>
+    <ul class="people-list card">
+        {% for p in incoming %}<li>{{ social.person(p) }}{{ social.rel_actions(p, 'incoming') }}</li>{% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+<section class="section">
+    <div class="section-head"><h2>Your friends{% if friends %} · {{ friends|length }}{% endif %}</h2></div>
+    {% if friends %}
+    <ul class="people-list card">
+        {% for p in friends %}<li>{{ social.person(p) }}{{ social.rel_actions(p, 'friends') }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No friends yet. Search for a handle above or send someone your invite link.</p>
+    {% endif %}
+</section>
+
+{% if outgoing %}
+<section class="section">
+    <div class="section-head"><h2>Sent requests</h2></div>
+    <ul class="people-list card">
+        {% for p in outgoing %}<li>{{ social.person(p) }}{{ social.rel_actions(p, 'outgoing') }}</li>{% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+<section class="section">
+    <div class="section-head"><h2>On your sessions</h2></div>
+    {% if activity %}
+    <ul class="activity-list card">
+        {% for e in activity %}
+        <li class="{{ 'is-new' if not seen_at or e.at > seen_at }}">
+            {{ social.avatar(e.who, "sm") }}
+            <div class="activity-text">
+                <a href="{{ url_for('social.profile', handle=e.who.handle) }}">{{ e.who.display_name }}</a>
+                {% if e.kind == 'kudos' %}gave kudos to{% else %}commented on{% endif %}
+                <a href="{{ url_for('main.day', when=e.date) }}#social">your session on {{ e.date|nice_date }}</a>
+                {% if e.body %}<p class="activity-quote">{{ e.body }}</p>{% endif %}
+            </div>
+            <span class="muted small">{{ e.at|ago }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Kudos and comments from friends on your sessions will show up here.</p>
+    {% endif %}
+</section>
+{% endblock %}

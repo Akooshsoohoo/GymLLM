@@ -9,7 +9,15 @@ from flask import Blueprint, flash, redirect, request, session, url_for
 from flask_dance.contrib.google import google, make_google_blueprint
 
 SESSION_EMAIL = "user_email"
-AUTH_SESSION_KEYS = (SESSION_EMAIL, "google_oauth_token")
+SESSION_GOOGLE_NAME = "google_name"  # prefills profile setup
+SESSION_GOOGLE_PICTURE = "google_picture"
+AFTER_LOGIN = "after_login"  # a relative path to return to once signed in
+AUTH_SESSION_KEYS = (
+    SESSION_EMAIL,
+    SESSION_GOOGLE_NAME,
+    SESSION_GOOGLE_PICTURE,
+    "google_oauth_token",
+)
 
 bp = Blueprint("auth", __name__)
 
@@ -55,9 +63,12 @@ def current_user_email() -> str | None:
         _clear_auth()
         return None
     if resp.ok:
-        email = resp.json().get("email")
+        info = resp.json()
+        email = info.get("email")
         if email:
             session[SESSION_EMAIL] = email
+            session[SESSION_GOOGLE_NAME] = info.get("name") or ""
+            session[SESSION_GOOGLE_PICTURE] = info.get("picture") or ""
             session.permanent = True
             return email
     if resp.status_code in (401, 403):
@@ -96,9 +107,16 @@ def login():
     return redirect(url_for("google.login"))
 
 
+def safe_next(path: str | None) -> str | None:
+    """Only same-site relative paths such as /invite/abc, never //host or a full URL."""
+    if path and path.startswith("/") and not path.startswith(("//", "/\\")):
+        return path
+    return None
+
+
 @bp.route("/oauth_success")
 def oauth_success():
-    return redirect(url_for("main.home"))
+    return redirect(safe_next(session.pop(AFTER_LOGIN, None)) or url_for("main.home"))
 
 
 @bp.route("/logout")

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% import "_social.html" as social with context %}
+{% block title %}GymLLM | {{ other.display_name }} (@{{ other.handle }}){% endblock %}
+{% block content %}
+<section class="card profile-head">
+    {{ social.avatar(other, "lg") }}
+    <div class="profile-id">
+        <h1>{{ other.display_name }}</h1>
+        <p class="muted">@{{ other.handle }} · {{ friend_count }} friend{{ '' if friend_count == 1 else 's' }} · joined {{ other.created_at.strftime('%b %Y') }}</p>
+        {% if other.bio %}<p class="profile-bio">{{ other.bio }}</p>{% endif %}
+    </div>
+    <div class="profile-actions">
+        {% if rel == 'self' %}
+        <a href="{{ url_for('social.profile_edit') }}" class="btn btn-ghost btn-sm">Edit profile</a>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-text btn-sm">Sign out</a>
+        {% else %}
+        {{ social.rel_actions(other, rel, show_remove=True) }}
+        {% endif %}
+    </div>
+</section>
+
+{% if week is not defined %}
+<div class="empty">
+    <p class="muted">
+        {% if rel == 'incoming' %}{{ other.display_name }} wants to be friends. Accept to see each other's training.
+        {% elif rel == 'outgoing' %}Once {{ other.display_name }} accepts, you'll see each other's training here.
+        {% else %}Add {{ other.display_name }} as a friend to see their training and compare stats.{% endif %}
+    </p>
+</div>
+{% elif not total %}
+<p class="muted card">{{ 'You haven\'t' if rel == 'self' else other.display_name ~ ' hasn\'t' }} logged anything yet.</p>
+{% else %}
+
+<section class="card">
+    <div class="card-head">
+        <h2 class="card-title">This week</h2>
+        <span class="muted small">
+            <span class="week-count"><strong>{{ week|selectattr('logged')|list|length }}</strong> of 7 days</span>
+            {%- if streak %} · {{ streak }}-week streak{% endif %}
+        </span>
+    </div>
+    {% set link_days = rel == 'self' %}{% include "_week_strip.html" %}
+</section>
+
+<div class="stat-grid">
+    <div class="stat"><div class="stat-label">Sessions <span class="muted">· 30 days</span></div><div class="stat-value num">{{ totals.sessions }}</div></div>
+    <div class="stat"><div class="stat-label">Sets <span class="muted">· 30 days</span></div><div class="stat-value num">{{ sets }}</div></div>
+    <div class="stat"><div class="stat-label">Cardio <span class="muted">· 30 days</span></div><div class="stat-value num">{{ (totals.minutes|round|int) }} min</div></div>
+    <div class="stat"><div class="stat-label">Week streak</div><div class="stat-value num">{{ streak }}</div></div>
+</div>
+
+<div class="two-col">
+    <section class="card">
+        <h2 class="card-title">Favourite exercises</h2>
+        {% if favourites %}
+        <ol class="fav-list">
+            {% for f in favourites %}
+            <li>
+                <span class="fav-rank num">{{ loop.index }}</span>
+                <span class="fav-name">{{ f.exercise }}</span>
+                <span class="muted small num">{{ f.sessions }} session{{ '' if f.sessions == 1 else 's' }}{% if f.best %} · best {{ f.best }}{% endif %}</span>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <p class="muted">No lifts logged yet.</p>
+        {% endif %}
+    </section>
+    <section class="card">
+        <h2 class="card-title">Recent records</h2>
+        {% if prs %}
+        <ul class="pr-list">
+            {% for pr in prs %}
+            <li>
+                <span class="pr-name">{{ pr.exercise }}</span>
+                <span class="pr-detail"><strong>{{ pr.weight }}</strong> <span class="muted">up from {{ pr.previous|fmt_num }}</span></span>
+                <span class="muted small pr-date">{{ pr.date|nice_date }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted">No new best weights in the last 90 days.</p>
+        {% endif %}
+    </section>
+</div>
+
+{% if cards %}
+<section class="section">
+    <div class="section-head"><h2>Recent sessions</h2></div>
+    <div class="feed-list">
+        {% for c in cards %}{{ social.session_card(c, request.path, show_owner=False) }}{% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

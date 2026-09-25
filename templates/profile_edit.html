@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | {{ 'Edit profile' if profile else 'Set up your profile' }}{% endblock %}
+{% block content %}
+<div class="page-head">
+    <h1>{{ 'Edit profile' if profile else 'Set up your profile' }}</h1>
+</div>
+
+<form method="post" action="{{ url_for('social.profile_edit') }}" class="card card-narrow">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+    {% if not profile %}
+    <p class="muted small card-lead">
+        Friends find you by your handle. They see your lifts and cardio, never your notes, and
+        your body weight only if you turn it on below. Logging works the same with or without a profile.
+    </p>
+    {% endif %}
+    {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
+
+    <div class="field">
+        <label for="handle">Handle</label>
+        <div class="input-group">
+            <span class="input-prefix" aria-hidden="true">@</span>
+            <input type="text" id="handle" name="handle" class="input" value="{{ form.handle }}" required
+                   minlength="3" maxlength="20" pattern="@?[A-Za-z0-9_]{3,20}" autocomplete="off" spellcheck="false"
+                   aria-describedby="handle-help">
+        </div>
+        <p class="field-help" id="handle-help">3 to 20 letters, numbers or underscores.</p>
+    </div>
+
+    <div class="field">
+        <label for="display_name">Name</label>
+        <input type="text" id="display_name" name="display_name" class="input" value="{{ form.display_name }}" maxlength="60" required>
+    </div>
+
+    <div class="field">
+        <label for="bio">Bio <span class="muted small">(optional)</span></label>
+        <input type="text" id="bio" name="bio" class="input" value="{{ form.bio }}" maxlength="160" placeholder="Powerlifting, 5am club, training for a half marathon...">
+    </div>
+
+    <div class="field">
+        <label class="checkbox">
+            <input type="checkbox" name="share_bodyweight" {% if form.share_bodyweight == 'on' %}checked{% endif %}>
+            Show my body weight to friends
+        </label>
+    </div>
+
+    <div class="toolbar">
+        <button type="submit" class="btn btn-primary">{{ 'Save' if profile else 'Create profile' }}</button>
+        {% if profile %}<a href="{{ url_for('social.profile', handle=profile.handle) }}" class="btn btn-ghost">Cancel</a>{% endif %}
+    </div>
+</form>
+{% endblock %}

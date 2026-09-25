@@ -1,6 +1,6 @@
 import pytest
 
-from gymllm import create_app
+from gymllm import create_app, social
 from gymllm.extensions import db
 from gymllm.llm.client import BadOutputError, LLMError
 from gymllm.models import Workout
@@ -137,6 +137,37 @@ def add_workout(app):
             return w.id
 
     return _add
+
+
+@pytest.fixture
+def other_client(app):
+    """A second signed-in person (OTHER) in the same app."""
+    client = app.test_client()
+    with client.session_transaction() as s:
+        s["user_email"] = OTHER
+        s["llm"] = dict(LLM_SESSION)
+    return client
+
+
+@pytest.fixture
+def add_profile(app):
+    def _add(email=USER, handle="tester", **kwargs):
+        with app.app_context():
+            p = social.save_profile(
+                email, handle, kwargs.pop("display_name", handle.title()), **kwargs
+            )
+            return p.invite_code
+
+    return _add
+
+
+@pytest.fixture
+def make_friends(app):
+    def _make(a=USER, b=OTHER):
+        with app.app_context():
+            social.befriend(a, b)
+
+    return _make
 
 
 __all__ = ["BadOutputError", "LLMError"]

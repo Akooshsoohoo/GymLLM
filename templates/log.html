@@ -1,6 +1,9 @@
 {% extends "base.html" %}
+{% import "_social.html" as social with context %}
 {% block title %}GymLLM | Log{% endblock %}
 {% block content %}
+<div class="home-grid">
+<div class="home-main">
 <div class="page-head">
     <h1>Log a workout</h1>
     <a href="{{ url_for('main.settings') }}" class="chip chip-link" title="Change model">
@@ -164,9 +167,42 @@
                 </li>
                 {% endif %}
             </ul>
+            {% if s.kudos or s.comments %}
+            <a href="{{ url_for('main.day', when=s.date) }}#social" class="session-social small">
+                {%- if s.kudos %}{{ s.kudos }} kudos{% endif %}
+                {%- if s.kudos and s.comments %} · {% endif %}
+                {%- if s.comments %}{{ s.comments|length }} comment{{ '' if s.comments|length == 1 else 's' }}{% endif -%}
+            </a>
+            {% endif %}
         </article>
         {% endfor %}
     </div>
     {% endif %}
 </section>
+</div>
+
+<aside class="home-aside" aria-labelledby="friends-heading">
+    <div class="section-head">
+        <h2 id="friends-heading">Friends</h2>
+        {% if friend_cards %}<a href="{{ url_for('social.feed') }}" class="small">See all &rarr;</a>{% endif %}
+    </div>
+    {% if not my_profile %}
+    <div class="card card-compact aside-empty">
+        <p class="muted small">Set up a profile to see friends' workouts, trade kudos and compare stats.</p>
+        <a href="{{ url_for('social.profile_edit') }}" class="btn btn-primary btn-sm">Set up profile</a>
+    </div>
+    {% elif not has_friends %}
+    <div class="card card-compact aside-empty">
+        <p class="muted small">Add friends by @handle or share your invite link.</p>
+        <a href="{{ url_for('social.friends') }}" class="btn btn-primary btn-sm">Find friends</a>
+    </div>
+    {% elif not friend_cards %}
+    <p class="muted small">Your friends haven't logged anything yet.</p>
+    {% else %}
+    <div class="feed-list">
+        {% for c in friend_cards %}{{ social.session_card(c, url_for('main.home'), compact=True) }}{% endfor %}
+    </div>
+    {% endif %}
+</aside>
+</div>
 {% endblock %}

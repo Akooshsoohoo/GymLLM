@@ -1,0 +1,154 @@
+{#- Social building blocks. Import with context: {% import "_social.html" as social with context %} -#}
+
+{% macro avatar(p, size="md") -%}
+{%- if p and p.avatar_url -%}
+<img class="avatar avatar-{{ size }}" src="{{ p.avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+{%- else -%}
+<span class="avatar avatar-{{ size }}" aria-hidden="true">{{ ((p.display_name or p.handle) if p else '?')[:1]|upper }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro person(p, sub=None) -%}
+<a href="{{ url_for('social.profile', handle=p.handle) }}" class="person">
+    {{ avatar(p, "sm") }}
+    <span class="person-text">
+        <span class="person-name">{{ p.display_name }}</span>
+        <span class="person-handle">@{{ p.handle }}{% if sub %} · {{ sub }}{% endif %}</span>
+    </span>
+</a>
+{%- endmacro %}
+
+{#- The buttons for your relationship with `p`: add, cancel, accept/decline, or none. -#}
+{% macro rel_actions(p, rel, next=None, show_remove=False) -%}
+{% set nxt = next or request.full_path.rstrip('?') %}
+<div class="rel-actions">
+    {% if rel == 'none' %}
+    <form method="post" action="{{ url_for('social.friend_action', action='request', handle=p.handle) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ nxt }}">
+        <button type="submit" class="btn btn-primary btn-sm">Add friend</button>
+    </form>
+    {% elif rel == 'outgoing' %}
+    <span class="muted small">Requested</span>
+    <form method="post" action="{{ url_for('social.friend_action', action='cancel', handle=p.handle) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ nxt }}">
+        <button type="submit" class="btn btn-text btn-sm">Cancel</button>
+    </form>
+    {% elif rel == 'incoming' %}
+    <form method="post" action="{{ url_for('social.friend_action', action='accept', handle=p.handle) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ nxt }}">
+        <button type="submit" class="btn btn-primary btn-sm">Accept</button>
+    </form>
+    <form method="post" action="{{ url_for('social.friend_action', action='decline', handle=p.handle) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ nxt }}">
+        <button type="submit" class="btn btn-text btn-sm">Decline</button>
+    </form>
+    {% elif rel == 'friends' %}
+    <a href="{{ url_for('social.compare', handle=p.handle) }}" class="btn btn-ghost btn-sm">Compare</a>
+    {% if show_remove %}
+    <form method="post" action="{{ url_for('social.friend_action', action='remove', handle=p.handle) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ nxt }}">
+        <button type="submit" class="btn btn-text btn-sm">Unfriend</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro thumbs() -%}
+<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v10H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h3zm0 0 4-8a3 3 0 0 1 3 3v4h5.3a2 2 0 0 1 2 2.3l-1.4 8a2 2 0 0 1-2 1.7H7"/></svg>
+{%- endmacro %}
+
+{#- Kudos and the comment thread under a session. card: owner, date, kudos, kudoed, comments. -#}
+{% macro social_bar(card, next, open_comments=False) -%}
+{% set own = my_profile and card.owner.user_email == my_profile.user_email %}
+{% set n = card.comments|length %}
+<div class="social-bar">
+    <div class="social-actions">
+        {% if own %}
+        <span class="kudos-btn is-static" title="Kudos from friends">{{ thumbs() }}<span class="kudos-count num">{{ card.kudos }}</span></span>
+        {% else %}
+        <form method="post" action="{{ url_for('social.kudos', handle=card.owner.handle, when=card.date) }}" class="kudos-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ next }}">
+            <button type="submit" class="kudos-btn{{ ' is-on' if card.kudoed }}" aria-pressed="{{ 'true' if card.kudoed else 'false' }}" title="Give kudos">
+                {{ thumbs() }}<span class="kudos-count num">{{ card.kudos }}</span><span class="sr-only"> kudos</span>
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    <details class="comments"{% if open_comments %} open{% endif %}>
+        <summary class="small">{% if n %}{{ n }} comment{{ '' if n == 1 else 's' }}{% else %}Comment{% endif %}</summary>
+        {% if n %}
+        <ul class="comment-list">
+            {% for c in card.comments %}
+            <li class="comment">
+                {% if c.author %}{{ avatar(c.author, "xs") }}{% endif %}
+                <div class="comment-main">
+                    <div class="comment-head">
+                        {% if c.author %}<a href="{{ url_for('social.profile', handle=c.author.handle) }}" class="comment-author">{{ c.author.display_name }}</a>{% endif %}
+                        <span class="muted small" title="{{ c.at.strftime('%Y-%m-%d %H:%M') }} UTC">{{ c.at|ago }}</span>
+                        {% if c.can_delete %}
+                        <form method="post" action="{{ url_for('social.comment_delete', comment_id=c.id) }}" class="comment-delete">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ next }}">
+                            <button type="submit" class="btn btn-text btn-sm" title="Delete comment">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    <p class="comment-body">{{ c.body }}</p>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <form method="post" action="{{ url_for('social.comment', handle=card.owner.handle, when=card.date) }}" class="comment-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ next }}">
+            <label class="sr-only" for="c-{{ card.owner.handle }}-{{ card.date }}">Add a comment</label>
+            <input type="text" id="c-{{ card.owner.handle }}-{{ card.date }}" name="body" class="input" maxlength="500" required placeholder="{{ 'Reply' if own else 'Say something nice' }}" autocomplete="off">
+            <button type="submit" class="btn btn-ghost btn-sm">Post</button>
+        </form>
+    </details>
+</div>
+{%- endmacro %}
+
+{#- One session as a card with its owner, lifts, cardio, PRs, kudos and comments. -#}
+{% macro session_card(card, next, compact=False, show_owner=True) -%}
+{% set own = my_profile and card.owner.user_email == my_profile.user_email %}
+<article class="session-card feed-card{{ ' is-compact' if compact }}" id="s-{{ card.owner.handle }}-{{ card.date }}">
+    <header class="feed-head">
+        {% if show_owner %}{{ person(card.owner) }}{% endif %}
+        {% if own %}
+        <a href="{{ url_for('main.day', when=card.date) }}" class="feed-date"><time datetime="{{ card.date }}">{{ card.date|nice_date }}</time></a>
+        {% else %}
+        <time class="feed-date" datetime="{{ card.date }}">{{ card.date|nice_date }}</time>
+        {% endif %}
+    </header>
+    <ul class="session-rows">
+        {% for r in card.rows %}
+        <li>
+            <span class="session-exercise">{{ r.exercise }}{% if r.pr %} <span class="chip chip-pr" title="Heaviest logged for this exercise">PR</span>{% endif %}</span>
+            <span class="session-detail num">
+                {{- r.weight -}}
+                {%- if r.weight and r.sets_reps %} · {% endif -%}
+                {{- r.sets_reps -}}
+            </span>
+        </li>
+        {% endfor %}
+        {% for c in card.cardio %}
+        <li>
+            <span class="session-exercise session-cardio">{{ c.activity }}</span>
+            <span class="session-detail num">
+                {{- c.distance -}}
+                {%- if c.distance and c.duration %} · {% endif -%}
+                {{- c.duration -}}
+            </span>
+        </li>
+        {% endfor %}
+        {% if card.weight %}
+        <li class="session-weight">
+            <span class="session-exercise muted">body weight</span>
+            <span class="session-detail num">{{ card.weight.weight }}</span>
+        </li>
+        {% endif %}
+    </ul>
+    {{ social_bar(card, next, open_comments=(card.comments and not compact)) }}
+</article>
+{%- endmacro %}

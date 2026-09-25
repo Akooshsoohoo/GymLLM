@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% import "_social.html" as social with context %}
+{% block title %}GymLLM | Join {{ owner.display_name }}{% endblock %}
+{% block meta_description %}{{ owner.display_name }} invited you to train together on GymLLM.{% endblock %}
+{% block content %}
+<div class="empty invite-card">
+    {{ social.avatar(owner, "lg") }}
+    <h1>{{ owner.display_name }} invited you</h1>
+    <p class="muted">Be friends on GymLLM to see each other's workouts, give kudos and compare stats.</p>
+    {% if signed_in %}
+    <form method="post" action="{{ url_for('social.invite', code=owner.invite_code) }}" class="toolbar invite-actions">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary">Add {{ owner.display_name }}</button>
+        <a href="{{ url_for('main.home') }}" class="btn btn-ghost">Not now</a>
+    </form>
+    {% else %}
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg">Sign in with Google</a>
+    {% endif %}
+</div>
+{% endblock %}

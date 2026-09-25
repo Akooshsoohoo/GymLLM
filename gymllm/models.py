@@ -4,6 +4,8 @@ tables are created by db.create_all() on first start."""
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from .extensions import db
 
 FIELDS = ("date", "exercise", "weight", "sets", "reps", "notes", "tags")
@@ -86,3 +88,69 @@ class UserPreference(db.Model):
 
     user_email = db.Column(db.String, primary_key=True)
     weight_unit = db.Column(db.String, nullable=False, default="lbs")
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+# --- Social ---------------------------------------------------------------------
+# A "session" is one user's day: kudos and comments point at (owner_email, date).
+
+
+class Profile(db.Model):
+    """The public face of an account: a unique handle, a name and what friends see."""
+
+    __tablename__ = "profile"
+
+    user_email = db.Column(db.String, primary_key=True)
+    handle = db.Column(db.String(20), nullable=False, unique=True)  # lowercase
+    display_name = db.Column(db.String(60), nullable=False)
+    avatar_url = db.Column(db.String, nullable=True)
+    bio = db.Column(db.String(160), nullable=True)
+    share_bodyweight = db.Column(db.Boolean, nullable=False, default=False)
+    invite_code = db.Column(db.String(24), nullable=False, unique=True)
+    activity_seen_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
+
+
+class Friendship(db.Model):
+    """A friend request (pending) or a friendship (accepted). One row per pair."""
+
+    __tablename__ = "friendship"
+    __table_args__ = (
+        db.UniqueConstraint("requester_email", "addressee_email", name="uq_friendship_pair"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    requester_email = db.Column(db.String, nullable=False, index=True)
+    addressee_email = db.Column(db.String, nullable=False, index=True)
+    status = db.Column(db.String(10), nullable=False, default="pending")  # pending | accepted
+    created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
+    accepted_at = db.Column(db.DateTime, nullable=True)
+
+
+class Kudos(db.Model):
+    __tablename__ = "kudos"
+    __table_args__ = (
+        db.UniqueConstraint("owner_email", "date", "giver_email", name="uq_kudos_once"),
+        db.Index("ix_kudos_session", "owner_email", "date"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    owner_email = db.Column(db.String, nullable=False)
+    date = db.Column(db.String, nullable=False)
+    giver_email = db.Column(db.String, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
+
+
+class Comment(db.Model):
+    __tablename__ = "comment"
+    __table_args__ = (db.Index("ix_comment_session", "owner_email", "date"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    owner_email = db.Column(db.String, nullable=False)
+    date = db.Column(db.String, nullable=False)
+    author_email = db.Column(db.String, nullable=False)
+    body = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)

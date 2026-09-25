@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -43,10 +43,11 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     app.config.setdefault("LLM_CLIENT_FACTORY", get_client)
 
-    from . import auth, routes
+    from . import auth, routes, social_routes
 
     auth.init_app(app)
     app.register_blueprint(routes.bp)
+    app.register_blueprint(social_routes.bp)
 
     _register_error_handlers(app)
     _register_context(app)
@@ -58,13 +59,18 @@ def create_app(test_config: dict | None = None) -> Flask:
 
 
 def _register_context(app: Flask) -> None:
+    from . import social
     from .auth import current_user_email
     from .llm.providers import PROVIDERS, LLMConfig
 
     @app.context_processor
     def inject_globals():
+        email = current_user_email()
+        my_profile = social.get_profile(email)
         return {
-            "user_email": current_user_email(),
+            "user_email": email,
+            "my_profile": my_profile,
+            "social_unseen": social.unseen_count(email) if my_profile else 0,
             "llm_config": LLMConfig.from_session(),
             "providers": PROVIDERS,
             "site_llm": app.config.get("SITE_LLM"),
@@ -86,6 +92,22 @@ def _register_context(app: Flask) -> None:
             return ""
         n = float(value)
         return f"{n:,.0f}" if n == int(n) else f"{n:,.1f}"
+
+    @app.template_filter("ago")
+    def ago(value) -> str:
+        """A naive-UTC datetime as '5m', '3h', '2d', or '4 Sep' once over a week old."""
+        if not isinstance(value, datetime):
+            return ""
+        secs = (datetime.now(timezone.utc).replace(tzinfo=None) - value).total_seconds()
+        if secs < 60:
+            return "now"
+        if secs < 3600:
+            return f"{int(secs // 60)}m"
+        if secs < 86400:
+            return f"{int(secs // 3600)}h"
+        if secs < 7 * 86400:
+            return f"{int(secs // 86400)}d"
+        return f"{value.day} {value:%b}"
 
     @app.template_global("period_url")
     def period_url(**changes) -> str:

@@ -430,12 +430,14 @@ def lift_progress(rows: list[dict], n: int = LIFTS_N) -> list[dict]:
     return lifts[:n]
 
 
-def _totals(rows: list[dict], cardio: list[dict]) -> dict:
-    totals = _summarise(rows)
-    totals["sessions"] = len({r["date"] for r in rows} | {c["date"] for c in cardio})
-    totals["cardio"] = len(cardio)
-    totals["minutes"] = sum(m for m in (duration_minutes(c.get("duration")) for c in cardio) if m)
-    return totals
+def totals(rows: list[dict], cardio: list[dict]) -> dict:
+    """Entries, exercises, sets, volume... plus sessions (days with anything),
+    cardio activities and cardio minutes."""
+    out = _summarise(rows)
+    out["sessions"] = len({r["date"] for r in rows} | {c["date"] for c in cardio})
+    out["cardio"] = len(cardio)
+    out["minutes"] = sum(m for m in (duration_minutes(c.get("duration")) for c in cardio) if m)
+    return out
 
 
 def bodyweight_summary(
@@ -528,6 +530,42 @@ def cardio_summary(cardio: list[dict]) -> list[dict]:
     return out
 
 
+def tag_counts(rows: list[dict], n: int = TAGS_N) -> list[dict]:
+    """Entries per muscle tag, the top `n` and the rest folded into "other"."""
+    counts: Counter[str] = Counter()
+    for r in rows:
+        for t in (r.get("tags") or "").split(";"):
+            t = t.strip()
+            if t and t not in MOVEMENT_TAGS:
+                counts[t] += 1
+    tags = [{"tag": t, "count": c} for t, c in counts.most_common(n)]
+    rest = sum(counts.values()) - sum(t["count"] for t in tags)
+    if rest:
+        tags.append({"tag": "other", "count": rest})
+    return tags
+
+
+def top_exercises(rows: list[dict], n: int = TOP_N) -> list[dict]:
+    """The most-logged exercises with their session count, best weight and last date."""
+    per_ex: dict[str, list[dict]] = defaultdict(list)
+    for r in rows:
+        per_ex[r["exercise"]].append(r)
+    top = []
+    for name, members in sorted(per_ex.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:n]:
+        weighed = [(weight_number(r["weight"]), r["weight"]) for r in members]
+        weighed = [w for w in weighed if w[0] is not None]
+        top.append(
+            {
+                "exercise": name,
+                "entries": len(members),
+                "sessions": len({r["date"] for r in members}),
+                "best": max(weighed)[1] if weighed else "",
+                "last": max(r["date"] for r in members),
+            }
+        )
+    return top
+
+
 def overview(
     all_rows: list[dict],
     today: date,
@@ -540,49 +578,17 @@ def overview(
     rows = filter_range(all_rows, today, range_key)
     activities = filter_range(list(cardio), today, range_key)
     start = range_start(today, range_key)
-    totals = _totals(rows, activities)
-
-    # Muscle groups: entries per tag, top N and the rest folded into "other".
-    tag_counts: Counter[str] = Counter()
-    for r in rows:
-        for t in (r.get("tags") or "").split(";"):
-            t = t.strip()
-            if t and t not in MOVEMENT_TAGS:
-                tag_counts[t] += 1
-    tags = [{"tag": t, "count": c} for t, c in tag_counts.most_common(TAGS_N)]
-    rest = sum(tag_counts.values()) - sum(t["count"] for t in tags)
-    if rest:
-        tags.append({"tag": "other", "count": rest})
-
-    # Most-trained exercises in the range, with their best weight in the range.
-    per_ex: dict[str, list[dict]] = defaultdict(list)
-    for r in rows:
-        per_ex[r["exercise"]].append(r)
-    top = []
-    for name, members in sorted(per_ex.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:TOP_N]:
-        weighed = [(weight_number(r["weight"]), r["weight"]) for r in members]
-        weighed = [w for w in weighed if w[0] is not None]
-        top.append(
-            {
-                "exercise": name,
-                "entries": len(members),
-                "sessions": len({r["date"] for r in members}),
-                "best": max(weighed)[1] if weighed else "",
-                "last": max(r["date"] for r in members),
-            }
-        )
-
     return {
         "range": range_key,
         "by": by,
         "start": start,
-        "totals": totals,
+        "totals": totals(rows, activities),
         "bodyweight": bodyweight_summary(list(weights), start, today, by),
         "streak": week_streak({r["date"] for r in all_rows}, today),
         "week": week_strip(today, all_rows, list(cardio), list(weights), week),
         "lifts": lift_progress(rows),
-        "tags": tags,
-        "top_exercises": top,
+        "tags": tag_counts(rows),
+        "top_exercises": top_exercises(rows),
         "prs": personal_records(all_rows, start)[:TOP_N],
     }
 

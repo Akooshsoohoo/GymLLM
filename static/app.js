@@ -644,6 +644,7 @@
 
     // A point whose y is null (a period with no reading) keeps its slot on the axis but
     // draws nothing; the line runs straight between the readings on either side.
+    // opts.y2 adds a second, muted series (Compare: you vs a friend) with no area or label.
     function line(svg, series, opts) {
       var W = width(svg), H = opts.h, L = 48, R = 20, T = 14, B = 30;
       svg.setAttribute("viewBox", "0 0 " + W + " " + H);
@@ -653,7 +654,9 @@
       series.forEach(function (p, i) { if (typeof p[opts.y] === "number") valid.push(i); });
       if (!valid.length) { svg.hidden = true; return; }
       var ys = valid.map(function (i) { return series[i][opts.y]; });
-      var sc = scale(Math.min.apply(null, ys), Math.max.apply(null, ys), false);
+      var valid2 = [];
+      if (opts.y2) series.forEach(function (p, i) { if (typeof p[opts.y2] === "number") { valid2.push(i); ys.push(p[opts.y2]); } });
+      var sc = scale(Math.min.apply(null, ys), Math.max.apply(null, ys), opts.zero);
       var x = function (i) { return n === 1 ? (L + W - R) / 2 : L + (i / (n - 1)) * (W - L - R); };
       var y = function (v) { return T + (1 - (v - sc.min) / (sc.max - sc.min)) * (H - T - B); };
       sc.ticks.forEach(function (v) {
@@ -662,9 +665,13 @@
       });
       var d = valid.map(function (i, k) { return (k ? "L" : "M") + x(i).toFixed(1) + " " + y(series[i][opts.y]).toFixed(1); }).join(" ");
       var first = valid[0], last = valid[valid.length - 1];
-      if (valid.length > 1) {
+      if (valid.length > 1 && !opts.y2) {
         var floor = (H - B).toFixed(1);
         svg.appendChild(el("path", { d: d + " L" + x(last).toFixed(1) + " " + floor + " L" + x(first).toFixed(1) + " " + floor + " Z", class: "area" }));
+      }
+      if (valid2.length) {
+        var d2 = valid2.map(function (i, k) { return (k ? "L" : "M") + x(i).toFixed(1) + " " + y(series[i][opts.y2]).toFixed(1); }).join(" ");
+        svg.appendChild(el("path", { d: d2, class: "line line-2" }));
       }
       svg.appendChild(el("path", { d: d, class: "line" }));
       var cross = el("line", { y1: T, y2: H - B, class: "crosshair" }); cross.style.display = "none"; svg.appendChild(cross);
@@ -680,16 +687,25 @@
         svg.appendChild(c);
         return c;
       });
+      var points2 = valid2.map(function (i) {
+        var c = el("circle", { cx: x(i), cy: y(series[i][opts.y2]), r: dotR, class: "point point-2" });
+        svg.appendChild(c);
+        return c;
+      });
       // Selective direct label: the latest value only.
       var lastP = series[last];
-      svg.appendChild(el("text", { x: Math.min(x(last), W - R - 4), y: y(lastP[opts.y]) - 10, class: "value-label", "text-anchor": n > 1 ? "end" : "middle" }, fmt(lastP[opts.y])));
+      if (!opts.y2) svg.appendChild(el("text", { x: Math.min(x(last), W - R - 4), y: y(lastP[opts.y]) - 10, class: "value-label", "text-anchor": n > 1 ? "end" : "middle" }, fmt(lastP[opts.y])));
       var t = tip(svg);
       interactive(svg, valid.length, function (k) { return x(valid[k]); }, function (k) {
         points.forEach(function (c, j) { c.setAttribute("r", j === k ? 6 : dotR); });
+        points2.forEach(function (c) { c.setAttribute("r", k >= 0 && +c.getAttribute("cx") === x(valid[k]) ? 6 : dotR); });
         if (k < 0) { cross.style.display = "none"; t.hide(); return; }
         var i = valid[k], p = series[i];
         cross.style.display = ""; cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i));
-        t.show(titleLabel(p[opts.x]), rowsFor(p, opts.y), x(i), y(p[opts.y]));
+        var rows = opts.y2
+          ? [[opts.yLabel || opts.y, fmt(p[opts.y])], [opts.y2Label || opts.y2, fmt(p[opts.y2])]]
+          : rowsFor(p, opts.y);
+        t.show(titleLabel(p[opts.x]), rows, x(i), y(p[opts.y]));
       });
     }
 
@@ -756,7 +772,11 @@
         // Swap in a fresh node so old listeners go with the old render.
         var fresh = svg.cloneNode(false);
         svg.parentNode.replaceChild(fresh, svg);
-        fn(fresh, series, { x: fresh.dataset.x || "label", y: fresh.dataset.y || "value", h: parseInt(fresh.dataset.height, 10) || 220 });
+        var ds = fresh.dataset;
+        fn(fresh, series, {
+          x: ds.x || "label", y: ds.y || "value", h: parseInt(ds.height, 10) || 220,
+          y2: ds.y2, yLabel: ds.yLabel, y2Label: ds.y2Label, zero: "zero" in ds
+        });
       });
     }
     return { renderAll: renderAll };
@@ -1215,6 +1235,49 @@
       });
     });
   }
+
+  // ---------------------------------------------------------------- Social
+  // Kudos toggle in place; without JS the form posts and the page reloads at the card.
+  document.addEventListener("submit", function (ev) {
+    var form = ev.target.closest("form.kudos-form");
+    if (!form || !window.fetch) return;
+    ev.preventDefault();
+    var btn = $("button", form);
+    btn.disabled = true;
+    fetch(form.action, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Accept": "application/json", "X-CSRFToken": csrfToken() }
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (data) {
+      btn.classList.toggle("is-on", data.mine);
+      btn.setAttribute("aria-pressed", data.mine ? "true" : "false");
+      $(".kudos-count", btn).textContent = data.count;
+    }).catch(function () {
+      form.submit();
+    }).then(function () {
+      btn.disabled = false;
+    });
+  });
+  // Copy buttons: <button data-copy="#input-id">.
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest("button[data-copy]");
+    if (!btn) return;
+    var input = $(btn.dataset.copy);
+    if (!input) return;
+    var done = function () {
+      var label = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(function () { btn.textContent = label; }, 1500);
+    };
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(input.value).then(done, function () { input.select(); });
+    } else {
+      input.select();
+    }
+  });
 
   // ---------------------------------------------------------------- Page setup
   // Everything that has to run again when <main> is swapped in without a reload.

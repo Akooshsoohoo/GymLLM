@@ -116,5 +116,12 @@
     <img alt="Shareable image of this workout">
     <figcaption class="muted small">Saved to your downloads. On a phone this opens the share sheet instead.</figcaption>
 </figure>
+{% if thread %}
+{% import "_social.html" as social with context %}
+<section class="section" id="social">
+    <div class="section-head"><h2>From friends</h2></div>
+    <div class="card card-compact">{{ social.social_bar(thread, request.path, open_comments=True) }}</div>
+</section>
+{% endif %}
 {% endif %}
 {% endblock %}

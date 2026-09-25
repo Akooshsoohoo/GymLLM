@@ -27,6 +27,7 @@
 <body class="{% block body_class %}{% endblock %}">
 {% block chrome %}
     {% set ep = request.endpoint or '' %}
+    {% import "_social.html" as social with context %}
     <header class="topbar">
         <div class="topbar-inner">
             <a href="{{ url_for('main.home') }}" class="brand" aria-label="GymLLM home">
@@ -35,11 +36,20 @@
             <nav class="nav" aria-label="Main">
                 <a href="{{ url_for('main.home') }}" class="{{ 'active' if ep == 'main.home' }}">Log</a>
                 <a href="{{ url_for('main.progress') }}" class="{{ 'active' if ep in ('main.progress', 'main.search', 'main.exercises', 'main.exercise_history') }}">Progress</a>
+                <a href="{{ url_for('social.friends') }}" class="{{ 'active' if ep.startswith('social.') and ep != 'social.invite' }}">Friends
+                    {%- if social_unseen %}<span class="nav-badge" title="{{ social_unseen }} new">{{ social_unseen if social_unseen < 100 else '99+' }}<span class="sr-only"> new</span></span>{% endif -%}
+                </a>
                 <a href="{{ url_for('main.settings') }}" class="{{ 'active' if ep == 'main.settings' }}">Settings</a>
             </nav>
             <div class="account">
-                {% if user_email %}
+                {% if my_profile %}
+                <a href="{{ url_for('social.profile', handle=my_profile.handle) }}" class="account-profile" title="{{ user_email }}">
+                    {{ social.avatar(my_profile, "xs") }}<span class="account-email">@{{ my_profile.handle }}</span>
+                </a>
+                {% elif user_email %}
                 <span class="account-email" title="{{ user_email }}">{{ user_email }}</span>
+                {% endif %}
+                {% if user_email %}
                 <a href="{{ url_for('auth.logout') }}" class="account-link">Sign out</a>
                 {% else %}
                 <a href="{{ url_for('auth.login') }}" class="account-link">Sign in</a>
