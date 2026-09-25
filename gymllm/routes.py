@@ -18,7 +18,7 @@ from flask import (
 )
 from sqlalchemy import func
 
-from . import preferences, quota, stats
+from . import preferences, quota, sessions, stats
 from .auth import current_user_email, login_required
 from .exercises import EXERCISE_NAMES, TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
@@ -47,7 +47,6 @@ CARDIO_FORM_FIELDS = ("activity", "distance", "duration", "notes")
 MAX_ENTRIES = 100
 MAX_LLM_OUTPUT = 200_000
 MAX_SITE_TAG_CALLS = 10  # per save, so tagging cannot drain the shared allowance
-RECENT_SESSIONS = 5
 
 # Editable tables on the Sessions page: (model, cell name regex, delete regex,
 # editable fields, the field that may never be blanked).
@@ -114,28 +113,6 @@ def _period_args() -> tuple[str, str, date]:
     return range_key, by, _client_today()
 
 
-def _all_of(model, user_email: str) -> list[dict]:
-    """Every row of `model` for the user as dicts, newest first."""
-    rows = (
-        model.query.filter_by(user_email=user_email)
-        .order_by(model.date.desc(), model.id.desc())
-        .all()
-    )
-    return [r.as_dict() for r in rows]
-
-
-def _all_rows(user_email: str) -> list[dict]:
-    return _all_of(Workout, user_email)
-
-
-def _all_cardio(user_email: str) -> list[dict]:
-    return _all_of(Cardio, user_email)
-
-
-def _all_weights(user_email: str) -> list[dict]:
-    return _all_of(BodyWeight, user_email)
-
-
 def _site_origin() -> str:
     return request.host_url.rstrip("/")
 
@@ -150,41 +127,6 @@ def welcome():
     if current_user_email():
         return redirect(url_for("main.home"))
     return render_template("welcome.html")
-
-
-def _sets_summary(sets: str, reps: str) -> str:
-    """Reps per set, comma-separated: sets='3', reps='10, 8, 6' -> '10, 8, 6'. A
-    single reps number is repeated across the set count: sets='5', reps='12' ->
-    '12, 12, 12, 12, 12'."""
-    parts = stats.reps_list(reps)
-    if len(parts) == 1 and (sets or "").strip().isdigit() and int(sets) > 1:
-        parts = parts * int(sets)
-    if parts:
-        return ", ".join(str(p) for p in parts)
-    return sets or reps
-
-
-def _recent_sessions(user_email: str, limit: int = RECENT_SESSIONS) -> list[dict]:
-    """The user's most recent days with anything logged, newest first, each with
-    its strength entries, cardio, and weigh-in."""
-    rows = _all_rows(user_email)
-    cardio = _all_cardio(user_email)
-    weights = _all_weights(user_email)
-    dates = {r["date"] for r in rows} | {c["date"] for c in cardio} | {w["date"] for w in weights}
-    sessions = []
-    for day in sorted(dates, reverse=True)[:limit]:
-        strength = [
-            dict(r, sets_reps=_sets_summary(r["sets"], r["reps"])) for r in rows if r["date"] == day
-        ]
-        sessions.append(
-            {
-                "date": day,
-                "rows": strength,
-                "cardio": [c for c in cardio if c["date"] == day],
-                "weight": next((w for w in weights if w["date"] == day), None),
-            }
-        )
-    return sessions
 
 
 @bp.route("/")
@@ -202,7 +144,7 @@ def home():
     return render_template(
         "log.html",
         config=config,
-        sessions=_recent_sessions(user_email),
+        sessions=sessions.recent_sessions(user_email),
         exercise_names=[n.title() for n in EXERCISE_NAMES],
         quota_left=quota_left,
         quota_limit=quota_limit,
@@ -250,9 +192,9 @@ def day(when: str):
         abort(404)
     user_email = current_user_email()
     all_rows, all_cardio, all_weights = (
-        _all_rows(user_email),
-        _all_cardio(user_email),
-        _all_weights(user_email),
+        sessions.all_rows(user_email),
+        sessions.all_cardio(user_email),
+        sessions.all_weights(user_email),
     )
     dates = {x["date"] for x in all_rows + all_cardio + all_weights}
     prev, nxt = _neighbours(dates, when)
@@ -263,7 +205,7 @@ def day(when: str):
         if r["date"] == when
     }
     rows = [
-        dict(r, sets_reps=_sets_summary(r["sets"], r["reps"]), pr=r["id"] in prs)
+        dict(r, sets_reps=sessions.sets_summary(r["sets"], r["reps"]), pr=r["id"] in prs)
         for r in all_rows
         if r["date"] == when
     ]
@@ -613,9 +555,9 @@ def search():
     by = stats.clean_grouping(request.args.get("by"), "7d")  # entries default to per-day
     today = _client_today()
     all_rows, all_cardio, all_weights = (
-        _all_rows(user_email),
-        _all_cardio(user_email),
-        _all_weights(user_email),
+        sessions.all_rows(user_email),
+        sessions.all_cardio(user_email),
+        sessions.all_weights(user_email),
     )
     rows = stats.filter_range(all_rows, today, range_key)
     cardio = stats.filter_range(all_cardio, today, range_key)
@@ -703,9 +645,9 @@ def progress():
         else this_monday
     )
     user_email = current_user_email()
-    all_rows = _all_rows(user_email)
-    cardio = _all_cardio(user_email)
-    weights = _all_weights(user_email)
+    all_rows = sessions.all_rows(user_email)
+    cardio = sessions.all_cardio(user_email)
+    weights = sessions.all_weights(user_email)
     data = stats.overview(
         all_rows, today, range_key, by, cardio=cardio, weights=weights, week=monday
     )
@@ -730,9 +672,9 @@ def exercises():
     range_key = stats.clean_range(request.args.get("range"))
     user_email = current_user_email()
     today = _client_today()
-    all_rows = _all_rows(user_email)
+    all_rows = sessions.all_rows(user_email)
     rows = stats.filter_range(all_rows, today, range_key)
-    all_cardio = _all_cardio(user_email)
+    all_cardio = sessions.all_cardio(user_email)
     cardio = stats.cardio_summary(stats.filter_range(all_cardio, today, range_key))
     per_ex: dict[str, list[dict]] = {}
     for r in rows:

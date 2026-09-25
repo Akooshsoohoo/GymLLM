@@ -89,9 +89,9 @@ def test_home_lists_recent_sessions(logged_in, add_workout):
     ],
 )
 def test_sets_summary(sets, reps, expected):
-    from gymllm.routes import _sets_summary
+    from gymllm.sessions import sets_summary
 
-    assert _sets_summary(sets, reps) == expected
+    assert sets_summary(sets, reps) == expected
 
 
 def test_home_recent_sessions_capped(logged_in, add_workout):
