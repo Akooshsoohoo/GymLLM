@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Record a workout{% endblock %}
+{% block body_class %}flow{% endblock %}
+{% block main_class %}page page-narrow{% endblock %}
+{% block tabbar %}{% endblock %}
+{% block content %}
+{#- Idle: one big record button. Live: a timer and blocks of notes you fill in as you
+    train. app.js keeps everything in the browser (so a reload or a locked phone loses
+    nothing) and Stop posts the blocks to /review as one text. -#}
+<div class="rec" data-recorder data-state="idle">
+    <div class="rec-top">
+        <a href="{{ url_for('main.home') }}">&lsaquo; Home</a>
+        <span class="rec-clock"><span class="rec-live-dot" aria-hidden="true"></span><span class="sr-only">Workout time </span><time data-rec-clock>0:00</time></span>
+    </div>
+
+    <section class="rec-idle" aria-labelledby="rec-title">
+        <p class="page-sub">{{ today|day_label(long=True) }}</p>
+        <h1 id="rec-title">Ready when you are{% if first_name %}, {{ first_name }}{% endif %}.</h1>
+        <p class="rec-lede">Hit record and jot things down as you train. Put it all in one block, or split it up however you like.</p>
+        <button type="button" class="rec-start" data-rec-start>
+            <span class="rec-start-btn" aria-hidden="true"><span></span></span>
+            <span class="rec-start-label">Start workout</span>
+        </button>
+        {% if config.is_site %}<p class="quota rec-quota">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today</p>{% endif %}
+        <div class="log-foot rec-alt">
+            <span>Already done? <a href="{{ url_for('main.log') }}">Log a past workout</a></span>
+            <a href="{{ url_for('main.log_manual') }}">Add manually</a>
+        </div>
+    </section>
+
+    <form method="post" action="{{ url_for('main.review') }}" id="rec-form" class="rec-live"
+          {% if config.runs_in_browser %}data-browser-llm='{{ config.browser_config()|tojson }}'{% endif %}>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="client_date" class="client-date" value="">
+        <input type="hidden" name="llm_output" value="">
+        <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
+        <input type="hidden" name="from_record" value="1">
+        <textarea name="workout" hidden></textarea>
+
+        <div class="rec-blocks" data-rec-blocks></div>
+        <button type="button" class="rec-add" data-rec-add>+ Add a block</button>
+
+        <div class="rec-bar">
+            <button type="button" class="btn btn-text rec-discard" data-dialog-open="rec-discard">Discard</button>
+            <button type="button" class="btn btn-primary btn-xl rec-stop" data-rec-stop><span class="rec-stop-icon" aria-hidden="true"></span>Stop</button>
+        </div>
+
+        {#- Inside the form so "Log it" submits it (and the browser-model hook sees it). -#}
+        <dialog class="sheet rec-sheet" id="rec-finish" aria-labelledby="rec-finish-title">
+            <div class="sheet-head">
+                <h2 id="rec-finish-title">Finish workout?</h2>
+                <button type="button" class="sheet-close" data-dialog-close aria-label="Close">&times;</button>
+            </div>
+            <p class="rec-summary"><strong data-rec-duration></strong> <span data-rec-count></span></p>
+            <div class="alert error" id="llm-error" hidden></div>
+            <p class="muted small" data-rec-empty hidden>Nothing written yet. Add what you did, then log it.</p>
+            <div class="rec-sheet-actions">
+                <button type="submit" class="btn btn-you btn-xl" data-rec-log>Log it</button>
+                <button type="button" class="btn btn-xl rec-keep" data-dialog-close>Keep going</button>
+            </div>
+            <p class="rec-sheet-note">
+                <span data-llm-status>You'll check it over before it's saved.{% if config.is_site %} {{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today.{% endif %}</span>
+            </p>
+        </dialog>
+    </form>
+
+    <template id="rec-block-template">
+        <div class="rec-block" data-rec-block>
+            <div class="rec-block-head">
+                <span class="rec-block-num"></span>
+                <button type="button" class="rec-block-remove" data-rec-remove>Remove</button>
+            </div>
+            <textarea class="rec-text" rows="3" aria-label="Workout notes" placeholder="Bench 185, 3 sets of 8. Then some pull ups…"></textarea>
+        </div>
+    </template>
+</div>
+
+<dialog class="sheet rec-sheet" id="rec-discard" aria-labelledby="rec-discard-title">
+    <div class="sheet-head">
+        <h2 id="rec-discard-title">Discard this workout?</h2>
+        <form method="dialog"><button type="submit" class="sheet-close" aria-label="Close">&times;</button></form>
+    </div>
+    <p class="muted">The timer and everything you wrote will be thrown away.</p>
+    <div class="rec-sheet-actions">
+        <button type="button" class="btn btn-danger btn-xl" data-rec-discard>Discard</button>
+        <form method="dialog"><button type="submit" class="btn btn-xl rec-keep">Keep going</button></form>
+    </div>
+</dialog>
+{% endblock %}

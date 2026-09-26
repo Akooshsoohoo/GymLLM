@@ -28,9 +28,11 @@
 {% block content %}
 {% set browser_llm = config.browser_config()|tojson if config and config.runs_in_browser else none %}
 {% set has_form = entries is not none %}
+{#- From a recording, Cancel goes back to it: the blocks are still in the browser. -#}
+{% set cancel_url = url_for('main.record') if from_record else url_for('main.log') %}
 <div class="review-top">
     <button type="button" class="link-btn" data-toggle="words" aria-controls="words" aria-expanded="{{ 'false' if has_form else 'true' }}">&lsaquo; Edit text</button>
-    <a href="{{ url_for('main.log') }}">Cancel</a>
+    <a href="{{ cancel_url }}">{{ 'Back to workout' if from_record else 'Cancel' }}</a>
 </div>
 
 <div class="review-grid">
@@ -53,6 +55,7 @@
             <input type="hidden" name="client_date" class="client-date" value="{{ client_date }}">
             <input type="hidden" name="llm_output" value="">
             <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
+            {% if from_record %}<input type="hidden" name="from_record" value="1">{% endif %}
             <label for="workout" class="words-label">Your words</label>
             <textarea id="workout" name="workout" rows="3" class="textarea words-text">{{ workout_text }}</textarea>
             <div class="words-actions">
@@ -72,6 +75,7 @@
           data-tag-targets-url="{{ url_for('main.llm_tag_targets') }}"
           {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if from_record %}<input type="hidden" name="from_record" value="1">{% endif %}
 
         <section class="review-group" aria-labelledby="lifts-h">
             <div class="group-head">
@@ -111,7 +115,7 @@
 
         <div class="review-save">
             <span class="muted small" data-llm-status></span>
-            <a href="{{ url_for('main.log') }}" class="btn btn-text review-cancel">Cancel</a>
+            <a href="{{ cancel_url }}" class="btn btn-text review-cancel">{{ 'Back to workout' if from_record else 'Cancel' }}</a>
             <button type="submit" class="btn btn-primary btn-xl save-btn" {% if not entries and not cardio and not bodyweight %}disabled{% endif %}>Save workout</button>
         </div>
     </form>

@@ -28,7 +28,7 @@
 {% set ep = request.endpoint or '' %}
 {% set viewing_self = other is defined and my_profile and other.user_email == my_profile.user_email %}
 {% set tab = 'home' if ep == 'main.home'
-    else 'log' if ep in ('main.log', 'main.log_manual', 'main.review', 'main.confirm')
+    else 'log' if ep in ('main.record', 'main.log', 'main.log_manual', 'main.review', 'main.confirm')
     else 'progress' if ep in ('main.progress', 'main.search', 'main.exercises', 'main.exercise_history', 'main.day')
     else 'me' if viewing_self or ep in ('main.settings', 'social.profile_edit')
     else 'friends' if ep.startswith('social.') and ep != 'social.invite'
@@ -52,7 +52,7 @@
             {% endif %}
             <div class="topbar-end">
                 {% if user_email %}
-                <a href="{{ url_for('main.home') }}#log" class="btn btn-you btn-log" data-log-link>+ Log workout</a>
+                <a href="{{ url_for('main.record') }}" class="btn btn-you btn-log" data-record-link><span class="rec-link-dot" aria-hidden="true"></span><span data-record-label>Start workout</span></a>
                 <details class="account-menu">
                     <summary aria-label="Your account">{{ social.avatar(my_profile, "nav", tone="you") if my_profile else social.initial_avatar(first_name, "nav") }}</summary>
                     <div class="menu">
@@ -86,7 +86,7 @@
 <nav class="tabbar" aria-label="Main">
     <a href="{{ url_for('main.home') }}" class="tab{{ ' active' if tab == 'home' }}"{% if tab == 'home' %} aria-current="page"{% endif %}>{{ icon.home() }}<span>Home</span></a>
     <a href="{{ url_for('main.progress') }}" class="tab{{ ' active' if tab == 'progress' }}"{% if tab == 'progress' %} aria-current="page"{% endif %}>{{ icon.progress() }}<span>Progress</span></a>
-    <a href="{{ url_for('main.log') }}" class="tab-log{{ ' active' if tab == 'log' }}" aria-label="Log a workout"{% if tab == 'log' %} aria-current="page"{% endif %}><span class="tab-log-btn">{{ icon.plus() }}</span></a>
+    <a href="{{ url_for('main.record') }}" class="tab-log{{ ' active' if tab == 'log' }}" aria-label="Record a workout" data-record-link{% if tab == 'log' %} aria-current="page"{% endif %}><span class="tab-log-btn">{{ icon.record() }}</span><span class="tab-log-time" data-record-label hidden></span></a>
     <a href="{{ url_for('social.friends') }}" class="tab{{ ' active' if tab == 'friends' }}"{% if tab == 'friends' %} aria-current="page"{% endif %}>{{ icon.friends() }}<span>Friends</span>
         {%- if social_unseen %}<span class="tab-dot">{{ social_unseen if social_unseen < 10 else '9+' }}<span class="sr-only"> new</span></span>{% endif -%}
     </a>

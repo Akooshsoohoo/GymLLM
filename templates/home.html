@@ -13,6 +13,34 @@
     <div class="home-main">
         <div class="mobile-only">{% include "_week_hero.html" %}</div>
 
+        {% if latest %}
+        {% set shareable = latest.rows or latest.cardio %}
+        <section class="latest" id="my-latest" aria-labelledby="latest-title" data-share-scope
+                 {% if recorded %}data-recording-saved{% endif %}>
+            <div class="section-head">
+                <h2 id="latest-title">{{ 'Today' if latest.date == today else 'Just logged' }}</h2>
+                <a href="{{ url_for('main.day', when=latest.date) }}" class="link-quiet">Details</a>
+            </div>
+            <article class="session-card latest-card{{ ' is-new' if just_saved }}">
+                <header class="feed-head">
+                    <a href="{{ url_for('main.day', when=latest.date) }}" class="feed-when"><time datetime="{{ latest.date }}">{{ latest.date|day_label }}</time>{% if shareable %} · {{ latest|activity_count }}{% endif %}</a>
+                    {% if just_saved %}<span class="latest-badge">Saved</span>{% endif %}
+                </header>
+                {{ social.session_rows(latest, links=True) }}
+                <div class="latest-actions">
+                    {% if shareable %}<button type="button" class="btn btn-you" data-share='{{ latest.share|tojson }}'>Share</button>{% endif %}
+                    <a href="{{ latest.edit_url }}" class="btn btn-white">Edit</a>
+                </div>
+                {% if latest.owner %}{{ social.social_bar(latest, url_for('main.home') ~ '#my-latest') }}{% endif %}
+            </article>
+            <div class="alert error" data-share-error hidden></div>
+            <figure class="share-preview" data-share-preview hidden>
+                <img alt="Shareable image of this workout">
+                <figcaption class="muted small">Saved to your downloads. On a phone this opens the share sheet instead.</figcaption>
+            </figure>
+        </section>
+        {% endif %}
+
         <section class="home-log" id="log" aria-labelledby="log-title">
             <div class="log-head">
                 <p class="page-sub">{{ today|day_label(long=True) }}</p>

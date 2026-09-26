@@ -35,6 +35,7 @@ def test_healthz(client):
         ("get", "/exercises"),
         ("get", "/progress"),
         ("get", "/day/2026-01-10"),
+        ("get", "/record"),
         ("post", "/review"),
         ("post", "/confirm"),
         ("post", "/search"),
@@ -343,7 +344,7 @@ def test_confirm_saves_rows_with_tags_and_skips_deleted(logged_in, app, fake_llm
         "entry-2-notes": "",
     }
     r = logged_in.post("/confirm", data=data)
-    assert r.status_code == 200 and b"Logged 2 entries" in r.data
+    assert r.status_code == 302 and r.headers["Location"] == "/?saved=2026-09-13#my-latest"
     with app.app_context():
         rows = Workout.query.order_by(Workout.id).all()
         assert [w.exercise for w in rows] == ["barbell bench press", "made-up movement"]
@@ -363,7 +364,7 @@ def test_confirm_browser_mode_takes_tags_from_form(local_user, app, fake_llm):
         "entry-1-tags": "Novel, thing; novel",
     }
     r = local_user.post("/confirm", data=data)
-    assert r.status_code == 200 and b"Logged 2 entries" in r.data
+    assert r.status_code == 302
     assert fake_llm.calls == []
     with app.app_context():
         rows = Workout.query.order_by(Workout.id).all()
@@ -677,7 +678,7 @@ def test_site_confirm_caps_tag_calls(site_user, app, site_app, fake_llm):
         data[f"entry-{i}-exercise"] = f"made-up movement {i}"
         fake_llm.queue({"tags": [f"t{i}"]})
     r = site_user.post("/confirm", data=data)
-    assert r.status_code == 200 and b"Logged 12 entries" in r.data
+    assert r.status_code == 302
     assert len(fake_llm.calls) == 10
     with site_app.app_context():
         tagged = [w.tags for w in Workout.query.order_by(Workout.id).all()]
@@ -807,9 +808,7 @@ def test_confirm_routes_each_kind_to_its_table(logged_in, app):
         "bodyweight": "130 lbs",
     }
     r = logged_in.post("/confirm", data=data)
-    body = r.data.decode()
-    assert r.status_code == 200 and "Logged 3 entries" in body
-    assert "walking" in body and "3 miles" in body and "130 lbs" in body
+    assert r.status_code == 302
     with app.app_context():
         assert Workout.query.count() == 1
         c = Cardio.query.one()
@@ -826,9 +825,69 @@ def test_confirm_routes_each_kind_to_its_table(logged_in, app):
 
     # A second weigh-in on the same day replaces the first.
     r = logged_in.post("/confirm", data={"date": "2026-09-13", "bodyweight": "129 lbs"})
-    assert r.status_code == 200 and b"Logged 1 entry" in r.data
+    assert r.status_code == 302
     with app.app_context():
         assert [w.weight for w in BodyWeight.query.all()] == ["129 lbs"]
+
+
+def test_record_page_and_record_tab(logged_in, client):
+    body = logged_in.get("/record").data.decode()
+    assert 'action="/review"' in body and 'name="from_record" value="1"' in body
+    assert 'textarea name="workout"' in body and "Log a past workout" in body
+    assert 'class="tabbar"' not in body  # the recorder is full screen
+    home = logged_in.get("/").data.decode()
+    assert 'href="/record" class="tab-log' in home
+
+    with client.session_transaction() as s:
+        s.pop("llm")
+    r = client.get("/record")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/settings")
+
+
+def test_review_from_a_recording_goes_back_to_it(logged_in, fake_llm):
+    fake_llm.queue(PARSED, PARSED)
+    body = logged_in.post(
+        "/review", data={"workout": "bench 185 5x5\n\nlat pulldown", "from_record": "1"}
+    ).data.decode()
+    assert body.count('name="from_record" value="1"') == 2  # try-again form and save form
+    assert 'href="/record"' in body and "Back to workout" in body
+    body = logged_in.post("/review", data={"workout": "bench"}).data.decode()
+    assert "from_record" not in body and 'href="/log"' in body
+
+
+def test_confirm_lands_on_home_with_the_day_to_share(logged_in, add_profile):
+    add_profile()
+    data = {
+        "date": "2026-09-13",
+        "from_record": "1",
+        "num_entries": "1",
+        "entry-0-exercise": "barbell bench press",
+        "entry-0-weight": "185 lbs",
+        "entry-0-sets": "3",
+        "entry-0-reps": "8",
+        "bodyweight": "150 lbs",
+    }
+    r = logged_in.post("/confirm", data=data)
+    assert r.headers["Location"] == "/?saved=2026-09-13&recorded=1#my-latest"
+    body = logged_in.get("/?saved=2026-09-13&recorded=1").data.decode()
+    assert 'id="my-latest"' in body and "data-recording-saved" in body
+    assert "latest-card is-new" in body and "Just logged" in body
+    share = json.loads(body.split("data-share='", 1)[1].split("'", 1)[0])
+    assert share["date"] == "2026-09-13"
+    assert [lift["exercise"] for lift in share["lifts"]] == ["barbell bench press"]
+    assert "150" not in json.dumps(share)  # the weigh-in never goes on the poster
+    assert "High five" in body  # your profile's social bar
+
+    # A plain visit shows today's session once there is one, without the highlight.
+    body = logged_in.get("/?today=2026-09-13").data.decode()
+    assert 'id="my-latest"' in body and "is-new" not in body
+    assert "data-recording-saved" not in body
+
+
+def test_home_without_anything_today_has_no_latest_card(logged_in, add_workout):
+    add_workout(date="2026-01-10")
+    body = logged_in.get("/?today=2026-09-13&saved=2026-02-02").data.decode()
+    assert 'id="my-latest"' not in body
 
 
 def test_confirm_with_nothing_at_all_redirects(logged_in, app):
@@ -1067,5 +1126,7 @@ def test_dates_link_to_the_day_page(logged_in, add_workout):
     body = logged_in.get("/search?by=week&today=2026-03-15").data.decode()
     assert 'href="/day/' not in body and 'id="day-2026-03-09"' in body
     assert 'href="/day/2026-03-10"' in logged_in.get("/exercise/barbell bench press").data.decode()
-    r = logged_in.post("/confirm", data={"date": "2026-03-11", "bodyweight": "130 lbs"})
+    r = logged_in.post(
+        "/confirm", data={"date": "2026-03-11", "bodyweight": "130 lbs"}, follow_redirects=True
+    )
     assert 'href="/day/2026-03-11"' in r.data.decode()

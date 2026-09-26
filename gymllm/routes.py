@@ -142,13 +142,18 @@ def _client_hour() -> int:
     return (datetime.now(timezone.utc) - timedelta(minutes=offset)).hour
 
 
+def _quota(user_email: str, config: LLMConfig) -> tuple[int | None, int | None]:
+    """(free logs left today, daily limit) on the shared model, else (None, None)."""
+    if not config.is_site:
+        return None, None
+    limit = _site_limit()
+    return quota.remaining(user_email, limit), limit
+
+
 def _log_context(user_email: str, config: LLMConfig) -> dict:
     """What the log box needs: the quota (shared model only), the unit toggle, and
     this week's days with the streak."""
-    quota_left = quota_limit = None
-    if config.is_site:
-        quota_limit = _site_limit()
-        quota_left = quota.remaining(user_email, quota_limit)
+    quota_left, quota_limit = _quota(user_email, config)
     today = _client_today()
     rows, cardio, weights = (
         sessions.all_rows(user_email),
@@ -177,16 +182,26 @@ def home():
         return redirect(url_for("main.settings"))
     user_email = current_user_email()
     ctx = _log_context(user_email, config)
-    rows, cardio, weights = ctx.pop("all_data")
+    all_data = ctx.pop("all_data")
+    rows, cardio, weights = all_data
     recent = sessions.group_sessions(rows, cardio, weights, HOME_RECENT)
     for s in recent:
         s["summary"] = sessions.session_summary(s)
     profile = social.get_profile(user_email)
     friend_cards = social.feed(user_email, limit=HOME_FEED)[0][:HOME_FEED] if profile else []
+
+    # The day you just saved (?saved= after a log), otherwise today once anything is in.
+    dates = {x["date"] for x in rows + cardio + weights}
+    saved = request.args.get("saved", "")
+    latest_date = saved if saved in dates else ctx["today"] if ctx["today"] in dates else None
+    latest = _my_day_card(user_email, latest_date, all_data, profile) if latest_date else None
     hour = _client_hour()
     return render_template(
         "home.html",
         **ctx,
+        latest=latest,
+        just_saved=bool(latest) and latest_date == saved,
+        recorded=request.args.get("recorded") == "1",
         recent=recent,
         friend_cards=friend_cards,
         has_friends=bool(profile and social.friend_emails(user_email)),
@@ -208,6 +223,27 @@ def log():
     ctx = _log_context(current_user_email(), config)
     ctx.pop("all_data")
     return render_template("log.html", **ctx)
+
+
+@bp.route("/record")
+@login_required
+def record():
+    """Record a workout as it happens: a timer and blocks of notes, all kept in the
+    browser until Stop sends them to /review as one text."""
+    config = _llm_config()
+    if config is None:
+        flash("Choose an LLM provider before logging a workout.", "info")
+        return redirect(url_for("main.settings"))
+    user_email = current_user_email()
+    quota_left, quota_limit = _quota(user_email, config)
+    return render_template(
+        "record.html",
+        config=config,
+        quota_left=quota_left,
+        quota_limit=quota_limit,
+        weight_unit=preferences.get_weight_unit(user_email),
+        today=_client_today().isoformat(),
+    )
 
 
 @bp.route("/log/manual")
@@ -265,20 +301,13 @@ def _headline(summary: dict) -> list[str]:
     return lines
 
 
-@bp.route("/day/<when>")
-@login_required
-def day(when: str):
-    if not is_iso_date(when):
-        abort(404)
-    user_email = current_user_email()
-    all_rows, all_cardio, all_weights = (
-        sessions.all_rows(user_email),
-        sessions.all_cardio(user_email),
-        sessions.all_weights(user_email),
-    )
-    dates = {x["date"] for x in all_rows + all_cardio + all_weights}
-    prev, nxt = _neighbours(dates, when)
+def _edit_url(when: str) -> str:
+    return url_for("main.search", range="all", by="day") + "#day-" + when
 
+
+def _day_detail(when: str, all_rows: list[dict], all_cardio: list[dict], profile) -> dict:
+    """One day's lifts in the order they were logged (with sets_reps and new-best
+    flags), its cardio, the day's summary, and what the share poster may show."""
     prs = {
         r["id"]
         for r in stats.personal_records(all_rows, date.fromisoformat(when))
@@ -290,11 +319,8 @@ def day(when: str):
         if r["date"] == when
     ]
     rows.reverse()  # in the order they were logged
-    grouped_rows = _group_by_exercise(rows)
     cardio = [c for c in reversed(all_cardio) if c["date"] == when]
-    weight = next((w for w in all_weights if w["date"] == when), None)
     summary = stats.day_summary(rows, cardio)
-    profile = social.get_profile(user_email)
     d = date.fromisoformat(when)
 
     # Everything the share card may show. The weigh-in is deliberately not here.
@@ -326,6 +352,45 @@ def day(when: str):
             for c in cardio
         ],
     }
+    return {"rows": rows, "cardio": cardio, "summary": summary, "share": share}
+
+
+def _my_day_card(user_email: str, when: str, all_data: tuple, profile) -> dict:
+    """Your own day as a session card for Home, with the share-poster payload and,
+    once you have a profile, its high fives and comments."""
+    all_rows, all_cardio, all_weights = all_data
+    detail = _day_detail(when, all_rows, all_cardio, profile)
+    card = {
+        "date": when,
+        "rows": detail["rows"],
+        "cardio": detail["cardio"],
+        "weight": next((w for w in all_weights if w["date"] == when), None),
+        "share": detail["share"],
+        "edit_url": _edit_url(when),
+    }
+    if profile and (card["rows"] or card["cardio"]):
+        card["owner"] = profile
+        social.attach_social([card], user_email)
+    return card
+
+
+@bp.route("/day/<when>")
+@login_required
+def day(when: str):
+    if not is_iso_date(when):
+        abort(404)
+    user_email = current_user_email()
+    all_rows, all_cardio, all_weights = (
+        sessions.all_rows(user_email),
+        sessions.all_cardio(user_email),
+        sessions.all_weights(user_email),
+    )
+    dates = {x["date"] for x in all_rows + all_cardio + all_weights}
+    prev, nxt = _neighbours(dates, when)
+    profile = social.get_profile(user_email)
+    detail = _day_detail(when, all_rows, all_cardio, profile)
+    rows, cardio, summary = detail["rows"], detail["cardio"], detail["summary"]
+    weight = next((w for w in all_weights if w["date"] == when), None)
     thread = None
     if profile and (rows or cardio):
         thread = social.attach_social([{"owner": profile, "date": when}], user_email)[0]
@@ -334,15 +399,15 @@ def day(when: str):
         when=when,
         thread=thread,
         rows=rows,
-        grouped_rows=grouped_rows,
+        grouped_rows=_group_by_exercise(rows),
         cardio=cardio,
         weight=weight,
         summary=summary,
-        share=share,
+        share=detail["share"],
         prev=prev,
         nxt=nxt,
         total=len(all_rows) + len(all_cardio) + len(all_weights),
-        edit_url=url_for("main.search", range="all", by="day") + "#day-" + when,
+        edit_url=_edit_url(when),
         weight_unit=preferences.get_weight_unit(user_email),
     )
 
@@ -465,6 +530,7 @@ def review():
         "client_date": today.isoformat(),
         "config": config,
         "weight_unit": unit,
+        "from_record": request.form.get("from_record") == "1",
     }
     if config.is_site:
         limit = _site_limit()
@@ -592,7 +658,6 @@ def confirm():
 
     client = _llm_client(config) if config else None
     tag_calls_left = MAX_SITE_TAG_CALLS if config is not None and config.is_site else MAX_ENTRIES
-    saved = []
     for entry in entries:
         match = match_exercise(entry["exercise"])
         if match:
@@ -606,30 +671,28 @@ def confirm():
             if client and tag_calls_left > 0:
                 tag_calls_left -= 1
                 tags = llm_tags(name, client)
-        workout = Workout(
-            user_email=user_email,
-            date=when,
-            exercise=name,
-            weight=entry["weight"],
-            sets=entry["sets"],
-            reps=entry["reps"],
-            notes=entry["notes"],
-            tags=tags,
+        db.session.add(
+            Workout(
+                user_email=user_email,
+                date=when,
+                exercise=name,
+                weight=entry["weight"],
+                sets=entry["sets"],
+                reps=entry["reps"],
+                notes=entry["notes"],
+                tags=tags,
+            )
         )
-        db.session.add(workout)
-        saved.append(workout)
-    saved_cardio = [Cardio(user_email=user_email, date=when, **c) for c in cardio]
-    db.session.add_all(saved_cardio)
-    reading = _save_bodyweight(user_email, when, bodyweight) if bodyweight else None
+    db.session.add_all(Cardio(user_email=user_email, date=when, **c) for c in cardio)
+    if bodyweight:
+        _save_bodyweight(user_email, when, bodyweight)
     db.session.commit()
-    return render_template(
-        "saved.html",
-        rows=[w.as_dict() for w in saved],
-        cardio=[c.as_dict() for c in saved_cardio],
-        bodyweight=reading.as_dict() if reading else None,
-        count=len(saved) + len(saved_cardio) + (1 if reading else 0),
-        workout_date=when,
-    )
+    # Straight to Home, where the day you just saved is on top and ready to share.
+    # `recorded` tells the page to clear the finished recording from the browser.
+    args = {"saved": when}
+    if request.form.get("from_record") == "1":
+        args["recorded"] = "1"
+    return redirect(url_for("main.home", **args) + "#my-latest")
 
 
 # --- Search / edit ------------------------------------------------------------

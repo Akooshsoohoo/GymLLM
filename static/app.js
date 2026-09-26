@@ -397,31 +397,186 @@
     box.setSelectionRange(box.value.length, box.value.length);
   });
 
-  // "+ Log workout" in the top bar: on Home it just jumps to the box.
-  function focusLogBox() {
-    var box = $("#workout");
-    if (!box || !box.offsetParent) return false;
-    box.scrollIntoView({ block: "center" });
-    box.focus({ preventScroll: true });
-    return true;
-  }
-  if (location.hash === "#log") focusLogBox();
-  $$("a[data-log-link]").forEach(function (a) {
-    a.addEventListener("click", function (ev) {
-      if (new URL(a.href).pathname === location.pathname && focusLogBox()) ev.preventDefault();
-    });
-  });
-
-  // Sheets (<dialog>) opened by a button with data-dialog-open="id"; a tap on the backdrop closes.
+  // Sheets (<dialog>) opened by a button with data-dialog-open="id" and closed by
+  // data-dialog-close (for sheets inside another form) or a tap on the backdrop.
   document.addEventListener("click", function (ev) {
     var btn = ev.target.closest("[data-dialog-open]");
-    if (!btn) return;
-    var dialog = document.getElementById(btn.dataset.dialogOpen);
-    if (dialog && dialog.showModal) dialog.showModal();
+    if (btn) {
+      var dialog = document.getElementById(btn.dataset.dialogOpen);
+      if (dialog && dialog.showModal) dialog.showModal();
+      return;
+    }
+    var closer = ev.target.closest("[data-dialog-close]");
+    if (closer && closer.closest("dialog")) closer.closest("dialog").close();
   });
   $$("dialog.sheet").forEach(function (dialog) {
     dialog.addEventListener("click", function (ev) { if (ev.target === dialog) dialog.close(); });
   });
+
+  // ---------------------------------------------------------------- Record a workout
+  // The + tab is a record button. A recording is a start time and blocks of notes,
+  // kept only in this browser (a reload or a locked phone loses nothing) until the
+  // save lands back on Home. Stop posts the blocks to /review as one text.
+  var recStore = {
+    key: "gymllm.recording",
+    get: function () {
+      try {
+        var s = JSON.parse(localStorage.getItem(this.key) || "null");
+        return s && typeof s.startedAt === "number" && Array.isArray(s.blocks) ? s : null;
+      } catch (e) { return null; }
+    },
+    set: function (s) { try { localStorage.setItem(this.key, JSON.stringify(s)); } catch (e) { /* storage blocked */ } },
+    clear: function () { try { localStorage.removeItem(this.key); } catch (e) { /* storage blocked */ } }
+  };
+  var pad2 = function (n) { return (n < 10 ? "0" : "") + n; };
+  // 42:07, or 1:02:07 past the hour.
+  function clockText(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+    return (h ? h + ":" + pad2(m) : m) + ":" + pad2(s % 60);
+  }
+  // 42 min, 1 h 5 min.
+  function durationText(ms) {
+    var m = Math.max(1, Math.round(ms / 60000));
+    return m < 60 ? m + " min" : Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "");
+  }
+
+  // Saved from a recording: it's done, so forget it.
+  if ($("[data-recording-saved]")) recStore.clear();
+
+  // While a recording runs, the record tab (and the desktop button) show its time.
+  (function () {
+    var state = recStore.get();
+    if (!state || $("[data-recorder]")) return;
+    var links = $$("a[data-record-link]");
+    links.forEach(function (a) {
+      a.classList.add("is-recording");
+      a.setAttribute("aria-label", "Back to your workout");
+      var label = $("[data-record-label]", a);
+      if (label) label.hidden = false;
+    });
+    var tick = function () {
+      var t = clockText(Date.now() - state.startedAt);
+      links.forEach(function (a) { var label = $("[data-record-label]", a); if (label) label.textContent = t; });
+    };
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  var recorder = $("[data-recorder]");
+  if (recorder) (function () {
+    var form = $("#rec-form", recorder);
+    var list = $("[data-rec-blocks]", recorder);
+    var tpl = $("#rec-block-template");
+    var words = $("textarea[name=workout]", form);
+    var clock = $("[data-rec-clock]", recorder);
+    var finish = $("#rec-finish");
+    var state = null, timer = null;
+
+    var fields = function () { return $$(".rec-text", list); };
+    // The hidden "workout" field always holds the blocks joined, so the browser-model
+    // hook (which reads it on submit) and a plain post both see the latest text.
+    var joined = function () {
+      return fields().map(function (t) { return t.value.trim(); }).filter(Boolean).join("\n\n");
+    };
+    var save = function () {
+      words.value = joined();
+      if (!state) return;
+      state.blocks = fields().map(function (t) { return t.value; });
+      recStore.set(state);
+    };
+    var grow = function (t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
+    var renumber = function () {
+      var blocks = $$("[data-rec-block]", list);
+      blocks.forEach(function (b, i) { $(".rec-block-num", b).textContent = "Block " + (i + 1); });
+      list.classList.toggle("has-many", blocks.length > 1);
+    };
+    var addBlock = function (text, focus) {
+      var node = tpl.content.firstElementChild.cloneNode(true);
+      var field = $(".rec-text", node);
+      field.value = text || "";
+      list.appendChild(node);
+      grow(field);
+      renumber();
+      if (focus) { field.focus(); node.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+      return node;
+    };
+    var tick = function () { clock.textContent = clockText(Date.now() - state.startedAt); };
+    var goLive = function (s, focus) {
+      state = s;
+      list.innerHTML = "";
+      (s.blocks.length ? s.blocks : [""]).forEach(function (text) { addBlock(text); });
+      recorder.dataset.state = "live";
+      tick();
+      clearInterval(timer);
+      timer = setInterval(tick, 1000);
+      save();
+      if (focus) fields()[fields().length - 1].focus();
+    };
+
+    $("[data-rec-start]", recorder).addEventListener("click", function () {
+      goLive({ startedAt: Date.now(), blocks: [""] }, true);
+    });
+    list.addEventListener("input", function (ev) {
+      if (!ev.target.classList.contains("rec-text")) return;
+      grow(ev.target);
+      save();
+    });
+    // Remove a block; one with writing in it asks first ("Remove?" for a few seconds).
+    list.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("[data-rec-remove]");
+      if (!btn) return;
+      var block = btn.closest("[data-rec-block]");
+      if ($(".rec-text", block).value.trim() && !block.classList.contains("is-confirming")) {
+        block.classList.add("is-confirming");
+        btn.textContent = "Remove?";
+        setTimeout(function () { block.classList.remove("is-confirming"); btn.textContent = "Remove"; }, 3000);
+        return;
+      }
+      block.remove();
+      if (!fields().length) addBlock("", true);
+      renumber();
+      save();
+    });
+    $("[data-rec-add]", recorder).addEventListener("click", function () {
+      addBlock("", true);
+      save();
+    });
+
+    // Stop: the finish sheet with the time so far and "Log it".
+    $("[data-rec-stop]", recorder).addEventListener("click", function () {
+      save();
+      var n = fields().filter(function (t) { return t.value.trim(); }).length;
+      $("[data-rec-duration]", finish).textContent = durationText(Date.now() - state.startedAt);
+      $("[data-rec-count]", finish).textContent = n > 1 ? "· " + n + " blocks" : "";
+      $("[data-rec-empty]", finish).hidden = n > 0;
+      $("[data-rec-log]", finish).disabled = n === 0;
+      var errBox = $("#llm-error"); if (errBox) errBox.hidden = true;
+      finish.showModal();
+    });
+    // The browser-model hook calls setBusy itself; a plain post gets the same status.
+    form.addEventListener("submit", function (ev) {
+      save();
+      if (!words.value) { ev.preventDefault(); return; }
+      if (!form.dataset.busy) setBusy(form, true, "Reading your workout…");
+    });
+    // Back from review (bfcache): the sheet's buttons work again.
+    window.addEventListener("pageshow", function (ev) { if (ev.persisted) { setBusy(form, false); if (finish.open) finish.close(); } });
+
+    $("[data-rec-discard]").addEventListener("click", function () {
+      recStore.clear();
+      clearInterval(timer);
+      state = null;
+      list.innerHTML = "";
+      words.value = "";
+      recorder.dataset.state = "idle";
+      $("#rec-discard").close();
+    });
+    // The timer is worked out from the start time, so catch up the moment the page is back.
+    document.addEventListener("visibilitychange", function () { if (state && !document.hidden) tick(); });
+
+    var saved = recStore.get();
+    if (saved) goLive(saved, false);
+  })();
 
   // Menus built on <details>: close on a click elsewhere or on Escape.
   var openMenus = function () { return $$("details.account-menu[open], details.friends-menu[open]"); };
@@ -881,17 +1036,13 @@
     return { renderAll: renderAll };
   })();
   // ---------------------------------------------------------------- Share a day as an image
-  // The button carries a JSON payload the server built without the weigh-in, so the
-  // card can only ever show lifts and cardio. Drawn on a canvas, then handed to the
-  // phone's share sheet (Web Share API with files) or downloaded on desktop.
-  var shareBtn = $("#share-day");
-  if (shareBtn) {
-    var shareData = null;
-    try { shareData = JSON.parse(shareBtn.dataset.share); } catch (e) { shareData = null; }
-    var shareError = function (msg) {
-      var box = $("#share-error");
-      if (box) { box.textContent = msg; box.hidden = false; } else { window.alert(msg); }
-    };
+  // Each [data-share] button (the day page, your card on Home) carries a JSON payload
+  // the server built without the weigh-in, so the card can only ever show lifts and
+  // cardio. Drawn on a canvas, then handed to the phone's share sheet (Web Share API
+  // with files) or downloaded on desktop. The error box and preview sit in the
+  // button's [data-share-scope], or are #share-error / #share-preview on the day page.
+  var shareBtns = $$("[data-share]");
+  if (shareBtns.length) {
     var DISPLAY = '"Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif';
     var FONT = '"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
     var C = { bg: "#EC6A45", ink: "#1C1915", rule: "rgba(28, 25, 21, 0.25)" };
@@ -989,45 +1140,57 @@
     };
     // Render as soon as the font is in, so the click can share right away (iOS drops the
     // user activation if we do slow work first).
-    var ready = (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve())
+    var fontsReady = (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve())
       .then(function () {
         if (!document.fonts || !document.fonts.load) return null;
         return Promise.all([document.fonts.load('800 160px "Bricolage Grotesque"'), document.fonts.load('600 36px "Instrument Sans"'), document.fonts.load('700 30px "Instrument Sans"')]);
       })
-      .catch(function () { /* fall back to the system font */ })
-      .then(function () { return shareData ? toBlob(renderShareCard(shareData)) : Promise.reject(new Error("Nothing to share.")); });
+      .catch(function () { /* fall back to the system font */ });
 
-    // Desktop (or a share sheet that refused): save the file and show it on the page.
-    var download = function (blob, name) {
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-      var preview = $("#share-preview");
-      if (preview) { var img = $("img", preview); if (img) img.src = url; preview.hidden = false; }
-    };
-    // The desktop header's "Share" hands its click (and the user activation) to this button.
-    $$("[data-share-trigger]").forEach(function (b) { b.addEventListener("click", function () { shareBtn.click(); }); });
-    shareBtn.addEventListener("click", function () {
-      shareBtn.disabled = true;
-      var idle = shareBtn.textContent;
-      shareBtn.textContent = "Sharing…";
-      var errBox = $("#share-error"); if (errBox) errBox.hidden = true;
-      var done = function () { shareBtn.disabled = false; shareBtn.textContent = idle; };
-      ready.then(function (blob) {
-        var name = "gymllm-" + shareData.date + ".png";
-        var file = new File([blob], name, { type: "image/png" });
-        if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-          return navigator.share({ files: [file], title: "Workout " + shareData.date }).catch(function (err) {
-            if (err && err.name === "AbortError") return; // user closed the sheet
-            download(blob, name); // the sheet would not open here; a file is the next best thing
-          });
-        }
-        download(blob, name);
-      }).then(done, function (err) {
-        done();
-        shareError((err && err.message) || "Could not share this workout.");
+    var initShare = function (btn) {
+      var shareData = null;
+      try { shareData = JSON.parse(btn.dataset.share); } catch (e) { shareData = null; }
+      var scope = btn.closest("[data-share-scope]");
+      var errBox = scope ? $("[data-share-error]", scope) : $("#share-error");
+      var preview = scope ? $("[data-share-preview]", scope) : $("#share-preview");
+      var ready = fontsReady.then(function () {
+        return shareData ? toBlob(renderShareCard(shareData)) : Promise.reject(new Error("Nothing to share."));
       });
-    });
+      ready.catch(function () { /* reported on click */ });
+      // Desktop (or a share sheet that refused): save the file and show it on the page.
+      var download = function (blob, name) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+        if (preview) { var img = $("img", preview); if (img) img.src = url; preview.hidden = false; }
+      };
+      btn.addEventListener("click", function () {
+        btn.disabled = true;
+        var idle = btn.textContent;
+        btn.textContent = "Sharing…";
+        if (errBox) errBox.hidden = true;
+        var done = function () { btn.disabled = false; btn.textContent = idle; };
+        ready.then(function (blob) {
+          var name = "gymllm-" + shareData.date + ".png";
+          var file = new File([blob], name, { type: "image/png" });
+          if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+            return navigator.share({ files: [file], title: "Workout " + shareData.date }).catch(function (err) {
+              if (err && err.name === "AbortError") return; // user closed the sheet
+              download(blob, name); // the sheet would not open here; a file is the next best thing
+            });
+          }
+          download(blob, name);
+        }).then(done, function (err) {
+          done();
+          var msg = (err && err.message) || "Could not share this workout.";
+          if (errBox) { errBox.textContent = msg; errBox.hidden = false; } else { window.alert(msg); }
+        });
+      });
+    };
+    shareBtns.forEach(initShare);
+    // The day page's header "Share" hands its click (and the user activation) to its button.
+    var dayShare = $("#share-day");
+    if (dayShare) $$("[data-share-trigger]").forEach(function (b) { b.addEventListener("click", function () { dayShare.click(); }); });
   }
 
   // ---------------------------------------------------------------- Popover
