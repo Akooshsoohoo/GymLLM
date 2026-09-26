@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="light dark">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}GymLLM{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}Log your workouts like you'd text a friend, and cheer each other on.{% endblock %}">
@@ -11,7 +11,19 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="{{ self.title() }}">
     <meta property="og:description" content="{{ self.meta_description() }}">
-    <meta name="theme-color" content="#F5F1EA">
+    <meta name="theme-color" content="#F5F1EA" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#16130F" media="(prefers-color-scheme: dark)">
+    {#- Before first paint: a Light/Dark choice from Settings (localStorage "theme")
+        sets data-theme on <html> and pins the browser bar colour. System = no attribute.
+        app.js has the same colours for when the choice changes. -#}
+    <script>
+    (function () {
+        var t; try { t = localStorage.getItem("theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") return;
+        document.documentElement.setAttribute("data-theme", t);
+        document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.content = t === "dark" ? "#16130F" : "#F5F1EA"; });
+    })();
+    </script>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32" type="image/png">
     <link rel="icon" href="{{ url_for('static', filename='favicon-16.png') }}" sizes="16x16" type="image/png">

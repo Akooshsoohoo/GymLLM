@@ -166,6 +166,38 @@
     });
   });
 
+  // ---------------------------------------------------------------- Theme (Settings > Appearance)
+  // Light / Dark pin data-theme on <html> and are kept in localStorage, which the
+  // inline script in base.html reads before first paint. System clears both, so the
+  // stylesheet follows prefers-color-scheme again.
+  $$(".theme-toggle").forEach(function (group) {
+    var btns = $$(".theme-btn", group);
+    var mark = function (choice) {
+      btns.forEach(function (b) {
+        var active = b.dataset.themeChoice === choice;
+        b.classList.toggle("is-active", active);
+        b.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+    };
+    var saved = document.documentElement.getAttribute("data-theme") || "system";
+    mark(saved);
+    btns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var choice = btn.dataset.themeChoice;
+        var root = document.documentElement;
+        try {
+          if (choice === "system") localStorage.removeItem("theme"); else localStorage.setItem("theme", choice);
+        } catch (e) { /* storage blocked: still applies for this page */ }
+        if (choice === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", choice);
+        $$('meta[name="theme-color"]').forEach(function (m) {
+          var dark = choice === "dark" || (choice === "system" && /dark/.test(m.media));
+          m.content = dark ? "#16130F" : "#F5F1EA";
+        });
+        mark(choice);
+      });
+    });
+  });
+
   // ---------------------------------------------------------------- Sortable tables
   function cellText(td) {
     var input = td.querySelector("input[type=text]");
@@ -968,7 +1000,7 @@
     }
 
     // Rounded bars with no axis: past periods in a soft tint, the current one (series
-    // item with current: true) in coral. Labels under the first and last bar only.
+    // item with current: true) in --you green. Labels under the first and last bar only.
     function bars(svg, series, opts) {
       var W = width(svg), H = opts.h, B = 22, T = 18;
       svg.setAttribute("viewBox", "0 0 " + W + " " + H);
@@ -1045,7 +1077,8 @@
   if (shareBtns.length) {
     var DISPLAY = '"Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif';
     var FONT = '"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
-    var C = { bg: "#EC6A45", ink: "#1C1915", rule: "rgba(28, 25, 21, 0.25)" };
+    // Always the light-theme poster (--you / --on-you / --you-rule), whatever the page theme.
+    var C = { bg: "#3FA66B", ink: "#1C1915", rule: "rgba(28, 25, 21, 0.25)" };
     var ellipsis = function (ctx, text, max) {
       if (ctx.measureText(text).width <= max) return text;
       while (text.length > 1 && ctx.measureText(text + "…").width > max) text = text.slice(0, -1);
@@ -1060,7 +1093,7 @@
       return w;
     };
 
-    // The coral poster from the day page at 1080x1350 (4:5): name and date on top,
+    // The green poster from the day page at 1080x1350 (4:5): name and date on top,
     // the big headline, then one row per lift or activity. Never the weigh-in.
     var renderShareCard = function (data) {
       var W = 1080, H = 1350, P = 80;

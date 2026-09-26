@@ -1,7 +1,7 @@
 {#- Social building blocks. Import with context: {% import "_social.html" as social with context %} -#}
 
-{#- tone: "you" (coral) or "friend" (blue) tint; "solid-you" / "solid-friend" fill.
-    Left out, your own avatar is coral and everyone else's blue. -#}
+{#- tone: "you" (green) or "friend" (clay) tint; "solid-you" / "solid-friend" fill.
+    Left out, your own avatar is green and everyone else's clay. -#}
 {% macro avatar(p, size="md", tone=None) -%}
 {%- set tone = tone or ('you' if p and my_profile and p.user_email == my_profile.user_email else 'friend') -%}
 {%- set cls = "avatar avatar-" ~ size ~ (" solid-" ~ tone[6:] if tone.startswith("solid-") else " tone-" ~ tone) -%}

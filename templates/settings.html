@@ -6,6 +6,16 @@
     <h1>Settings</h1>
 </div>
 
+<section class="card card-narrow" aria-labelledby="appearance-title">
+    <h2 class="card-title" id="appearance-title">Appearance</h2>
+    <p class="muted small card-lead">System follows your phone or computer. Saved on this device.</p>
+    <div class="theme-toggle" role="group" aria-label="Theme">
+        <button type="button" class="theme-btn" data-theme-choice="light" aria-pressed="false">Light</button>
+        <button type="button" class="theme-btn" data-theme-choice="dark" aria-pressed="false">Dark</button>
+        <button type="button" class="theme-btn is-active" data-theme-choice="system" aria-pressed="true">System</button>
+    </div>
+</section>
+
 <form method="post" action="{{ url_for('main.settings') }}" id="settings-form" class="card card-narrow"
       data-test-url="{{ url_for('main.settings_test') }}"
       data-has-key="{{ '1' if config.api_key else '0' }}"
