@@ -566,6 +566,31 @@ def top_exercises(rows: list[dict], n: int = TOP_N) -> list[dict]:
     return top
 
 
+def sessions_per_period(dates: set[str], today: date, by: str = "week", n: int = 12) -> list[dict]:
+    """Days with anything logged in each of the last `n` days/weeks/months up to today,
+    oldest first. The last one is the current period."""
+    key = period_key(today, by)
+    keys = [key]
+    for _ in range(n - 1):
+        if by == "month":
+            y, m = (int(p) for p in key.split("-"))
+            key = f"{y - (m == 1):04d}-{(m - 2) % 12 + 1:02d}"
+        else:
+            key = (date.fromisoformat(key) - timedelta(days=7 if by == "week" else 1)).isoformat()
+        keys.append(key)
+    keys.reverse()
+    counts = Counter(period_key(d, by) for d in map(parse_date, dates) if d and d <= today)
+    return [
+        {
+            "label": period_short(k, by),
+            "title": period_label(k, by),
+            "sessions": counts.get(k, 0),
+            "current": k == keys[-1],
+        }
+        for k in keys
+    ]
+
+
 def overview(
     all_rows: list[dict],
     today: date,
@@ -583,6 +608,10 @@ def overview(
         "by": by,
         "start": start,
         "totals": totals(rows, activities),
+        "cardio": cardio_stats(activities),
+        "per_period": sessions_per_period(
+            {r["date"] for r in all_rows} | {c["date"] for c in cardio}, today, by
+        ),
         "bodyweight": bodyweight_summary(list(weights), start, today, by),
         "streak": week_streak({r["date"] for r in all_rows}, today),
         "week": week_strip(today, all_rows, list(cardio), list(weights), week),

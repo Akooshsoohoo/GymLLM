@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% import "_social.html" as social with context %}
+{% block title %}GymLLM{% endblock %}
+{% block content %}
+{#- Phone: greeting, your week, friends. Desktop: the log box above the feed, with
+    your week, recent days and the invite card beside it. -#}
+<div class="home-head">
+    <h1>{{ greeting }}{% if first_name %}, {{ first_name }}{% endif %}</h1>
+    <a href="{{ url_for('social.me') }}" aria-label="Your profile">{{ social.avatar(my_profile, "nav", tone="you") if my_profile else social.initial_avatar(first_name, "nav") }}</a>
+</div>
+
+<div class="home-grid">
+    <div class="home-main">
+        <div class="mobile-only">{% include "_week_hero.html" %}</div>
+
+        <section class="home-log" id="log" aria-labelledby="log-title">
+            <div class="log-head">
+                <p class="page-sub">{{ today|day_label(long=True) }}</p>
+                <h1 id="log-title">What did you get up to{% if first_name %}, {{ first_name }}{% endif %}?</h1>
+            </div>
+            <div>{% set wide = True %}{% include "_log_card.html" %}</div>
+            {% if config.is_site %}<p class="muted small">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today · <a href="{{ url_for('main.log_manual') }}">Add manually</a></p>{% endif %}
+        </section>
+
+        <section aria-labelledby="friends-heading">
+            <div class="section-head">
+                <h2 id="friends-heading">Friends</h2>
+                {% if friend_cards %}<a href="{{ url_for('social.feed') }}" class="link-quiet">See all<span class="desktop-only"> activity</span></a>{% endif %}
+            </div>
+            {% if not my_profile %}
+            <div class="card home-note">
+                <p>Set up a profile to see friends' workouts, trade high fives and compare stats.</p>
+                <a href="{{ url_for('social.profile_edit') }}" class="btn btn-primary btn-sm">Set up profile</a>
+            </div>
+            {% elif not has_friends %}
+            <div class="card home-note">
+                <p>Add friends by @handle or send them your invite link. Their workouts show up here.</p>
+                <a href="{{ url_for('social.friends') }}" class="btn btn-primary btn-sm">Find friends</a>
+            </div>
+            {% elif not friend_cards %}
+            <p class="muted">Your friends haven't logged anything yet.</p>
+            {% else %}
+            <div class="feed-grid">
+                {% for c in friend_cards %}{{ social.session_card(c, url_for('main.home'), compact=True) }}{% endfor %}
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <aside class="home-side" aria-label="Your week">
+        {% include "_week_hero.html" %}
+        <section class="card">
+            <div class="card-head">
+                <h2 class="card-title">Your recent</h2>
+                <a href="{{ url_for('main.search') }}" class="link-quiet">All sessions</a>
+            </div>
+            {% if recent %}
+            <ul class="recent-list">
+                {% for s in recent %}
+                <li><a href="{{ url_for('main.day', when=s.date) }}"><span><time datetime="{{ s.date }}">{{ s.date|day_label }}</time></span><span>{{ s.summary }}</span></a></li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="muted small">Nothing logged yet. Your last few days show up here.</p>
+            {% endif %}
+        </section>
+        {% if invite_url %}
+        <section class="card home-note">
+            <h2 class="card-title">Train with friends</h2>
+            <p>Share your invite link. Anyone who signs in with it becomes your friend.</p>
+            <input type="text" id="home-invite" class="sr-only" value="{{ invite_url }}" readonly tabindex="-1" aria-hidden="true">
+            <button type="button" class="btn btn-ghost btn-sm" data-copy="#home-invite">Copy invite link</button>
+        </section>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

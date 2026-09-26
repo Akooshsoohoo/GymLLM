@@ -4,7 +4,7 @@
     <div class="segmented" role="group" aria-label="Time range">
         {% for key, label, title in [('7d', '7d', 'Last 7 days'), ('30d', '30d', 'Last 30 days'), ('90d', '90d', 'Last 90 days'), ('1y', '1y', 'Last year'), ('all', 'All', 'All time')] %}
         <a href="{{ period_url(range=key) }}" class="{{ 'active' if key == range_key }}"
-           {% if key == range_key %}aria-current="true"{% endif %} title="{{ title }}">{{ label }}</a>
+           {% if key == range_key %}aria-current="true"{% endif %} title="{{ title }}">{% if key == 'all' %}<span class="range-short">All</span><span class="range-long">All time</span>{% else %}{{ label }}{% endif %}</a>
         {% endfor %}
     </div>
     {% if by %}

@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="dark">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}GymLLM{% endblock %}</title>
-    <meta name="description" content="{% block meta_description %}Track lifts, cardio, and body weight.{% endblock %}">
+    <meta name="description" content="{% block meta_description %}Log your workouts like you'd text a friend, and cheer each other on.{% endblock %}">
     <meta property="og:site_name" content="GymLLM">
     <meta property="og:type" content="website">
     <meta property="og:title" content="{{ self.title() }}">
     <meta property="og:description" content="{{ self.meta_description() }}">
-    <meta name="theme-color" content="#0f1012">
+    <meta name="theme-color" content="#F5F1EA">
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32" type="image/png">
     <link rel="icon" href="{{ url_for('static', filename='favicon-16.png') }}" sizes="16x16" type="image/png">
@@ -20,39 +20,53 @@
     <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>document.documentElement.classList.add("js");</script>
     {% block head %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
+{% set ep = request.endpoint or '' %}
+{% set viewing_self = other is defined and my_profile and other.user_email == my_profile.user_email %}
+{% set tab = 'home' if ep == 'main.home'
+    else 'log' if ep in ('main.log', 'main.log_manual', 'main.review', 'main.confirm')
+    else 'progress' if ep in ('main.progress', 'main.search', 'main.exercises', 'main.exercise_history', 'main.day')
+    else 'me' if viewing_self or ep in ('main.settings', 'social.profile_edit')
+    else 'friends' if ep.startswith('social.') and ep != 'social.invite'
+    else '' %}
+<body class="{% block body_class %}{% endblock %}{{ ' has-tabs' if user_email }}">
 {% block chrome %}
-    {% set ep = request.endpoint or '' %}
     {% import "_social.html" as social with context %}
     <header class="topbar">
         <div class="topbar-inner">
             <a href="{{ url_for('main.home') }}" class="brand" aria-label="GymLLM home">
                 <span class="brand-mark" aria-hidden="true"></span>GymLLM
             </a>
+            {% if user_email %}
             <nav class="nav" aria-label="Main">
-                <a href="{{ url_for('main.home') }}" class="{{ 'active' if ep == 'main.home' }}">Log</a>
-                <a href="{{ url_for('main.progress') }}" class="{{ 'active' if ep in ('main.progress', 'main.search', 'main.exercises', 'main.exercise_history') }}">Progress</a>
-                <a href="{{ url_for('social.friends') }}" class="{{ 'active' if ep.startswith('social.') and ep != 'social.invite' }}">Friends
+                <a href="{{ url_for('main.home') }}" class="{{ 'active' if tab == 'home' }}"{% if tab == 'home' %} aria-current="page"{% endif %}>Home</a>
+                <a href="{{ url_for('main.progress') }}" class="{{ 'active' if tab == 'progress' }}"{% if tab == 'progress' %} aria-current="page"{% endif %}>Progress</a>
+                <a href="{{ url_for('social.friends') }}" class="{{ 'active' if tab == 'friends' }}"{% if tab == 'friends' %} aria-current="page"{% endif %}>Friends
                     {%- if social_unseen %}<span class="nav-badge" title="{{ social_unseen }} new">{{ social_unseen if social_unseen < 100 else '99+' }}<span class="sr-only"> new</span></span>{% endif -%}
                 </a>
-                <a href="{{ url_for('main.settings') }}" class="{{ 'active' if ep == 'main.settings' }}">Settings</a>
             </nav>
-            <div class="account">
-                {% if my_profile %}
-                <a href="{{ url_for('social.profile', handle=my_profile.handle) }}" class="account-profile" title="{{ user_email }}">
-                    {{ social.avatar(my_profile, "xs") }}<span class="account-email">@{{ my_profile.handle }}</span>
-                </a>
-                {% elif user_email %}
-                <span class="account-email" title="{{ user_email }}">{{ user_email }}</span>
-                {% endif %}
+            {% endif %}
+            <div class="topbar-end">
                 {% if user_email %}
-                <a href="{{ url_for('auth.logout') }}" class="account-link">Sign out</a>
+                <a href="{{ url_for('main.home') }}#log" class="btn btn-you btn-log" data-log-link>+ Log workout</a>
+                <details class="account-menu">
+                    <summary aria-label="Your account">{{ social.avatar(my_profile, "nav", tone="you") if my_profile else social.initial_avatar(first_name, "nav") }}</summary>
+                    <div class="menu">
+                        <div class="menu-head">
+                            <strong>{{ my_profile.display_name if my_profile else first_name }}</strong>
+                            <span title="{{ user_email }}">{{ '@' ~ my_profile.handle if my_profile else user_email }}</span>
+                        </div>
+                        <a href="{{ url_for('social.me') }}">{{ 'Profile' if my_profile else 'Set up your profile' }}</a>
+                        <a href="{{ url_for('main.settings') }}">Settings</a>
+                        <a href="{{ url_for('auth.logout') }}">Sign out</a>
+                    </div>
+                </details>
                 {% else %}
-                <a href="{{ url_for('auth.login') }}" class="account-link">Sign in</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-sm">Sign in</a>
                 {% endif %}
             </div>
         </div>
@@ -66,6 +80,20 @@
     {% endwith %}
 {% block content %}{% endblock %}
 </main>
+{% block tabbar %}
+{% if user_email %}
+{% import "_icons.html" as icon %}
+<nav class="tabbar" aria-label="Main">
+    <a href="{{ url_for('main.home') }}" class="tab{{ ' active' if tab == 'home' }}"{% if tab == 'home' %} aria-current="page"{% endif %}>{{ icon.home() }}<span>Home</span></a>
+    <a href="{{ url_for('main.progress') }}" class="tab{{ ' active' if tab == 'progress' }}"{% if tab == 'progress' %} aria-current="page"{% endif %}>{{ icon.progress() }}<span>Progress</span></a>
+    <a href="{{ url_for('main.log') }}" class="tab-log{{ ' active' if tab == 'log' }}" aria-label="Log a workout"{% if tab == 'log' %} aria-current="page"{% endif %}><span class="tab-log-btn">{{ icon.plus() }}</span></a>
+    <a href="{{ url_for('social.friends') }}" class="tab{{ ' active' if tab == 'friends' }}"{% if tab == 'friends' %} aria-current="page"{% endif %}>{{ icon.friends() }}<span>Friends</span>
+        {%- if social_unseen %}<span class="tab-dot">{{ social_unseen if social_unseen < 10 else '9+' }}<span class="sr-only"> new</span></span>{% endif -%}
+    </a>
+    <a href="{{ url_for('social.me') }}" class="tab{{ ' active' if tab == 'me' }}"{% if tab == 'me' %} aria-current="page"{% endif %}>{{ icon.me() }}<span>Me</span></a>
+</nav>
+{% endif %}
+{% endblock %}
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>

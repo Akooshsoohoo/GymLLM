@@ -1,0 +1,33 @@
+{#- The log box: type what you did, pick lbs or kg, "Log it". Posts to /review.
+    Needs config, weight_unit; set `wide` for the desktop Home row with chips inside. -#}
+{% set suggestions = ["Ran 5k in 28 min", "Squats 3×8 at 135", "Yoga, 45 min", "Weighed in at 142"] %}
+{% if config.is_site and quota_left == 0 %}
+<div class="alert warn">
+    You've used today's {{ quota_limit }} free logs. Come back tomorrow, or
+    <a href="{{ url_for('main.settings') }}">set up your own in Settings</a> for unlimited logging.
+</div>
+{% endif %}
+<div class="alert error" id="llm-error" hidden></div>
+<form method="post" action="{{ url_for('main.review') }}" id="log-form" class="log-card"
+      {% if config.runs_in_browser %}data-browser-llm='{{ config.browser_config()|tojson }}'{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="client_date" class="client-date" value="">
+    <input type="hidden" name="llm_output" value="">
+    <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
+    <label for="workout" class="sr-only">Describe your workout</label>
+    <textarea id="workout" name="workout" rows="4" required {% if autofocus %}autofocus{% endif %} class="log-text"
+        placeholder="today I walked 3 miles, did some pull ups, curled the 20 lb dumbbells for a few sets, and weighed in at 160 lbs"></textarea>
+    <div class="log-bar">
+        {% if wide %}
+        <div class="chips" aria-label="Examples">
+            {% for s in suggestions[:3] %}<button type="button" class="chip" data-insert="{{ s }}">{{ s }}</button>{% endfor %}
+        </div>
+        {% endif %}
+        <div class="unit-toggle" role="group" aria-label="Weight unit when you don't say one">
+            <button type="button" class="unit-btn{{ ' is-active' if weight_unit != 'kg' else '' }}" data-unit="lbs" aria-pressed="{{ 'true' if weight_unit != 'kg' else 'false' }}">lbs</button>
+            <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
+        </div>
+        <button type="submit" class="btn btn-you">Log it</button>
+        <span class="log-status" data-llm-status></span>
+    </div>
+</form>

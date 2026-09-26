@@ -70,6 +70,7 @@ def _register_context(app: Flask) -> None:
         return {
             "user_email": email,
             "my_profile": my_profile,
+            "first_name": _first_name(email, my_profile),
             "social_unseen": social.unseen_count(email) if my_profile else 0,
             "llm_config": LLMConfig.from_session(),
             "providers": PROVIDERS,
@@ -84,6 +85,68 @@ def _register_context(app: Flask) -> None:
         except ValueError:
             return str(value)
         return f"{d:%a} {d.day} {d:%b %Y}"
+
+    @app.template_filter("day_label")
+    def day_label(value: str, long: bool = False) -> str:
+        """'Today', 'Yesterday', else 'Wed 23 Sep' (plus the year when it isn't this
+        one). long=True spells the weekday and month out: 'Thursday, 24 Sep'."""
+        from .routes import _client_today
+
+        try:
+            d = date.fromisoformat(str(value))
+        except ValueError:
+            return str(value)
+        today = _client_today()
+        if not long:
+            if d == today:
+                return "Today"
+            if (today - d).days == 1:
+                return "Yesterday"
+        text = f"{d:%A}, {d.day} {d:%b}" if long else f"{d:%a} {d.day} {d:%b}"
+        return text if d.year == today.year else f"{text} {d.year}"
+
+    @app.template_filter("short_date")
+    def short_date(value: str) -> str:
+        """'2026-09-24' -> 'Thu 24 Sep'."""
+        try:
+            d = date.fromisoformat(str(value))
+        except ValueError:
+            return str(value)
+        return f"{d:%a} {d.day} {d:%b}"
+
+    @app.template_filter("cap_first")
+    def cap_first(value) -> str:
+        """'back squat' -> 'Back squat'; the rest is left alone (so 'RDL' stays)."""
+        text = str(value or "")
+        return text[:1].upper() + text[1:]
+
+    @app.template_filter("compact_sets")
+    def compact_sets(value: str) -> str:
+        from .sessions import compact_sets as compact
+
+        return compact(value)
+
+    @app.template_filter("activity_count")
+    def activity_count(session: dict) -> str:
+        from .sessions import activity_count as count
+
+        return count(session)
+
+    @app.template_filter("short_num")
+    def short_num(value) -> str:
+        """86400 -> '86k'; 4625 -> '4.6k'; 950 -> '950'; None -> '0'."""
+        n = float(value or 0)
+        if abs(n) >= 10000:
+            return f"{n / 1000:,.0f}k"
+        if abs(n) >= 1000:
+            return f"{n / 1000:.1f}".rstrip("0").rstrip(".") + "k"
+        return f"{n:,.0f}" if n == int(n) else f"{n:,.1f}"
+
+    @app.template_filter("initials")
+    def initials(name: str) -> str:
+        """'Sam Okafor' -> 'SO'; 'sam' -> 'S'."""
+        words = [w for w in str(name or "").replace("_", " ").split() if w[:1].isalnum()]
+        return "".join(w[0] for w in words[:2]).upper() or "?"
 
     @app.template_filter("fmt_num")
     def fmt_num(value) -> str:
@@ -114,6 +177,20 @@ def _register_context(app: Flask) -> None:
         """The current page's URL with some query args replaced (range=, by=)."""
         args = {**(request.view_args or {}), **request.args.to_dict(), **changes}
         return url_for(request.endpoint, **{k: v for k, v in args.items() if v is not None})
+
+
+def _first_name(email: str | None, profile) -> str:
+    """What to call the user: their profile name, their Google name, or the start of
+    their email address."""
+    from flask import session
+
+    from .auth import SESSION_GOOGLE_NAME
+
+    if not email:
+        return ""
+    name = (profile.display_name if profile else "") or session.get(SESSION_GOOGLE_NAME) or ""
+    first = name.split()[0] if name.split() else email.split("@")[0]
+    return first[:1].upper() + first[1:]
 
 
 def _register_error_handlers(app: Flask) -> None:

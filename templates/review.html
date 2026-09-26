@@ -1,127 +1,121 @@
 {% extends "base.html" %}
-{% block title %}GymLLM | Review{% endblock %}
+{% block title %}GymLLM | Check it over{% endblock %}
+{% block body_class %}flow{% endblock %}
+{% block tabbar %}{% endblock %}
+
+{#- One lift or cardio row: the name, value pills that edit in place, and Remove.
+    fields: [(name, placeholder, unit, extra attrs)]. `i` is "__i__" in the template
+    app.js copies for "+ Add". -#}
+{% macro row(prefix, i, name_field, name_value, name_attrs, fields, item) -%}
+<div class="review-row" data-row>
+    <div class="row-head">
+        <input type="text" class="row-name" name="{{ prefix }}-{{ i }}-{{ name_field }}" value="{{ name_value or '' }}" {{ name_attrs|safe }} aria-label="{{ name_field|capitalize }}">
+        <input type="checkbox" name="{{ prefix }}-{{ i }}-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">
+        <button type="button" class="row-remove">Remove</button>
+    </div>
+    <div class="vpills">
+        {% for f, placeholder, unit, attrs in fields %}
+        <label class="vpill"><input type="text" name="{{ prefix }}-{{ i }}-{{ f }}" value="{{ item[f] or '' }}" placeholder="+ {{ placeholder }}" aria-label="{{ f|capitalize }}" {{ attrs|safe }}>{% if unit %}<span class="vpill-unit">{{ unit }}</span>{% endif %}</label>
+        {% endfor %}
+    </div>
+</div>
+{%- endmacro %}
+{% set lift_fields = [("weight", "weight", "", ""), ("sets", "sets", "sets", 'inputmode="numeric"'), ("reps", "reps", "reps", ""), ("notes", "note", "", "")] %}
+{% set cardio_fields = [("distance", "distance", "", ""), ("duration", "time", "", ""), ("notes", "note", "", "")] %}
+{% macro lift_row(i, e) %}{{ row("entry", i, "exercise", e.exercise, 'list="exercise-names" placeholder="Exercise"', lift_fields, e) }}{% endmacro %}
+{% macro cardio_row(i, c) %}{{ row("cardio", i, "activity", c.activity, 'placeholder="Activity"', cardio_fields, c) }}{% endmacro %}
+
 {% block content %}
 {% set browser_llm = config.browser_config()|tojson if config and config.runs_in_browser else none %}
-<div class="page-head">
-    <h1>Review and confirm</h1>
+{% set has_form = entries is not none %}
+<div class="review-top">
+    <button type="button" class="link-btn" data-toggle="words" aria-controls="words" aria-expanded="{{ 'false' if has_form else 'true' }}">&lsaquo; Edit text</button>
+    <a href="{{ url_for('main.log') }}">Cancel</a>
 </div>
 
-{% if error %}
-<div class="alert error">{{ error }}</div>
-{% endif %}
-<div class="alert error" id="llm-error" hidden></div>
+<div class="review-grid">
+    <div class="review-side">
+        <h1>{{ "Here's what we heard." if has_form else "Let's try that again." }}</h1>
+        {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+        <div class="alert error" id="llm-error" hidden></div>
 
-<form method="post" action="{{ url_for('main.review') }}" class="card card-compact reparse-form"
-      {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="client_date" class="client-date" value="{{ client_date }}">
-    <input type="hidden" name="llm_output" value="">
-    <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
-    <label for="workout" class="card-title">Original text</label>
-    <textarea id="workout" name="workout" rows="3" class="textarea">{{ workout_text }}</textarea>
-    <div class="toolbar">
-        <button type="submit" class="btn btn-ghost btn-sm">Re-parse</button>
-        <div class="unit-toggle" role="group" aria-label="Default weight unit for exercises with no unit stated">
-            <button type="button" class="unit-btn{{ ' is-active' if weight_unit != 'kg' else '' }}" data-unit="lbs" aria-pressed="{{ 'true' if weight_unit != 'kg' else 'false' }}">lbs</button>
-            <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
-        </div>
-        <span class="muted small" data-llm-status></span>
-    </div>
-</form>
-
-{% if entries is not none %}
-{% set cardio = cardio or [] %}
-<form method="post" action="{{ url_for('main.confirm') }}" id="confirm-form" class="card"
-      data-tag-targets-url="{{ url_for('main.llm_tag_targets') }}"
-      {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="card-head">
-        <div class="field-inline">
-            <label for="date">Date</label>
-            <input type="date" id="date" name="date" value="{{ workout_date }}" required class="input date-input">
+        {% if has_form %}
+        <div class="review-date">
+            <label for="date" class="sr-only">Date</label>
+            <input type="date" id="date" name="date" value="{{ workout_date }}" required class="date-pill" form="confirm-form" data-relative>
             {% if date_from_text %}<span class="muted small">taken from your text</span>{% endif %}
         </div>
-        <span class="muted small">Edit anything before saving.</span>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('main.review') }}" class="card words-card reparse-form{{ ' is-open' if not has_form }}" id="words"
+              {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="client_date" class="client-date" value="{{ client_date }}">
+            <input type="hidden" name="llm_output" value="">
+            <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
+            <label for="workout" class="words-label">Your words</label>
+            <textarea id="workout" name="workout" rows="3" class="textarea words-text">{{ workout_text }}</textarea>
+            <div class="words-actions">
+                <button type="submit" class="btn btn-ghost btn-sm">Change and try again</button>
+                <div class="unit-toggle" role="group" aria-label="Weight unit when you don't say one">
+                    <button type="button" class="unit-btn{{ ' is-active' if weight_unit != 'kg' else '' }}" data-unit="lbs" aria-pressed="{{ 'true' if weight_unit != 'kg' else 'false' }}">lbs</button>
+                    <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
+                </div>
+                <span class="muted small" data-llm-status></span>
+            </div>
+        </form>
     </div>
 
-    <div class="review-section">
-        <div class="section-head">
-            <h2>Exercises</h2>
-            <button type="button" class="btn btn-text" id="add-row">Add exercise</button>
-        </div>
-        <div class="table-wrap">
-        <table id="entries-table" class="table table-editing">
-            <thead>
-            <tr>
-                <th>Exercise</th><th>Weight</th><th>Sets</th><th>Reps</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for e in entries %}
-            <tr>
-                <td class="exercise-cell"><input type="text" name="entry-{{ loop.index0 }}-exercise" value="{{ e.exercise }}" list="exercise-names" aria-label="Exercise"></td>
-                <td><input type="text" name="entry-{{ loop.index0 }}-weight" value="{{ e.weight }}" placeholder="185 lbs" aria-label="Weight"></td>
-                <td><input type="text" name="entry-{{ loop.index0 }}-sets" value="{{ e.sets }}" class="narrow" inputmode="numeric" aria-label="Sets"></td>
-                <td><input type="text" name="entry-{{ loop.index0 }}-reps" value="{{ e.reps }}" placeholder="10, 8, 6" aria-label="Reps"></td>
-                <td><input type="text" name="entry-{{ loop.index0 }}-notes" value="{{ e.notes }}" aria-label="Notes"></td>
-                <td class="col-actions">
-                    <input type="checkbox" name="entry-{{ loop.index0 }}-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">
-                    <button type="button" class="btn btn-text row-remove">Remove</button>
-                </td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-        {% if not entries %}<p class="muted small table-empty" data-empty-for="entries-table">No lifts in this text.</p>{% endif %}
-        <input type="hidden" name="num_entries" id="num_entries" value="{{ entries|length }}">
-    </div>
+    {% if has_form %}
+    {% set cardio = cardio or [] %}
+    <form method="post" action="{{ url_for('main.confirm') }}" id="confirm-form" class="review-main"
+          data-tag-targets-url="{{ url_for('main.llm_tag_targets') }}"
+          {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <div class="review-section">
-        <div class="section-head">
-            <h2>Cardio</h2>
-            <button type="button" class="btn btn-text" id="add-cardio">Add cardio</button>
-        </div>
-        <div class="table-wrap">
-        <table id="cardio-table" class="table table-editing">
-            <thead>
-            <tr>
-                <th>Activity</th><th>Distance</th><th>Duration</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for c in cardio %}
-            <tr>
-                <td class="exercise-cell"><input type="text" name="cardio-{{ loop.index0 }}-activity" value="{{ c.activity }}" placeholder="walking" aria-label="Activity"></td>
-                <td><input type="text" name="cardio-{{ loop.index0 }}-distance" value="{{ c.distance }}" placeholder="3 miles" aria-label="Distance"></td>
-                <td><input type="text" name="cardio-{{ loop.index0 }}-duration" value="{{ c.duration }}" placeholder="45 min" aria-label="Duration"></td>
-                <td><input type="text" name="cardio-{{ loop.index0 }}-notes" value="{{ c.notes }}" aria-label="Notes"></td>
-                <td class="col-actions">
-                    <input type="checkbox" name="cardio-{{ loop.index0 }}-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">
-                    <button type="button" class="btn btn-text row-remove">Remove</button>
-                </td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-        {% if not cardio %}<p class="muted small table-empty" data-empty-for="cardio-table">No cardio in this text.</p>{% endif %}
-        <input type="hidden" name="num_cardio" id="num_cardio" value="{{ cardio|length }}">
-    </div>
+        <section class="review-group" aria-labelledby="lifts-h">
+            <div class="group-head">
+                <h2 id="lifts-h">Lifts</h2>
+                <button type="button" class="add-link" id="add-row">+ Add<span class="desktop-only"> lift</span></button>
+            </div>
+            <div class="group-card" id="entries-table">
+                {% for e in entries %}{{ lift_row(loop.index0, e) }}{% endfor %}
+            </div>
+            {% if not entries %}<p class="muted small table-empty" data-empty-for="entries-table">No lifts in this text.</p>{% endif %}
+            <template id="entry-template">{{ lift_row("__i__", {}) }}</template>
+            <input type="hidden" name="num_entries" id="num_entries" value="{{ entries|length }}">
+        </section>
 
-    <div class="review-section">
-        <div class="field-inline">
-            <label for="bodyweight">Body weight</label>
-            <input type="text" id="bodyweight" name="bodyweight" value="{{ bodyweight or '' }}" placeholder="130 lbs" class="input input-short" aria-describedby="bodyweight-help">
-            <span class="muted small" id="bodyweight-help">Optional. One reading per day; a new one replaces the old.</span>
-        </div>
-    </div>
+        <div class="review-pair">
+            <section class="review-group" aria-labelledby="cardio-h">
+                <div class="group-head">
+                    <h2 id="cardio-h">Cardio</h2>
+                    <button type="button" class="add-link" id="add-cardio">+ Add</button>
+                </div>
+                <div class="group-card" id="cardio-table">
+                    {% for c in cardio %}{{ cardio_row(loop.index0, c) }}{% endfor %}
+                </div>
+                {% if not cardio %}<p class="muted small table-empty" data-empty-for="cardio-table">No cardio in this text.</p>{% endif %}
+                <template id="cardio-template">{{ cardio_row("__i__", {}) }}</template>
+                <input type="hidden" name="num_cardio" id="num_cardio" value="{{ cardio|length }}">
+            </section>
 
-    <div class="toolbar toolbar-end">
-        <span class="muted small" data-llm-status></span>
-        <button type="submit" class="btn btn-primary" {% if not entries and not cardio and not bodyweight %}disabled{% endif %}>Save to log</button>
-    </div>
-</form>
-<datalist id="exercise-names"></datalist>
-{% endif %}
+            <section class="bw-card" aria-labelledby="bw-h">
+                <div>
+                    <h2 id="bw-h">Body weight</h2>
+                    <p id="bodyweight-help">Only you see this</p>
+                </div>
+                <label class="vpill"><input type="text" id="bodyweight" name="bodyweight" value="{{ bodyweight or '' }}" placeholder="+ weight" aria-label="Body weight" aria-describedby="bodyweight-help"></label>
+            </section>
+        </div>
+
+        <div class="review-save">
+            <span class="muted small" data-llm-status></span>
+            <a href="{{ url_for('main.log') }}" class="btn btn-text review-cancel">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-xl save-btn" {% if not entries and not cardio and not bodyweight %}disabled{% endif %}>Save workout</button>
+        </div>
+    </form>
+    <datalist id="exercise-names"></datalist>
+    {% endif %}
+</div>
 {% endblock %}

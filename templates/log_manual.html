@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Add manually{% endblock %}
+{% block main_class %}page page-narrow{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('main.log') }}">&lsaquo; Log</a></p>
+<div class="page-head">
+    <h1>Add it by hand</h1>
+</div>
+
+<form method="post" action="{{ url_for('main.confirm') }}" id="classic-form" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+        <label for="classic-date">Date</label>
+        <input type="date" id="classic-date" name="date" value="" required class="input date-input client-date">
+    </div>
+
+    <div class="review-section">
+        <label for="classic-search">Lifts</label>
+        <div class="input-group">
+            <input type="text" id="classic-search" class="input" list="exercise-names" placeholder="Search, e.g. bench press" autocomplete="off">
+            <button type="button" class="btn btn-ghost" id="classic-add">Add</button>
+        </div>
+        <p class="field-help">Pick from the list or type your own, then press Enter.</p>
+        <div class="table-wrap">
+        <table id="classic-table" class="table table-editing" hidden>
+            <thead>
+            <tr>
+                <th>Exercise</th><th>Weight</th><th>Sets</th><th>Reps</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        </div>
+        <input type="hidden" name="num_entries" id="classic-count" value="0">
+    </div>
+
+    <div class="review-section">
+        <label for="classic-cardio-search">Cardio</label>
+        <div class="input-group">
+            <input type="text" id="classic-cardio-search" class="input" list="cardio-names" placeholder="Search, e.g. running" autocomplete="off">
+            <button type="button" class="btn btn-ghost" id="classic-cardio-add">Add</button>
+        </div>
+        <div class="table-wrap">
+        <table id="classic-cardio-table" class="table table-editing" hidden>
+            <thead>
+            <tr>
+                <th>Activity</th><th>Distance</th><th>Duration</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        </div>
+        <input type="hidden" name="num_cardio" id="classic-cardio-count" value="0">
+    </div>
+
+    <div class="review-section">
+        <label for="classic-bodyweight">Body weight</label>
+        <input type="text" id="classic-bodyweight" name="bodyweight" placeholder="160 lbs" class="input input-short">
+        <p class="field-help">Optional, and only you see it. One reading per day; a new one replaces the old.</p>
+    </div>
+
+    <div class="toolbar toolbar-end">
+        <button type="submit" class="btn btn-primary btn-lg">Save workout</button>
+    </div>
+</form>
+<datalist id="exercise-names">
+    {%- for n in exercise_names %}<option value="{{ n }}">{% endfor -%}
+</datalist>
+<datalist id="cardio-names">
+    {%- for n in ("Walking", "Running", "Jogging", "Cycling", "Swimming", "Rowing", "Hiking", "Elliptical", "Stair climber", "Jump rope") %}<option value="{{ n }}">{% endfor -%}
+</datalist>
+{% endblock %}

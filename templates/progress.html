@@ -1,15 +1,117 @@
 {% extends "base.html" %}
 {% block title %}GymLLM | Progress{% endblock %}
 {% block content %}
-{% include "_progress_tabs.html" %}
+{% set show_by = False %}{% include "_progress_tabs.html" %}
 {% if not total %}
 <div class="empty">
-    <p>Nothing logged yet. Charts and stats will appear here once you log a workout.</p>
-    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log your first workout</a>
+    <p>Nothing logged yet. Your stats and charts show up here once you log a workout.</p>
+    <a href="{{ url_for('main.log') }}" class="btn btn-primary">Log your first workout</a>
 </div>
 {% else %}
 {% set t = data.totals %}
 {% set bw = data.bodyweight %}
+
+<div class="stat-grid">
+    <div class="stat"><div class="stat-label">Workouts</div><div class="stat-value">{{ t.sessions }}</div></div>
+    <div class="stat"><div class="stat-label">Streak</div><div class="stat-value">{{ data.streak }} <small>week{{ '' if data.streak == 1 else 's' }}</small></div></div>
+    <div class="stat"><div class="stat-label" title="Weight × reps, summed: {{ t.volume|fmt_num }}">Lifted</div><div class="stat-value">{{ t.volume|short_num }} <small>{{ weight_unit }}</small></div></div>
+    <div class="stat"><div class="stat-label">Cardio</div><div class="stat-value">
+        {%- if data.cardio.lead %}{{ data.cardio.lead.split(' ')[0] }} <small>{{ data.cardio.lead.split(' ', 1)[1] if ' ' in data.cardio.lead }}</small>
+        {%- elif data.cardio.minutes %}{{ data.cardio.minutes|round|int }} <small>min</small>
+        {%- else %}{{ data.cardio.count }}{% endif -%}
+    </div></div>
+</div>
+
+<div class="progress-grid">
+    <section class="card chart-card">
+        <div class="card-head">
+            <h2 class="card-title">Workouts per {{ by }}</h2>
+            <div class="filters" role="group" aria-label="Group by">
+                <div class="segmented segmented-quiet">
+                    {% for key in ('day', 'week', 'month') %}
+                    <a href="{{ period_url(by=key) }}" class="{{ 'active' if key == by }}"{% if key == by %} aria-current="true"{% endif %}>{{ key }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <svg class="chart" data-chart="bars" data-y="sessions" data-x="label" data-height="180" data-narrow-last="8" data-period="{{ by }}"
+             data-series='{{ data.per_period|tojson }}' role="img"
+             aria-label="Workouts per {{ by }}, last {{ data.per_period|length }} {{ by }}s"></svg>
+    </section>
+
+    <section class="card">
+        <h2 class="card-title">Muscle groups</h2>
+        {% if data.tags %}
+        {% set top = data.tags[0].count %}
+        <ol class="hbars">
+            {% for row in data.tags %}
+            <li>
+                <span class="hbar-label">{{ row.tag }}</span>
+                <span class="hbar-track"><span class="hbar-fill" style="width: {{ (100 * row.count / top)|round(1) }}%"></span></span>
+                <span class="hbar-value num">{{ row.count }}</span>
+            </li>
+            {% endfor %}
+        </ol>
+        <p class="muted small">Exercises logged per muscle. One exercise can count toward several.</p>
+        {% else %}
+        <p class="muted">No tagged exercises in this range.</p>
+        {% endif %}
+    </section>
+</div>
+
+{% if not t.entries and not t.cardio and not bw %}
+{% include "_empty_range.html" %}
+{% else %}
+
+<div class="progress-grid even">
+    <section class="card">
+        <h2 class="card-title">New personal bests</h2>
+        {% if data.prs %}
+        <ul class="best-list">
+            {% for pr in data.prs %}
+            <li>
+                <div>
+                    <a href="{{ url_for('main.exercise_history', name=pr.exercise) }}" class="best-name">{{ pr.exercise }}</a>
+                    <span class="best-meta">{{ pr.date|day_label }} · up from {{ pr.previous|fmt_num }}</span>
+                </div>
+                {% set parts = pr.weight.split(' ', 1) %}
+                <span class="best-value">{{ parts[0] }}{% if parts|length > 1 %} <small>{{ parts[1] }}</small>{% endif %}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted">No new bests in this range yet. A best needs an earlier entry of the same exercise to beat.</p>
+        {% endif %}
+    </section>
+
+    <section class="card chart-card">
+        <div class="card-head">
+            <h2 class="card-title">Body weight</h2>
+            {% if bw %}
+            <span class="lift-trend">
+                <strong>{{ bw.latest }}</strong>
+                {%- if bw.change is not none %}
+                {#- Neutral colour: whether gaining or losing is good depends on the goal. #}
+                <span class="change-badge">{{ '+' if bw.change > 0 }}{{ bw.change|fmt_num }} {{ bw.unit }} since {{ bw.since|nice_date }}</span>
+                {%- endif %}
+            </span>
+            {% endif %}
+        </div>
+        {% if bw and bw.charted %}
+        <svg class="chart" data-chart="line" data-y="weight" data-x="label" data-height="180"
+             data-series='{{ bw.periods|tojson }}' role="img" aria-label="Body weight per {{ by }}"></svg>
+        <details class="chart-table">
+            <summary class="muted small">{{ bw.chart_unit }}{% if by != 'day' %} · average of the {{ by }}'s readings{% endif %} · only you can see this · show as table</summary>
+            <div class="table-wrap"><table class="table">
+                <thead><tr><th>{{ by|capitalize }}</th><th class="num">Weight</th>{% if by != 'day' %}<th class="num">Readings</th><th class="num">Low</th><th class="num">High</th>{% endif %}</tr></thead>
+                <tbody>{% for p in bw.periods|reverse if p.weight is not none %}<tr><td>{{ p.label }}</td><td class="num">{{ p.weight|fmt_num }} {{ bw.chart_unit }}</td>{% if by != 'day' %}<td class="num">{{ p.readings or 1 }}</td><td class="num">{{ p.low|fmt_num if p.low is not none else '—' }}</td><td class="num">{{ p.high|fmt_num if p.high is not none else '—' }}</td>{% endif %}</tr>{% endfor %}</tbody>
+            </table></div>
+        </details>
+        {% else %}
+        <p class="muted">Log your weight to see a trend. Only you can see it.</p>
+        {% endif %}
+    </section>
+</div>
 
 <section class="card">
     <div class="card-head">
@@ -22,7 +124,7 @@
             <span class="week-arrow is-disabled" aria-hidden="true">&rsaquo;</span>
             {% endif %}
         </div>
-        <span class="muted small">
+        <span class="card-meta">
             <span class="week-count"><strong>{{ data.week|selectattr('logged')|list|length }}</strong> of 7 days</span>
             {%- if is_this_week and data.streak %} · {{ data.streak }}-week streak{% endif %}
             {%- if not is_this_week %} · <a href="{{ period_url(week=None) }}" class="week-jump">This week</a>{% endif %}
@@ -31,43 +133,9 @@
     {% set week, link_days = data.week, True %}{% include "_week_strip.html" %}
 </section>
 
-{% include "_range_filter.html" %}
-
-{% if not t.entries and not t.cardio and not bw %}
-{% include "_empty_range.html" %}
-{% else %}
-
-<section class="card chart-card">
-    <div class="card-head">
-        <h2 class="card-title">Body weight</h2>
-        {% if bw %}
-        <span class="lift-trend">
-            <strong>{{ bw.latest }}</strong>
-            {%- if bw.change is not none %}
-            {#- Neutral colour: whether gaining or losing is good depends on the goal. #}
-            <span class="change-badge">{{ '+' if bw.change > 0 }}{{ bw.change|fmt_num }} {{ bw.unit }} since {{ bw.since|nice_date }}</span>
-            {%- endif %}
-        </span>
-        {% endif %}
-    </div>
-    {% if bw and bw.charted %}
-    <svg class="chart" data-chart="line" data-y="weight" data-x="label"
-         data-series='{{ bw.periods|tojson }}' role="img" aria-label="Body weight per {{ by }}"></svg>
-    <details class="chart-table">
-        <summary class="muted small">{{ bw.chart_unit }}{% if by != 'day' %} · average of the {{ by }}'s readings{% endif %} · show as table</summary>
-        <div class="table-wrap"><table class="table">
-            <thead><tr><th>{{ by|capitalize }}</th><th class="num">Weight</th>{% if by != 'day' %}<th class="num">Readings</th><th class="num">Low</th><th class="num">High</th>{% endif %}</tr></thead>
-            <tbody>{% for p in bw.periods|reverse if p.weight is not none %}<tr><td>{{ p.label }}</td><td class="num">{{ p.weight|fmt_num }} {{ bw.chart_unit }}</td>{% if by != 'day' %}<td class="num">{{ p.readings or 1 }}</td><td class="num">{{ p.low|fmt_num if p.low is not none else '—' }}</td><td class="num">{{ p.high|fmt_num if p.high is not none else '—' }}</td>{% endif %}</tr>{% endfor %}</tbody>
-        </table></div>
-    </details>
-    {% else %}
-    <p class="muted">Log your weight to see a trend.</p>
-    {% endif %}
-</section>
-
 <div class="section-head-row">
     <h2>Exercise progress</h2>
-    <a href="{{ url_for('main.exercises', range=range_key) }}" class="small">See all exercises &rarr;</a>
+    <a href="{{ url_for('main.exercises', range=range_key) }}" class="link-quiet">See all exercises &rsaquo;</a>
 </div>
 {% if data.lifts %}
 <div class="lift-grid">
@@ -91,61 +159,23 @@
 <p class="muted card">Log an exercise with a weight in two or more sessions to see its progress here.</p>
 {% endif %}
 
-<div class="two-col">
-    <section class="card">
-        <h2 class="card-title">Muscle groups</h2>
-        {% if data.tags %}
-        {% set top = data.tags[0].count %}
-        <ol class="hbars">
-            {% for row in data.tags %}
-            <li>
-                <span class="hbar-label">{{ row.tag }}</span>
-                <span class="hbar-track"><span class="hbar-fill" style="width: {{ (100 * row.count / top)|round(1) }}%"></span></span>
-                <span class="hbar-value num">{{ row.count }}</span>
-            </li>
-            {% endfor %}
-        </ol>
-        <p class="muted small">Exercises logged per muscle tag. One exercise can count toward several.</p>
-        {% else %}
-        <p class="muted">No tagged exercises in this range.</p>
-        {% endif %}
-    </section>
-
-    <section class="card card-flush">
-        <h2 class="card-title card-title-pad">Most trained</h2>
-        <div class="table-wrap">
-        <table class="table">
-            <thead><tr><th>Exercise</th><th class="num">Logged</th><th>Best</th><th>Last</th></tr></thead>
-            <tbody>
-            {% for e in data.top_exercises %}
-            <tr>
-                <td><a href="{{ url_for('main.exercise_history', name=e.exercise, range=range_key) }}" class="cell-link">{{ e.exercise }}</a></td>
-                <td class="num">{{ e.entries }}</td>
-                <td>{{ e.best or '—' }}</td>
-                <td class="muted">{{ e.last }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-    </section>
-</div>
-
-<section class="card">
-    <h2 class="card-title">Personal records</h2>
-    {% if data.prs %}
-    <ul class="pr-list">
-        {% for pr in data.prs %}
-        <li>
-            <a href="{{ url_for('main.exercise_history', name=pr.exercise) }}" class="cell-link pr-name">{{ pr.exercise }}</a>
-            <span class="pr-detail"><strong>{{ pr.weight }}</strong> <span class="muted">up from {{ pr.previous|fmt_num }}</span></span>
-            <span class="muted small pr-date">{{ pr.date|nice_date }}</span>
-        </li>
+<section class="card card-flush">
+    <h2 class="card-title card-title-pad">Most trained</h2>
+    <div class="table-wrap">
+    <table class="table">
+        <thead><tr><th>Exercise</th><th class="num">Logged</th><th>Best</th><th>Last</th></tr></thead>
+        <tbody>
+        {% for e in data.top_exercises %}
+        <tr>
+            <td><a href="{{ url_for('main.exercise_history', name=e.exercise, range=range_key) }}" class="cell-link">{{ e.exercise }}</a></td>
+            <td class="num">{{ e.entries }}</td>
+            <td>{{ e.best or '—' }}</td>
+            <td class="muted">{{ e.last|day_label }}</td>
+        </tr>
         {% endfor %}
-    </ul>
-    {% else %}
-    <p class="muted">No new best weights in this range. A record needs an earlier entry of the same exercise to beat.</p>
-    {% endif %}
+        </tbody>
+    </table>
+    </div>
 </section>
 {% endif %}
 {% endif %}

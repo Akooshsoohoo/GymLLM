@@ -58,23 +58,29 @@ def test_home_without_llm_config_goes_to_settings(client):
     assert b"Choose an LLM provider" in r.data
 
 
-def test_home_shows_provider_in_use(logged_in):
-    r = logged_in.get("/")
-    assert r.status_code == 200 and b"OpenAI" in r.data and b"gpt-4o-mini" in r.data
-    assert b"<h2>Manual log</h2>" in r.data and b'placeholder="160 lbs"' in r.data
+def test_home_and_log_pages_keep_models_out_of_sight(logged_in):
+    for path in ("/", "/log"):
+        r = logged_in.get(path)
+        assert r.status_code == 200 and b'id="log-form"' in r.data and b"Log it" in r.data
+        assert b"OpenAI" not in r.data and b"gpt-4o-mini" not in r.data
+    r = logged_in.get("/log")
+    assert b'href="/log/manual"' in r.data and b"Writing tips" in r.data
+    r = logged_in.get("/log/manual")
+    assert r.status_code == 200 and b'id="classic-form"' in r.data and b'placeholder="160 lbs"' in r.data
 
 
 def test_home_lists_recent_sessions(logged_in, add_workout):
-    add_workout(date="2026-01-01", exercise="older lift")
-    add_workout(date="2026-02-01", exercise="newer lift")
-    add_workout(date="2026-02-01", exercise="second newer lift")
+    add_workout(date="2026-01-01", exercise="older lift", tags="")
+    add_workout(date="2026-02-01", exercise="newer lift", tags="")
+    add_workout(date="2026-02-01", exercise="second newer lift", tags="")
     add_workout(date="2026-03-01", exercise="not mine", user_email=OTHER)
     r = logged_in.get("/")
     body = r.data.decode()
     assert r.status_code == 200
-    assert body.index("newer lift") < body.index("older lift")
-    assert "second newer lift" in body and "not mine" not in body
-    assert body.count('datetime="2026-02-01"') == 1  # one session heading per date
+    # "Your recent": one line per day, named after the first lift logged that day.
+    assert body.index("Newer lift · 2 exercises") < body.index("Older lift · 1 exercise")
+    assert "not mine" not in body.lower()
+    assert body.count('datetime="2026-02-01"') == 1  # one line per date
 
 
 @pytest.mark.parametrize(
@@ -96,9 +102,9 @@ def test_sets_summary(sets, reps, expected):
 
 def test_home_recent_sessions_capped(logged_in, add_workout):
     for day in range(1, 9):
-        add_workout(date=f"2026-01-{day:02d}", exercise=f"lift {day}")
+        add_workout(date=f"2026-01-{day:02d}", exercise=f"lift {day}", tags="")
     body = logged_in.get("/").data.decode()
-    assert "lift 8" in body and "lift 4" in body and "lift 3" not in body
+    assert "Lift 8" in body and "Lift 6" in body and "Lift 5" not in body
 
 
 def test_logout_clears_auth_but_keeps_llm_settings(logged_in):
@@ -307,14 +313,15 @@ def test_browser_output_size_cap():
         _parse_browser_output("{" * (MAX_LLM_OUTPUT + 1))
 
 
-def test_home_shows_browser_hint_for_local_provider(local_user):
-    r = local_user.get("/")
-    assert r.status_code == 200 and b"in your browser" in r.data and b"data-browser-llm" in r.data
+def test_log_box_runs_local_provider_in_the_browser(local_user):
+    for path in ("/", "/log"):
+        r = local_user.get(path)
+        assert r.status_code == 200 and b"data-browser-llm" in r.data
 
 
-def test_review_empty_text_redirects_home(logged_in):
+def test_review_empty_text_redirects_to_log(logged_in):
     r = logged_in.post("/review", data={"workout": "  "})
-    assert r.status_code == 302 and r.headers["Location"].endswith("/")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/log")
 
 
 def test_confirm_saves_rows_with_tags_and_skips_deleted(logged_in, app, fake_llm):
@@ -551,7 +558,8 @@ def test_progress_overview(logged_in, add_workout):
     assert "190 &rarr; <strong>185</strong> lbs" in body  # first → latest in the range
     assert "chest" in body and "back" in body  # muscle groups
     assert "Most trained" in body
-    assert "Personal records" in body and "190 lbs" in body and "up from 180" in body
+    assert "New personal bests" in body and "190" in body and "up from 180" in body
+    assert "Workouts per day" in body and 'data-chart="bars"' in body
     assert "vs previous" not in body  # the stat tiles are gone
 
     body = logged_in.get("/progress?range=all&by=month&today=2026-03-15").data.decode()
@@ -621,8 +629,8 @@ def test_csrf_enforced_when_enabled():
 def test_site_model_is_default_for_new_users(site_user):
     r = site_user.get("/")
     assert r.status_code == 200
-    assert b"2 of 2 free parses left today" in r.data
-    assert b"GymLLM shared model" in r.data
+    assert b"2 free logs left today" in r.data
+    assert b"GymLLM shared model" not in r.data
 
 
 def test_site_review_uses_owner_key_and_counts_quota(site_user, site_app, fake_llm):
@@ -641,7 +649,7 @@ def test_site_review_uses_owner_key_and_counts_quota(site_user, site_app, fake_l
     with site_app.app_context():
         assert quota.remaining(USER, 2) == 0
     r = site_user.get("/")
-    assert b"0 of 2 free parses left today" in r.data and b"Come back tomorrow" in r.data
+    assert b"0 free logs left today" in r.data and b"Come back tomorrow" in r.data
 
 
 def test_site_quota_resets_next_day(site_user, site_app, fake_llm, monkeypatch):
@@ -702,7 +710,7 @@ def test_site_settings_save_and_test(site_user, site_app, fake_llm):
 def test_site_user_can_still_pick_own_provider(site_user, fake_llm):
     site_user.post("/settings", data={"provider": "ollama", "model": "llama3.2"})
     r = site_user.get("/")
-    assert b"in your browser" in r.data and b"free parses" not in r.data
+    assert b"data-browser-llm" in r.data and b"free logs" not in r.data
 
 
 def test_quota_consume_handles_insert_race(site_app):
@@ -868,14 +876,15 @@ def add_weight(app):
 
 
 def test_home_cards_show_cardio_and_weight(logged_in, add_workout, add_cardio, add_weight):
-    add_workout(date="2026-02-01", exercise="bench")
+    add_workout(date="2026-02-01", exercise="bench", tags="")
     add_cardio(date="2026-02-01", activity="walking", distance="3 miles")
     add_cardio(date="2026-02-03", activity="swimming", distance="20 laps")  # cardio-only day
     add_weight(date="2026-02-01", weight="130 lbs")
     body = logged_in.get("/").data.decode()
-    body = body[body.index("Recent sessions") :]  # skip the exercise-search datalist
-    assert "walking" in body and "3 miles" in body and "130 lbs" in body
-    assert "swimming" in body and body.index("swimming") < body.index("bench")
+    body = body[body.index("Your recent") :]
+    # A cardio-only day is named after the activity; a lifting day after the lift.
+    assert "Swimming · 20 laps" in body and "Bench · 2 exercises" in body
+    assert body.index("Swimming") < body.index("Bench")
 
 
 def test_sessions_page_lists_and_edits_cardio_and_weights(
@@ -969,7 +978,7 @@ def test_day_page_shows_one_day_with_neighbours(logged_in, add_workout, add_card
     assert r.status_code == 200 and "Tue 10 Mar 2026" in body
     assert "barbell bench press" in body and "pull up" in body and "walking" in body
     assert "not mine" not in body
-    assert "130 lbs" in body and "not included when you share" in body
+    assert "130 lbs" in body and "never included when you share" in body
     assert 'href="/day/2026-03-01"' in body and 'href="/day/2026-03-12"' in body
     assert '<div class="stat-value">2</div>' in body  # exercises
     assert '<div class="stat-value">7</div>' in body  # 5 + 2 sets
@@ -999,7 +1008,8 @@ def test_day_page_share_payload_excludes_body_weight(
     assert share["cardio"] == [{"activity": "walking", "distance": "3 miles", "duration": "45 min"}]
     assert share["stats"]["sets"] == 5 and share["stats"]["cardio"] == "3 mi"
     assert "130" not in json.dumps(share)
-    assert set(share) == {"date", "label", "stats", "lifts", "cardio"}
+    assert share["headline"] == ["5 sets.", "3 mi."] and share["short"] == "TUE 10 MAR"
+    assert set(share) == {"date", "label", "short", "name", "headline", "stats", "lifts", "cardio"}
 
 
 def test_day_page_marks_personal_records(logged_in, add_workout):
@@ -1007,9 +1017,9 @@ def test_day_page_marks_personal_records(logged_in, add_workout):
     add_workout(date="2026-03-10", weight="190 lbs")
     add_workout(date="2026-03-10", exercise="pull up", weight="bodyweight")
     body = logged_in.get("/day/2026-03-10").data.decode()
-    assert body.count('class="chip chip-pr"') == 1
+    assert body.count('class="badge badge-best"') == 1 and "new best" in body
     assert '"pr": true' in body
-    assert 'class="chip chip-pr"' not in logged_in.get("/day/2026-03-01").data.decode()
+    assert 'class="badge badge-best"' not in logged_in.get("/day/2026-03-01").data.decode()
 
 
 def test_day_page_stacks_same_exercise_rows(logged_in, add_workout):

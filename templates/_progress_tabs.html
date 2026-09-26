@@ -1,9 +1,17 @@
+{#- Title, section tabs and (once anything is logged) the range filter.
+    Set show_by = False to keep the day/week/month switch out of the header. -#}
 {% set ep = request.endpoint or '' %}
-<div class="page-head">
-    <h1>Progress</h1>
+<div class="progress-head">
+    <div>
+        <h1>Progress</h1>
+        <nav class="tabs" aria-label="Progress sections">
+            <a href="{{ url_for('main.progress') }}" class="{{ 'active' if ep == 'main.progress' }}"{% if ep == 'main.progress' %} aria-current="page"{% endif %}>Overview</a>
+            <a href="{{ url_for('main.search') }}" class="{{ 'active' if ep == 'main.search' }}"{% if ep == 'main.search' %} aria-current="page"{% endif %}>Sessions</a>
+            <a href="{{ url_for('main.exercises') }}" class="{{ 'active' if ep in ('main.exercises', 'main.exercise_history') }}"{% if ep in ('main.exercises', 'main.exercise_history') %} aria-current="page"{% endif %}>Exercises</a>
+        </nav>
+    </div>
+    {% if total %}
+    {% if show_by is defined and not show_by %}{% set by = None %}{% endif %}
+    {% include "_range_filter.html" %}
+    {% endif %}
 </div>
-<nav class="tabs" aria-label="Progress sections">
-    <a href="{{ url_for('main.progress') }}" class="{{ 'active' if ep == 'main.progress' }}">Overview</a>
-    <a href="{{ url_for('main.search') }}" class="{{ 'active' if ep == 'main.search' }}">Sessions</a>
-    <a href="{{ url_for('main.exercises') }}" class="{{ 'active' if ep in ('main.exercises', 'main.exercise_history') }}">Exercises</a>
-</nav>

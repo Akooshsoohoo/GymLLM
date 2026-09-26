@@ -1,0 +1,19 @@
+{#- "This week" as seven circles. week: stats.week_strip(); streak: weeks in a row;
+    link_days: link logged days to the day page (your own log only). -#}
+{% set logged_days = week|selectattr('logged')|list|length %}
+<section class="card week-card">
+    <div class="card-head">
+        <h2 class="card-title">This week</h2>
+        <span class="card-meta">{{ logged_days }} of 7 days{% if streak %} · {{ streak }}-week streak{% endif %}</span>
+    </div>
+    <div class="week-dots">
+        {% for d in week %}
+        {% set cls = 'week-dot' ~ (' logged' if d.logged else '') ~ (' today' if d.today else '') %}
+        {% if d.logged and link_days %}
+        <a href="{{ url_for('main.day', when=d.date) }}" class="{{ cls }}" title="{{ d.date|nice_date }}: open this day"><span class="dot"></span>{{ d.letter }}</a>
+        {% else %}
+        <div class="{{ cls }}" title="{{ d.date|nice_date }}{{ ': logged' if d.logged }}"><span class="dot"></span>{{ d.letter }}</div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</section>

@@ -6,7 +6,7 @@
 <div class="empty invite-card">
     {{ social.avatar(owner, "lg") }}
     <h1>{{ owner.display_name }} invited you</h1>
-    <p class="muted">Be friends on GymLLM to see each other's workouts, give kudos and compare stats.</p>
+    <p class="muted">Be friends on GymLLM to see each other's workouts, trade high fives and compare stats.</p>
     {% if signed_in %}
     <form method="post" action="{{ url_for('social.invite', code=owner.invite_code) }}" class="toolbar invite-actions">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

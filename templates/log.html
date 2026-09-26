@@ -1,208 +1,34 @@
 {% extends "base.html" %}
-{% import "_social.html" as social with context %}
-{% block title %}GymLLM | Log{% endblock %}
+{% block title %}GymLLM | Log a workout{% endblock %}
+{% block main_class %}page page-narrow{% endblock %}
 {% block content %}
-<div class="home-grid">
-<div class="home-main">
-<div class="page-head">
-    <h1>Log a workout</h1>
-    <a href="{{ url_for('main.settings') }}" class="chip chip-link" title="Change model">
-        <span class="chip-dot" aria-hidden="true"></span>
-        {%- if config.is_site -%}
-            GymLLM shared model · {{ quota_left }} of {{ quota_limit }} free parses left today
-        {%- else -%}
-            {{ config.describe() }}{% if config.runs_in_browser %} · in your browser{% endif %}
-        {%- endif -%}
-    </a>
+<div class="log-head">
+    <p class="page-sub">{{ today|day_label(long=True) }}</p>
+    <h1>What did you get up to{% if first_name %}, {{ first_name }}{% endif %}?</h1>
 </div>
 
-{% if config.is_site and quota_left == 0 %}
-<div class="alert warn">
-    You have used today's {{ quota_limit }} free parses with the shared model. Come back tomorrow,
-    or <a href="{{ url_for('main.settings') }}">add your own key or a local model</a> for unlimited use.
-</div>
-{% endif %}
-<div class="alert error" id="llm-error" hidden></div>
-
-<form method="post" action="{{ url_for('main.review') }}" id="log-form" class="card"
-      {% if config.runs_in_browser %}data-browser-llm='{{ config.browser_config()|tojson }}'{% endif %}>
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="client_date" class="client-date" value="">
-    <input type="hidden" name="llm_output" value="">
-    <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
-    <label for="workout" class="sr-only">Describe your workout</label>
-    <textarea id="workout" name="workout" rows="6" required autofocus class="textarea textarea-plain"
-        placeholder="today I walked 3 miles, did some pull ups, curled the 20 lb dumbbells for a few sets, and weighed in at 160 lbs"></textarea>
-    <div class="toolbar">
-        <button type="submit" class="btn btn-primary">Parse workout</button>
-        <div class="unit-toggle" role="group" aria-label="Default weight unit for exercises with no unit stated">
-            <button type="button" class="unit-btn{{ ' is-active' if weight_unit != 'kg' else '' }}" data-unit="lbs" aria-pressed="{{ 'true' if weight_unit != 'kg' else 'false' }}">lbs</button>
-            <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
-        </div>
-        <span class="muted small" data-llm-status>You review and edit before anything is saved.</span>
+<div class="stack log-stack">
+    <div>
+        {% set autofocus = True %}{% include "_log_card.html" %}
     </div>
-</form>
 
-<section class="section">
-    <div class="section-head">
-        <h2>Manual log</h2>
+    <section aria-labelledby="try-label">
+        <p class="try-label" id="try-label">Or try something like</p>
+        <div class="chips">
+            {% for s in ["Ran 5k in 28 min", "Squats 3×8 at 135", "Yoga, 45 min", "Weighed in at 142"] %}
+            <button type="button" class="chip" data-insert="{{ s }}">{{ s }}</button>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% set link_days = True %}{% include "_week_dots.html" %}
+
+    <div class="log-foot">
+        <span>Prefer a form? <a href="{{ url_for('main.log_manual') }}">Add manually</a></span>
+        <button type="button" class="link-btn" data-dialog-open="tips">Writing tips</button>
+        {% if config.is_site %}<span class="quota">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today</span>{% endif %}
     </div>
-    <form method="post" action="{{ url_for('main.confirm') }}" id="classic-form" class="card">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="card-head">
-            <div class="field-inline">
-                <label for="classic-date">Date</label>
-                <input type="date" id="classic-date" name="date" value="" required class="input date-input client-date">
-            </div>
-            <span class="muted small">No AI involved. Saved as you enter it.</span>
-        </div>
-
-        <div class="review-section">
-            <div class="field-inline">
-                <label for="classic-search">Search exercise</label>
-                <input type="text" id="classic-search" class="input" list="exercise-names" placeholder="e.g. bench press" autocomplete="off">
-                <button type="button" class="btn btn-text" id="classic-add">Add</button>
-                <span class="muted small">Pick from the list or type your own, then press Enter.</span>
-            </div>
-            <div class="table-wrap">
-            <table id="classic-table" class="table table-editing" hidden>
-                <thead>
-                <tr>
-                    <th>Exercise</th><th>Weight</th><th>Sets</th><th>Reps</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
-                </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            </div>
-            <input type="hidden" name="num_entries" id="classic-count" value="0">
-        </div>
-
-        <div class="review-section">
-            <div class="field-inline">
-                <label for="classic-cardio-search">Add cardio</label>
-                <input type="text" id="classic-cardio-search" class="input" list="cardio-names" placeholder="e.g. running" autocomplete="off">
-                <button type="button" class="btn btn-text" id="classic-cardio-add">Add</button>
-                <span class="muted small">Pick from the list or type your own, then press Enter.</span>
-            </div>
-            <div class="table-wrap">
-            <table id="classic-cardio-table" class="table table-editing" hidden>
-                <thead>
-                <tr>
-                    <th>Activity</th><th>Distance</th><th>Duration</th><th>Notes</th><th class="col-actions"><span class="sr-only">Remove</span></th>
-                </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            </div>
-            <input type="hidden" name="num_cardio" id="classic-cardio-count" value="0">
-        </div>
-
-        <div class="review-section">
-            <div class="field-inline">
-                <label for="classic-bodyweight">Body weight</label>
-                <input type="text" id="classic-bodyweight" name="bodyweight" placeholder="160 lbs" class="input input-short">
-                <span class="muted small">Optional. One reading per day; a new one replaces the old.</span>
-            </div>
-        </div>
-
-        <div class="toolbar toolbar-end">
-            <button type="submit" class="btn btn-primary">Save to log</button>
-        </div>
-    </form>
-    <datalist id="exercise-names">
-        {%- for n in exercise_names %}<option value="{{ n }}">{% endfor -%}
-    </datalist>
-    <datalist id="cardio-names">
-        {%- for n in ("Walking", "Running", "Jogging", "Cycling", "Swimming", "Rowing", "Hiking", "Elliptical", "Stair climber", "Jump rope") %}<option value="{{ n }}">{% endfor -%}
-    </datalist>
-</section>
-
-<details class="hint">
-    <summary>Writing tips</summary>
-    <ul>
-        <li>Mention a day ("yesterday", "on Monday", "2025-06-01") and it becomes the log date.</li>
-        <li>Shorthand works: <code>5x5</code>, <code>3x10</code>, <code>10,8,6</code>, <code>bodyweight</code>.</li>
-        <li>Mix it all in one message: lifts go to your exercises, a walk, run or swim goes to cardio, and "weighed in at 130" records your body weight.</li>
-        <li>Units are kept as you write them: <code>185 lbs</code> or <code>80 kg</code>.</li>
-    </ul>
-</details>
-
-<section class="section">
-    <div class="section-head">
-        <h2>Recent sessions</h2>
-        {% if sessions %}<a href="{{ url_for('main.search') }}" class="small">View all entries &rarr;</a>{% endif %}
-    </div>
-    {% if not sessions %}
-    <p class="muted">Nothing logged yet. Your last few sessions will show up here.</p>
-    {% else %}
-    <div class="session-list">
-        {% for s in sessions %}
-        <article class="session-card">
-            <h3 class="session-date"><a href="{{ url_for('main.day', when=s.date) }}" class="session-date-link"><time datetime="{{ s.date }}">{{ s.date|nice_date }}</time></a></h3>
-            <ul class="session-rows">
-                {% for r in s.rows %}
-                <li>
-                    <a href="{{ url_for('main.exercise_history', name=r.exercise) }}" class="session-exercise">{{ r.exercise }}</a>
-                    <span class="session-detail num">
-                        {{- r.weight -}}
-                        {%- if r.weight and r.sets_reps %} · {% endif -%}
-                        {{- r.sets_reps -}}
-                    </span>
-                </li>
-                {% endfor %}
-                {% for c in s.cardio %}
-                <li>
-                    <span class="session-exercise session-cardio">{{ c.activity }}</span>
-                    <span class="session-detail num">
-                        {{- c.distance -}}
-                        {%- if c.distance and c.duration %} · {% endif -%}
-                        {{- c.duration -}}
-                    </span>
-                </li>
-                {% endfor %}
-                {% if s.weight %}
-                <li class="session-weight">
-                    <span class="session-exercise muted">body weight</span>
-                    <span class="session-detail num">{{ s.weight.weight }}</span>
-                </li>
-                {% endif %}
-            </ul>
-            {% if s.kudos or s.comments %}
-            <a href="{{ url_for('main.day', when=s.date) }}#social" class="session-social small">
-                {%- if s.kudos %}{{ s.kudos }} kudos{% endif %}
-                {%- if s.kudos and s.comments %} · {% endif %}
-                {%- if s.comments %}{{ s.comments|length }} comment{{ '' if s.comments|length == 1 else 's' }}{% endif -%}
-            </a>
-            {% endif %}
-        </article>
-        {% endfor %}
-    </div>
-    {% endif %}
-</section>
 </div>
 
-<aside class="home-aside" aria-labelledby="friends-heading">
-    <div class="section-head">
-        <h2 id="friends-heading">Friends</h2>
-        {% if friend_cards %}<a href="{{ url_for('social.feed') }}" class="small">See all &rarr;</a>{% endif %}
-    </div>
-    {% if not my_profile %}
-    <div class="card card-compact aside-empty">
-        <p class="muted small">Set up a profile to see friends' workouts, trade kudos and compare stats.</p>
-        <a href="{{ url_for('social.profile_edit') }}" class="btn btn-primary btn-sm">Set up profile</a>
-    </div>
-    {% elif not has_friends %}
-    <div class="card card-compact aside-empty">
-        <p class="muted small">Add friends by @handle or share your invite link.</p>
-        <a href="{{ url_for('social.friends') }}" class="btn btn-primary btn-sm">Find friends</a>
-    </div>
-    {% elif not friend_cards %}
-    <p class="muted small">Your friends haven't logged anything yet.</p>
-    {% else %}
-    <div class="feed-list">
-        {% for c in friend_cards %}{{ social.session_card(c, url_for('main.home'), compact=True) }}{% endfor %}
-    </div>
-    {% endif %}
-</aside>
-</div>
+{% include "_tips.html" %}
 {% endblock %}

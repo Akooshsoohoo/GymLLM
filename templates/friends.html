@@ -82,7 +82,7 @@
             {{ social.avatar(e.who, "sm") }}
             <div class="activity-text">
                 <a href="{{ url_for('social.profile', handle=e.who.handle) }}">{{ e.who.display_name }}</a>
-                {% if e.kind == 'kudos' %}gave kudos to{% else %}commented on{% endif %}
+                {% if e.kind == 'kudos' %}gave a high five on{% else %}commented on{% endif %}
                 <a href="{{ url_for('main.day', when=e.date) }}#social">your session on {{ e.date|nice_date }}</a>
                 {% if e.body %}<p class="activity-quote">{{ e.body }}</p>{% endif %}
             </div>
@@ -91,7 +91,7 @@
         {% endfor %}
     </ul>
     {% else %}
-    <p class="muted">Kudos and comments from friends on your sessions will show up here.</p>
+    <p class="muted">High fives and comments from friends on your sessions show up here.</p>
     {% endif %}
 </section>
 {% endblock %}

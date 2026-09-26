@@ -72,6 +72,39 @@ def group_sessions(
     return sessions
 
 
+def compact_sets(sets_reps: str) -> str:
+    """'5, 5, 5, 5, 5' -> '5×5'; anything uneven or single is left as is."""
+    parts = [p.strip() for p in (sets_reps or "").split(",")]
+    if len(parts) > 1 and len(set(parts)) == 1 and parts[0].isdigit():
+        return f"{len(parts)}×{parts[0]}"
+    return sets_reps or ""
+
+
+def activity_count(session: dict) -> str:
+    """'3 exercises' when there are lifts (cardio counts too), else '2 activities'."""
+    n = len({r["exercise"] for r in session.get("rows", [])}) + len(session.get("cardio", []))
+    if session.get("rows"):
+        return f"{n} exercise{'' if n == 1 else 's'}"
+    return f"{n} activit{'y' if n == 1 else 'ies'}"
+
+
+def session_summary(session: dict) -> str:
+    """A one-line label for a day: 'Chest · 4 exercises', 'Walking · 3 miles'."""
+    rows, cardio = session.get("rows", []), session.get("cardio", [])
+    if rows:
+        tags = [t["tag"] for t in stats.tag_counts(rows) if t["tag"] != "other"]
+        lead = tags[0] if tags else rows[-1]["exercise"]
+        return f"{lead[:1].upper()}{lead[1:]} · {activity_count(session)}"
+    if cardio:
+        c = cardio[-1]
+        detail = c.get("distance") or c.get("duration") or ""
+        name = c["activity"][:1].upper() + c["activity"][1:]
+        return f"{name} · {detail}" if detail else name
+    if session.get("weight"):
+        return f"Weighed in · {session['weight']['weight']}"
+    return ""
+
+
 def recent_sessions(user_email: str, limit: int = RECENT_SESSIONS) -> list[dict]:
     """The user's most recent days with anything logged, newest first."""
     return group_sessions(

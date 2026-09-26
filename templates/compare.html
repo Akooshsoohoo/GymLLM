@@ -1,84 +1,82 @@
 {% extends "base.html" %}
 {% import "_social.html" as social with context %}
 {% block title %}GymLLM | You vs {{ other.display_name }}{% endblock %}
-{% macro who(lead, side) -%}{{ ' is-lead' if lead == side }}{%- endmacro %}
+{% macro lead(t, side) -%}{{ (' lead-you' if side == 'mine' else ' lead-friend') if t.lead == side }}{%- endmacro %}
+{% macro total_value(t, side) -%}
+{{ t[side]|round|int|short_num }}{% if t.units %} <small>{{ t.units[0 if side == 'mine' else 1] }}</small>{% endif %}
+{%- endmacro %}
 {% block content %}
-<p class="crumb"><a href="{{ url_for('social.profile', handle=other.handle) }}">&larr; {{ other.display_name }}</a></p>
-<div class="page-head vs-head">
-    <div class="vs-person">{{ social.avatar(me, "md") }}<span>You</span></div>
-    <span class="vs-sep muted">vs</span>
-    <div class="vs-person">{{ social.avatar(other, "md") }}<span>{{ other.display_name }}</span></div>
+{% set first = other.display_name.split()[0] %}
+<p class="crumb"><a href="{{ url_for('social.profile', handle=other.handle) }}">&lsaquo; {{ first }}</a></p>
+<div class="vs-head">
+    <div class="vs-people">
+        <div class="vs-person">{{ social.avatar(me, "vs", tone="solid-you") }}<span>You</span></div>
+        <span class="vs-sep">vs</span>
+        <div class="vs-person"><span class="mobile-only">{{ first }}</span>{{ social.avatar(other, "vs", tone="solid-friend") }}<span class="desktop-only">{{ first }}</span></div>
+    </div>
+    <div class="desktop-only">{% set range_key, by = range_key, None %}{% include "_range_filter.html" %}</div>
 </div>
-
-{% set range_key, by = range_key, None %}{% include "_range_filter.html" %}
+<div class="mobile-only">{% include "_range_filter.html" %}</div>
 
 {% if data.empty %}
 {% include "_empty_range.html" %}
 {% else %}
-<section class="card card-flush">
-    <div class="table-wrap">
-    <table class="table vs-table">
-        <thead><tr><th><span class="sr-only">Stat</span></th><th class="num">You</th><th class="num">{{ other.display_name }}</th></tr></thead>
-        <tbody>
-        {% for t in data.totals %}
-        <tr>
-            <td>{{ t.label }}</td>
-            <td class="num{{ who(t.lead, 'mine') }}">{{ t.mine|round|int|fmt_num }}{% if t.units %} {{ t.units[0] }}{% endif %}</td>
-            <td class="num{{ who(t.lead, 'theirs') }}">{{ t.theirs|round|int|fmt_num }}{% if t.units %} {{ t.units[1] }}{% endif %}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+<section class="card vs-totals" aria-label="Totals">
+    {% for t in data.totals %}
+    <div class="vs-row">
+        <span class="vs-num num{{ lead(t, 'mine') }}">{{ total_value(t, 'mine') }}</span>
+        <span class="vs-label">{{ t.label }}</span>
+        <span class="vs-num num{{ lead(t, 'theirs') }}">{{ total_value(t, 'theirs') }}</span>
     </div>
+    {% endfor %}
 </section>
-
-<section class="card card-flush">
-    <h2 class="card-title card-title-pad">Lifts you both do</h2>
-    {% if data.shared %}
-    <div class="table-wrap">
-    <table class="table vs-table">
-        <thead><tr><th>Exercise</th><th class="num">You</th><th class="num">{{ other.display_name }}</th><th class="num">Gap</th></tr></thead>
-        <tbody>
-        {% for s in data.shared %}
-        <tr>
-            <td>{{ s.exercise }}</td>
-            <td class="num{{ who(s.lead, 'mine') }}">{{ s.mine.text or '—' }} <span class="muted small">· {{ s.mine.sessions }}×</span></td>
-            <td class="num{{ who(s.lead, 'theirs') }}">{{ s.theirs.text or '—' }} <span class="muted small">· {{ s.theirs.sessions }}×</span></td>
-            <td class="num muted">{% if s.diff %}{{ s.diff|fmt_num }} {{ s.unit }}{% elif s.diff == 0 %}tied{% else %}—{% endif %}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+<div class="vs-tiles" aria-hidden="true">
+    {% for t in data.totals %}
+    <div class="vs-tile">
+        <span class="stat-label">{{ t.label }}</span>
+        <div class="vs-nums">
+            <span class="vs-num num{{ lead(t, 'mine') }}">{{ total_value(t, 'mine') }}</span>
+            <span class="vs-num num{{ lead(t, 'theirs') }}">{{ total_value(t, 'theirs') }}</span>
+        </div>
     </div>
-    <p class="muted small card-title-pad vs-note">Best weight in this range and sessions logged. No gap is shown when the units differ.</p>
-    {% else %}
-    <p class="muted card-title-pad vs-note">No exercise in common in this range.</p>
-    {% endif %}
-</section>
+    {% endfor %}
+</div>
 
-<div class="two-col">
+<div class="progress-grid compare-grid">
     <section class="card">
-        <h2 class="card-title">Favourites</h2>
-        <div class="fav-cols">
-            {% for side, label in (('mine', 'You'), ('theirs', other.display_name)) %}
+        <div class="card-head">
+            <h2 class="card-title">Lifts you both do</h2>
+            <span class="legend"><span><i class="legend-dot"></i>You</span><span><i class="legend-dot legend-dot-2"></i>{{ first }}</span></span>
+        </div>
+        {% if data.shared %}
+        <div class="split-list">
+            {% for s in data.shared %}
+            {% set a, b = s.mine.value, s.theirs.value %}
             <div>
-                <h3 class="fav-who muted small">{{ label }}</h3>
-                {% if data.favourites[side] %}
-                <ol class="fav-list">
-                    {% for f in data.favourites[side] %}
-                    <li class="{{ 'is-shared' if f.shared }}">
-                        <span class="fav-rank num">{{ loop.index }}</span>
-                        <span class="fav-name">{{ f.exercise }}</span>
-                    </li>
-                    {% endfor %}
-                </ol>
+                <div class="split-top">
+                    <span>{{ s.exercise }}</span>
+                    <span>
+                        {%- if a is not none and b is not none and s.unit -%}
+                        {{ a|fmt_num }} · {{ b|fmt_num }} ·
+                        {% if s.diff %}{{ 'You' if s.lead == 'mine' else first }} +{{ s.diff|fmt_num }} {{ s.unit }}{% else %}tied{% endif %}
+                        {%- else -%}
+                        {{ s.mine.text or '—' }} · {{ s.theirs.text or '—' }}
+                        {%- endif -%}
+                    </span>
+                </div>
+                {% if a and b and s.unit %}
+                <div class="split-bar"><span class="is-you" style="flex: {{ a }}"></span><span class="is-friend" style="flex: {{ b }}"></span></div>
                 {% else %}
-                <p class="muted small">No lifts in this range.</p>
+                <div class="split-bar is-empty"><span></span></div>
                 {% endif %}
+                <p class="muted small">{{ s.mine.sessions }}× you · {{ s.theirs.sessions }}× {{ first }}</p>
             </div>
             {% endfor %}
         </div>
-        <p class="muted small">Most-logged exercises. <span class="shared-key">Highlighted</span> ones are in both lists.</p>
+        <p class="muted small">Best weight in this range. No gap is shown when the units differ.</p>
+        {% else %}
+        <p class="muted">No exercise in common in this range.</p>
+        {% endif %}
     </section>
 
     <section class="card">
@@ -92,22 +90,46 @@
                     <span class="hbar-track" title="You: {{ m.mine }}%"><span class="hbar-fill" style="width: {{ m.mine }}%"></span></span>
                     <span class="hbar-track" title="{{ other.display_name }}: {{ m.theirs }}%"><span class="hbar-fill hbar-fill-2" style="width: {{ m.theirs }}%"></span></span>
                 </span>
-                <span class="hbar-value num">{{ m.mine }}<span class="muted"> / {{ m.theirs }}%</span></span>
+                <span class="hbar-value num muted">{{ m.mine }} / {{ m.theirs }}%</span>
             </li>
             {% endfor %}
         </ol>
-        <p class="muted small"><span class="legend-dot"></span>You <span class="legend-dot legend-dot-2"></span>{{ other.display_name }} · share of each person's tagged exercises</p>
+        <p class="muted small">Share of each person's logged exercises.</p>
         {% else %}
         <p class="muted">No tagged exercises in this range.</p>
         {% endif %}
     </section>
 </div>
+
+<section class="card">
+    <h2 class="card-title">Favourites</h2>
+    <div class="fav-cols">
+        {% for side, label in (('mine', 'You'), ('theirs', other.display_name)) %}
+        <div>
+            <h3 class="fav-who">{{ label }}</h3>
+            {% if data.favourites[side] %}
+            <ol class="fav-list{{ ' is-you' if side == 'mine' }}">
+                {% for f in data.favourites[side] %}
+                <li class="{{ 'is-shared' if f.shared }}">
+                    <span class="fav-rank num">{{ loop.index }}</span>
+                    <span class="fav-name">{{ f.exercise }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <p class="muted small">No lifts in this range.</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    <p class="muted small">Most-logged exercises. <span class="shared-key">Dark</span> numbers are in both lists.</p>
+</section>
 {% endif %}
 
 <section class="card chart-card">
     <div class="card-head">
         <h2 class="card-title">Sessions per week</h2>
-        <span class="muted small"><span class="legend-dot"></span>You <span class="legend-dot legend-dot-2"></span>{{ other.display_name }} · last 12 weeks</span>
+        <span class="legend"><span><i class="legend-dot"></i>You</span><span><i class="legend-dot legend-dot-2"></i>{{ first }}</span><span>last 12 weeks</span></span>
     </div>
     <svg class="chart" data-chart="line" data-x="label" data-y="mine" data-y2="theirs" data-zero data-height="200"
          data-y-label="You" data-y2-label="{{ other.display_name }}"

@@ -1,127 +1,144 @@
 {% extends "base.html" %}
 {% block title %}GymLLM | {{ when|nice_date }}{% endblock %}
 {% block content %}
-<p class="crumb"><a href="{{ url_for('main.search') }}">&larr; All sessions</a></p>
-<div class="page-head day-head">
-    <nav class="day-nav" aria-label="Day">
-        {% if prev %}
-        <a href="{{ url_for('main.day', when=prev) }}" class="day-step" title="{{ prev|nice_date }}" rel="prev">&larr; <span class="day-step-label">{{ prev|nice_date }}</span></a>
-        {% else %}
-        <span class="day-step is-disabled" aria-disabled="true">&larr; <span class="day-step-label">Earlier</span></span>
-        {% endif %}
-        <h1 class="day-title"><time datetime="{{ when }}">{{ when|nice_date }}</time></h1>
-        {% if nxt %}
-        <a href="{{ url_for('main.day', when=nxt) }}" class="day-step" title="{{ nxt|nice_date }}" rel="next"><span class="day-step-label">{{ nxt|nice_date }}</span> &rarr;</a>
-        {% else %}
-        <span class="day-step is-disabled" aria-disabled="true"><span class="day-step-label">Later</span> &rarr;</span>
-        {% endif %}
-    </nav>
-    <div class="toolbar-group day-jump">
-        <a href="{{ url_for('main.day', when=when) }}" data-today-link class="btn btn-ghost btn-sm">Today</a>
+{% set rel = when|day_label %}
+<nav class="day-head" aria-label="Day">
+    {% if prev %}
+    <a href="{{ url_for('main.day', when=prev) }}" class="day-step" title="{{ prev|nice_date }}" rel="prev" aria-label="Previous day logged: {{ prev|nice_date }}">&lsaquo;</a>
+    {% else %}
+    <span class="day-step is-disabled" aria-disabled="true">&lsaquo;</span>
+    {% endif %}
+    <button type="button" class="day-title-btn" id="day-title" aria-label="Pick a date">
+        <h1 class="day-title"><time datetime="{{ when }}"><span class="mobile-only">{{ when|short_date }}</span><span class="desktop-only">{{ when|day_label(long=True) }}</span></time></h1>
+        <span class="day-sub">
+            {%- if rel in ('Today', 'Yesterday') %}{{ rel }}{% else %}{{ when[:4] }}{% endif -%}
+            {%- if prev %}<span class="desktop-only"> · previous: {{ prev|day_label }}</span>{% endif -%}
+        </span>
+    </button>
+    {% if nxt %}
+    <a href="{{ url_for('main.day', when=nxt) }}" class="day-step is-next" title="{{ nxt|nice_date }}" rel="next" aria-label="Next day logged: {{ nxt|nice_date }}">&rsaquo;</a>
+    {% else %}
+    <span class="day-step is-disabled is-next" aria-disabled="true">&rsaquo;</span>
+    {% endif %}
+    <div class="day-actions">
         <label for="day-picker" class="sr-only">Go to date</label>
-        <input type="date" id="day-picker" class="input day-picker" value="{{ when }}"
+        <input type="date" id="day-picker" class="btn btn-white day-picker" value="{{ when }}" data-label="Pick a date" data-trigger="#day-title"
                data-day-jump data-day-base="{{ url_for('main.day', when='0000-00-00')|replace('0000-00-00', '') }}">
+        {% if rows or cardio or weight %}
+        <a href="{{ edit_url }}" class="btn btn-white">Edit</a>
+        {% if rows or cardio %}<button type="button" class="btn btn-primary" data-share-trigger>Share</button>{% endif %}
+        {% endif %}
     </div>
-</div>
+</nav>
 
 {% if not rows and not cardio and not weight %}
 <div class="empty">
     <p>Nothing logged on {{ when|nice_date }}.</p>
-    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log a workout</a>
-    {% if not total %}<p class="muted small" style="margin-top: 12px">Nothing logged yet at all. Your first workout will show up here.</p>{% endif %}
+    <a href="{{ url_for('main.log') }}" class="btn btn-primary">Log a workout</a>
+    {% if not total %}<p class="muted small">Nothing logged yet at all. Your first workout will show up here.</p>{% endif %}
 </div>
 {% else %}
 <div class="alert error" id="share-error" hidden></div>
-<div class="stat-grid">
-    <div class="stat">
-        <div class="stat-label">Exercises</div>
-        <div class="stat-value">{{ summary.entries }}</div>
-        {% if summary.entries %}<div class="stat-delta">{{ summary.exercises }} distinct</div>{% endif %}
-    </div>
-    <div class="stat">
-        <div class="stat-label">Sets</div>
-        <div class="stat-value">{{ summary.sets }}</div>
-        {% if summary.reps %}<div class="stat-delta">{{ summary.reps }} reps</div>{% endif %}
-    </div>
-    <div class="stat">
-        <div class="stat-label" title="Weight × reps, summed">Volume</div>
-        <div class="stat-value">{{ summary.volume|fmt_num if summary.volume else '—' }}</div>
-    </div>
-    {% if cardio %}
-    <div class="stat">
-        <div class="stat-label">Cardio</div>
-        <div class="stat-value">{{ summary.cardio.lead or summary.cardio.count }}</div>
-        <div class="stat-delta">
-            {%- if summary.cardio.rest %}+ {{ summary.cardio.rest }} · {% endif -%}
-            {{ summary.cardio.count }} activit{{ 'y' if summary.cardio.count == 1 else 'ies' }}
-            {%- if summary.cardio.minutes_text %} · {{ summary.cardio.minutes_text }}{% endif %}
+<div class="day-grid">
+    <div class="day-side">
+        {% if rows or cardio %}
+        <section class="poster" aria-label="Share preview">
+            <div class="poster-top"><span>{% if share.name %}{{ share.name }} · {% endif %}{{ share.short }}</span><span>GYMLLM</span></div>
+            <p class="poster-headline">{% for line in share.headline %}<span>{{ line }}</span>{% endfor %}</p>
+            <ul class="poster-rows">
+                {% for g in grouped_rows %}
+                {% set best = g.entries|selectattr('pr')|first %}
+                {% set top = best or g.entries[0] %}
+                <li>
+                    <a href="{{ url_for('main.exercise_history', name=g.exercise) }}">{{ g.exercise|cap_first }}{% if best %} · new best{% endif %}</a>
+                    <span>{{ [top.weight|replace(' lbs', '')|replace(' kg', ''), top.sets_reps|compact_sets]|select|join(' × ') }}</span>
+                </li>
+                {% endfor %}
+                {% for c in cardio %}
+                <li><span>{{ c.activity|cap_first }}</span><span>{{ c.distance or c.duration }}</span></li>
+                {% endfor %}
+            </ul>
+        </section>
+        <p class="poster-caption desktop-only">Share preview (4:5). Body weight is never included.</p>
+        {% endif %}
+
+        <div class="stat-grid stat-grid-3 mobile-only">
+            <div class="stat"><div class="stat-label">Exercises</div><div class="stat-value">{{ summary.entries }}</div></div>
+            <div class="stat"><div class="stat-label">Reps</div><div class="stat-value">{{ summary.reps }}</div></div>
+            <div class="stat"><div class="stat-label" title="Weight × reps, summed">Volume</div><div class="stat-value">{{ summary.volume|short_num if summary.volume else '—' }}</div></div>
         </div>
     </div>
-    {% endif %}
-</div>
 
-{% if rows %}
-<div class="table-wrap card card-flush">
-<table class="table">
-    <thead>
-    <tr><th>Exercise</th><th>Weight</th><th>Sets × reps</th><th>Notes</th></tr>
-    </thead>
-    <tbody>
-    {% for g in grouped_rows %}
-    {% for e in g.entries %}
-    <tr{% if loop.first %} class="group-start"{% endif %}>
-        {% if loop.first %}
-        <td class="exercise-cell" rowspan="{{ g.entries|length }}">
-            <a href="{{ url_for('main.exercise_history', name=g.exercise) }}" class="cell-link">{{ g.exercise }}</a>
-        </td>
+    <div class="day-main">
+        <div class="stat-grid desktop-only">
+            <div class="stat"><div class="stat-label">Exercises</div><div class="stat-value">{{ summary.entries }}</div></div>
+            <div class="stat"><div class="stat-label">Sets</div><div class="stat-value">{{ summary.sets }}</div></div>
+            <div class="stat"><div class="stat-label" title="Weight × reps, summed: {{ summary.volume|fmt_num }}">Volume</div><div class="stat-value">{% if summary.volume %}{{ summary.volume|short_num }} <small>{{ weight_unit }}</small>{% else %}—{% endif %}</div></div>
+            {% if weight %}
+            {% set bw = weight.weight.split(' ', 1) %}<div class="stat"><div class="stat-label">Body weight</div><div class="stat-value">{{ bw[0] }}{% if bw|length > 1 %} <small>{{ bw[1] }}</small>{% endif %}</div></div>
+            {% elif cardio %}
+            <div class="stat"><div class="stat-label">Cardio</div><div class="stat-value">{{ summary.cardio.lead or summary.cardio.minutes_text or summary.cardio.count }}</div></div>
+            {% else %}
+            <div class="stat"><div class="stat-label">Reps</div><div class="stat-value">{{ summary.reps }}</div></div>
+            {% endif %}
+        </div>
+
+        {% if rows or cardio %}
+        <div class="card day-table">
+        <div class="table-wrap">
+        <table class="table">
+            <thead>
+            <tr><th>Exercise</th><th>Weight</th><th>Sets × reps</th></tr>
+            </thead>
+            <tbody>
+            {% for g in grouped_rows %}
+            {% for e in g.entries %}
+            <tr{% if loop.first %} class="group-start"{% endif %}>
+                {% if loop.first %}
+                <td class="exercise-cell" rowspan="{{ g.entries|length }}">
+                    <a href="{{ url_for('main.exercise_history', name=g.exercise) }}" class="cell-link">{{ g.exercise }}</a>
+                </td>
+                {% endif %}
+                <td>{{ e.weight or '—' }}{% if e.pr %} <span class="badge badge-best" title="Heaviest you have logged for this exercise">New best</span>{% endif %}
+                    {%- if e.notes %}<div class="muted small">{{ e.notes }}</div>{% endif %}</td>
+                <td class="num">{{ e.sets_reps|compact_sets or '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+            {% for c in cardio %}
+            <tr{% if loop.first and rows %} class="group-start"{% endif %}>
+                <td class="exercise-cell"><strong>{{ c.activity }}</strong>{% if c.notes %}<div class="muted small">{{ c.notes }}</div>{% endif %}</td>
+                <td>{{ [c.distance, c.duration]|select|join(' · ') or '—' }}</td>
+                <td class="muted">—</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        </div>
         {% endif %}
-        <td>{{ e.weight }}{% if e.pr %} <span class="chip chip-pr" title="Heaviest you have logged for this exercise">PR</span>{% endif %}</td>
-        <td class="num">{{ e.sets_reps }}</td>
-        <td class="muted">{{ e.notes }}</td>
-    </tr>
-    {% endfor %}
-    {% endfor %}
-    </tbody>
-</table>
-</div>
-{% endif %}
 
-{% if cardio %}
-<div class="table-wrap card card-flush">
-<table class="table">
-    <thead>
-    <tr><th>Cardio</th><th>Distance</th><th>Duration</th><th>Notes</th></tr>
-    </thead>
-    <tbody>
-    {% for c in cardio %}
-    <tr><td>{{ c.activity }}</td><td>{{ c.distance }}</td><td>{{ c.duration }}</td><td class="muted">{{ c.notes }}</td></tr>
-    {% endfor %}
-    </tbody>
-</table>
-</div>
-{% endif %}
+        {% if weight %}
+        <div class="card card-compact bw-line mobile-only"><span class="muted">Body weight</span> <strong>{{ weight.weight }}</strong></div>
+        {% endif %}
 
-{% if weight %}
-<div class="card card-compact"><span class="muted">Body weight</span> <strong>{{ weight.weight }}</strong> <span class="muted small">· not included when you share</span></div>
-{% endif %}
+        {% if thread %}
+        {% import "_social.html" as social with context %}
+        <section class="card" id="social">{{ social.thread(thread, request.path) }}</section>
+        {% endif %}
 
-<div class="toolbar">
-    {% if rows or cardio %}
-    <button type="button" id="share-day" class="btn btn-primary" data-share='{{ share|tojson }}'>Share</button>
-    {% endif %}
-    <a href="{{ edit_url }}" class="btn btn-ghost">Edit</a>
-    <a href="{{ url_for('main.home') }}" class="btn btn-ghost">Log a workout</a>
+        <div class="day-buttons">
+            {% if rows or cardio %}
+            <button type="button" id="share-day" class="btn btn-primary" data-share='{{ share|tojson }}'>Share to story</button>
+            {% endif %}
+            <a href="{{ edit_url }}" class="btn btn-white">Edit</a>
+        </div>
+        <p class="day-note">Body weight is never included when you share.</p>
+        <figure id="share-preview" class="share-preview" hidden>
+            <img alt="Shareable image of this workout">
+            <figcaption class="muted small">Saved to your downloads. On a phone this opens the share sheet instead.</figcaption>
+        </figure>
+    </div>
 </div>
-<figure id="share-preview" class="share-preview" hidden>
-    <img alt="Shareable image of this workout">
-    <figcaption class="muted small">Saved to your downloads. On a phone this opens the share sheet instead.</figcaption>
-</figure>
-{% if thread %}
-{% import "_social.html" as social with context %}
-<section class="section" id="social">
-    <div class="section-head"><h2>From friends</h2></div>
-    <div class="card card-compact">{{ social.social_bar(thread, request.path, open_comments=True) }}</div>
-</section>
-{% endif %}
 {% endif %}
 {% endblock %}

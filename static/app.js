@@ -126,7 +126,7 @@
       var when = ($("input[name=client_date]", form) || {}).value || "";
       var unit = ($("input[name=weight_unit]", form) || {}).value || "lbs";
       var errBox = $("#llm-error"); if (errBox) errBox.hidden = true;
-      setBusy(form, true, "Parsing with " + cfg.model + " in your browser\u2026");
+      setBusy(form, true, "Reading your workout\u2026");
       fetch("/llm/prompt?date=" + encodeURIComponent(when) + "&unit=" + encodeURIComponent(unit), { credentials: "same-origin" })
         .then(function (r) { if (!r.ok) throw new Error("Could not load the prompt from the server."); return r.json(); })
         .then(function (data) { return browserLLM.chat(cfg, data.system, text); })
@@ -281,7 +281,7 @@
     confirmForm.addEventListener("submit", function (ev) {
       if (!tagCfg || confirmForm.dataset.tagged || confirmForm.dataset.busy) return;
       ev.preventDefault();
-      var rows = $$("tbody tr", entriesTable).filter(function (tr) {
+      var rows = $$("[data-row]", entriesTable).filter(function (tr) {
         var box = $(".delete-box", tr);
         return !(box && box.checked);
       });
@@ -294,7 +294,7 @@
       var names = Object.keys(byName);
       var finish = function () { confirmForm.dataset.tagged = "1"; confirmForm.dataset.busy = ""; confirmForm.submit(); };
       if (!names.length) { finish(); return; }
-      setBusy(confirmForm, true, "Checking exercise names\u2026");
+      setBusy(confirmForm, true, "Saving\u2026");
       fetch(confirmForm.dataset.tagTargetsUrl || "/llm/tag-targets", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken() },
@@ -303,7 +303,7 @@
       }).then(function (r) { return r.ok ? r.json() : { unmatched: [] }; }).then(function (data) {
         var todo = (data.unmatched || []).map(function (n) { return String(n).toLowerCase(); }).filter(function (n) { return byName[n]; });
         if (!todo.length) return;
-        setBusy(confirmForm, true, "Tagging " + todo.length + " new exercise" + (todo.length === 1 ? "" : "s") + " with " + tagCfg.model + "\u2026");
+        setBusy(confirmForm, true, "Sorting " + todo.length + " new exercise" + (todo.length === 1 ? "" : "s") + " into muscle groups\u2026");
         return todo.reduce(function (chain, name) {
           return chain.then(function () {
             return browserLLM.chat(tagCfg, data.system, "Exercise: " + name).then(function (content) {
@@ -322,11 +322,24 @@
       }).then(finish, finish);
     });
   }
+  // Value pills grow with their text. Browsers without field-sizing get a size attribute.
+  var fieldSizing = !!(window.CSS && CSS.supports && CSS.supports("field-sizing", "content"));
+  function sizePills(root) {
+    if (fieldSizing) return;
+    $$(".vpill input", root).forEach(function (input) {
+      var fit = function () { input.size = Math.max(2, (input.value || input.placeholder || "").length + 1); };
+      fit();
+      if (!input.dataset.sized) { input.dataset.sized = "1"; input.addEventListener("input", fit); }
+    });
+  }
+  sizePills(document);
+
   if (confirmForm && entriesTable) {
+    var saveBtn = $("button[type=submit]", confirmForm);
     confirmForm.addEventListener("click", function (ev) {
       var btn = ev.target.closest(".row-remove");
       if (!btn) return;
-      var row = btn.closest("tr");
+      var row = btn.closest("[data-row]");
       var box = $(".delete-box", row);
       var removing = !row.classList.contains("row-deleted");
       row.classList.toggle("row-deleted", removing);
@@ -334,41 +347,91 @@
       btn.textContent = removing ? "Undo" : "Remove";
     });
 
-    // "Add exercise" / "Add cardio": append an empty row named like the server expects.
-    var addRowTo = function (button, table, counter, prefix, columns) {
-      if (!button || !table || !counter) return;
+    // "+ Add": copy the group's <template>, numbered the way the server expects.
+    var addRowTo = function (button, list, counter, template) {
+      if (!button || !list || !counter || !template) return;
       button.addEventListener("click", function () {
         var i = parseInt(counter.value, 10) || 0;
-        var tr = document.createElement("tr");
-        tr.innerHTML = columns.map(function (col, idx) {
-          return '<td' + (idx === 0 ? ' class="exercise-cell"' : "") + '><input type="text" name="' + prefix + "-" + i + "-" + col[0] +
-            '" aria-label="' + col[0].charAt(0).toUpperCase() + col[0].slice(1) + '"' + (col[1] || "") + "></td>";
-        }).join("") +
-          '<td class="col-actions"><input type="checkbox" name="' + prefix + "-" + i + '-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">' +
-          '<button type="button" class="btn btn-text row-remove">Remove</button></td>';
-        table.tBodies[0].appendChild(tr);
+        var holder = document.createElement("div");
+        holder.innerHTML = template.innerHTML.replace(/__i__/g, String(i)).trim();
+        var row = holder.firstElementChild;
+        list.appendChild(row);
         counter.value = i + 1;
-        var empty = $('[data-empty-for="' + table.id + '"]', confirmForm);
+        var empty = $('[data-empty-for="' + list.id + '"]', confirmForm);
         if (empty) empty.hidden = true;
-        var submit = $('button[type=submit]', confirmForm);
-        if (submit) submit.disabled = false;
-        tr.querySelector("input[type=text]").focus();
+        if (saveBtn) saveBtn.disabled = false;
+        sizePills(row);
+        $("input[type=text]", row).focus();
       });
     };
-    addRowTo($("#add-row"), entriesTable, $("#num_entries"), "entry", [
-      ["exercise", ' list="exercise-names"'], ["weight", ' placeholder="185 lbs"'],
-      ["sets", ' class="narrow" inputmode="numeric"'], ["reps", ' placeholder="10, 8, 6"'], ["notes", ""]
-    ]);
-    addRowTo($("#add-cardio"), $("#cardio-table"), $("#num_cardio"), "cardio", [
-      ["activity", ' placeholder="walking"'], ["distance", ' placeholder="3 miles"'],
-      ["duration", ' placeholder="45 min"'], ["notes", ""]
-    ]);
+    addRowTo($("#add-row"), entriesTable, $("#num_entries"), $("#entry-template"));
+    addRowTo($("#add-cardio"), $("#cardio-table"), $("#num_cardio"), $("#cardio-template"));
     var bodyweightField = $("#bodyweight");
     if (bodyweightField) bodyweightField.addEventListener("input", function () {
-      var submit = $('button[type=submit]', confirmForm);
-      if (submit && bodyweightField.value.trim()) submit.disabled = false;
+      if (saveBtn && bodyweightField.value.trim()) saveBtn.disabled = false;
     });
   }
+
+  // "‹ Edit text" on the review page opens the box with what you typed.
+  $$("[data-toggle]").forEach(function (btn) {
+    var target = document.getElementById(btn.dataset.toggle);
+    if (!target) return;
+    btn.addEventListener("click", function () {
+      var open = !target.classList.contains("is-open");
+      target.classList.toggle("is-open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      var field = $("textarea", target);
+      if (open && field) field.focus();
+    });
+  });
+
+  // Example chips add their text to the log box.
+  document.addEventListener("click", function (ev) {
+    var chip = ev.target.closest("[data-insert]");
+    if (!chip) return;
+    var box = $("#workout");
+    if (!box) return;
+    var text = box.value.replace(/\s+$/, "");
+    box.value = text ? text + (/[.,;]$/.test(text) ? " " : ", ") + chip.dataset.insert : chip.dataset.insert;
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+  });
+
+  // "+ Log workout" in the top bar: on Home it just jumps to the box.
+  function focusLogBox() {
+    var box = $("#workout");
+    if (!box || !box.offsetParent) return false;
+    box.scrollIntoView({ block: "center" });
+    box.focus({ preventScroll: true });
+    return true;
+  }
+  if (location.hash === "#log") focusLogBox();
+  $$("a[data-log-link]").forEach(function (a) {
+    a.addEventListener("click", function (ev) {
+      if (new URL(a.href).pathname === location.pathname && focusLogBox()) ev.preventDefault();
+    });
+  });
+
+  // Sheets (<dialog>) opened by a button with data-dialog-open="id"; a tap on the backdrop closes.
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest("[data-dialog-open]");
+    if (!btn) return;
+    var dialog = document.getElementById(btn.dataset.dialogOpen);
+    if (dialog && dialog.showModal) dialog.showModal();
+  });
+  $$("dialog.sheet").forEach(function (dialog) {
+    dialog.addEventListener("click", function (ev) { if (ev.target === dialog) dialog.close(); });
+  });
+
+  // Menus built on <details>: close on a click elsewhere or on Escape.
+  var openMenus = function () { return $$("details.account-menu[open], details.friends-menu[open]"); };
+  document.addEventListener("click", function (ev) {
+    openMenus().forEach(function (d) { if (!d.contains(ev.target)) d.open = false; });
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Escape") return;
+    openMenus().forEach(function (d) { d.open = false; $("summary", d).focus(); });
+  });
 
   // ---------------------------------------------------------------- Classic logger (Log page)
   // Search/pick an exercise to add a row; rows post to /confirm with the same field names
@@ -749,6 +812,40 @@
       });
     }
 
+    // Rounded bars with no axis: past periods in a soft tint, the current one (series
+    // item with current: true) in coral. Labels under the first and last bar only.
+    function bars(svg, series, opts) {
+      var W = width(svg), H = opts.h, B = 22, T = 18;
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+      svg.setAttribute("height", H);
+      var n = series.length;
+      var ys = series.map(function (p) { return p[opts.y] || 0; });
+      var max = Math.max.apply(null, ys.concat([1]));
+      var gap = Math.max(6, Math.min(12, W / n * 0.25));
+      var bw = (W - gap * (n - 1)) / n;
+      var x = function (i) { return i * (bw + gap); };
+      var y = function (v) { return T + (1 - v / max) * (H - T - B); };
+      var nodes = series.map(function (p, i) {
+        var v = ys[i], top = v > 0 ? y(v) : H - B - 6, h = H - B - top, r = Math.min(8, bw / 2, h / 2);
+        var cls = "rbar" + (p.current ? " current" : "") + (v > 0 ? "" : " zero");
+        var bar = el("rect", { x: x(i).toFixed(1), y: top.toFixed(1), width: bw.toFixed(1), height: h.toFixed(1), rx: r, class: cls });
+        svg.appendChild(bar);
+        return bar;
+      });
+      var label = function (i, anchor, text) {
+        svg.appendChild(el("text", { x: anchor === "end" ? x(i) + bw : x(i), y: H - 6, class: "axis-label", "text-anchor": anchor }, text));
+      };
+      label(0, "start", series[0][opts.x]);
+      label(n - 1, "end", series[n - 1].current ? "This " + (opts.period || "week") : series[n - 1][opts.x]);
+      var t = tip(svg);
+      interactive(svg, n, function (i) { return x(i) + bw / 2; }, function (i) {
+        nodes.forEach(function (b, j) { b.classList.toggle("active", j === i); });
+        if (i < 0) { t.hide(); return; }
+        var p = series[i], v = ys[i];
+        t.show(p.title || p[opts.x], [[v === 1 ? "workout" : "workouts", String(v)]], x(i) + bw / 2, y(Math.max(v, 0)));
+      });
+    }
+
     function spark(svg, values) {
       var W = 96, H = 24, n = values.length;
       svg.setAttribute("viewBox", "0 0 " + W + " " + H);
@@ -762,7 +859,7 @@
       svg.appendChild(el("title", {}, values.map(fmt).join(" → ")));
     }
 
-    var renderers = { line: line, columns: columns, spark: spark };
+    var renderers = { line: line, columns: columns, bars: bars, spark: spark };
     function renderAll() {
       $$("svg[data-chart]").forEach(function (svg) {
         var fn = renderers[svg.dataset.chart];
@@ -773,9 +870,11 @@
         var fresh = svg.cloneNode(false);
         svg.parentNode.replaceChild(fresh, svg);
         var ds = fresh.dataset;
+        // data-narrow-last="8": on a narrow screen show only the latest 8 points.
+        if (ds.narrowLast && width(fresh) < 480) series = series.slice(-parseInt(ds.narrowLast, 10));
         fn(fresh, series, {
           x: ds.x || "label", y: ds.y || "value", h: parseInt(ds.height, 10) || 220,
-          y2: ds.y2, yLabel: ds.yLabel, y2Label: ds.y2Label, zero: "zero" in ds
+          y2: ds.y2, yLabel: ds.yLabel, y2Label: ds.y2Label, zero: "zero" in ds, period: ds.period
         });
       });
     }
@@ -793,106 +892,95 @@
       var box = $("#share-error");
       if (box) { box.textContent = msg; box.hidden = false; } else { window.alert(msg); }
     };
-    var FONT = '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif';
-    var C = { bg: "#0f1012", surface: "#16171a", border: "#27292f", text: "#ececf1", muted: "#8b8e99", accent: "#4fd18b", accentFg: "#08150e" };
-    var fmtVolume = function (n) {
-      if (!n) return "—";
-      return n >= 100000 ? Math.round(n / 1000) + "k" : Math.round(n).toLocaleString();
-    };
+    var DISPLAY = '"Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif';
+    var FONT = '"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
+    var C = { bg: "#EC6A45", ink: "#1C1915", rule: "rgba(28, 25, 21, 0.25)" };
     var ellipsis = function (ctx, text, max) {
       if (ctx.measureText(text).width <= max) return text;
       while (text.length > 1 && ctx.measureText(text + "…").width > max) text = text.slice(0, -1);
       return text.replace(/\s+$/, "") + "…";
     };
-    var roundRect = function (ctx, x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    var trackedText = function (ctx, text, x, y, spacing, alignRight) {
+      // Canvas letterSpacing isn't everywhere yet; draw letter by letter instead.
+      var w = 0, widths = text.split("").map(function (ch) { var m = ctx.measureText(ch).width; w += m + spacing; return m; });
+      w -= spacing;
+      var cx = alignRight ? x - w : x;
+      text.split("").forEach(function (ch, i) { ctx.fillText(ch, cx, y); cx += widths[i] + spacing; });
+      return w;
     };
 
-    // 1080 wide; square for a short day, growing to 4:5 (1080x1350) for a long one so
-    // it fits a story, a feed post and a message bubble without a big empty bottom.
+    // The coral poster from the day page at 1080x1350 (4:5): name and date on top,
+    // the big headline, then one row per lift or activity. Never the weigh-in.
     var renderShareCard = function (data) {
-      var W = 1080, P = 72, MAX_H = 1350, MIN_H = 1080;
+      var W = 1080, H = 1350, P = 80;
       var lines = [];
+      var seen = {};
       (data.lifts || []).forEach(function (l) {
-        var detail = [l.weight, l.sets_reps].filter(Boolean).join(" · ");
-        lines.push({ name: l.exercise, detail: detail, pr: !!l.pr });
+        var key = l.exercise.toLowerCase();
+        var weight = (l.weight || "").replace(/\s*(lbs?|kg)$/i, "");
+        var sets = compact(l.sets_reps || "");
+        var detail = [weight, sets].filter(Boolean).join(" × ");
+        if (seen[key]) { if (l.pr) { seen[key].pr = true; seen[key].detail = detail; } return; }
+        seen[key] = { name: l.exercise.charAt(0).toUpperCase() + l.exercise.slice(1), detail: detail, pr: !!l.pr };
+        lines.push(seen[key]);
       });
       (data.cardio || []).forEach(function (c) {
-        var detail = [c.distance, c.duration].filter(Boolean).join(" · ");
-        lines.push({ name: c.activity, detail: detail });
+        lines.push({ name: c.activity.charAt(0).toUpperCase() + c.activity.slice(1), detail: c.distance || c.duration || "" });
       });
-      var gap = 20, tw = (W - 2 * P - gap) / 2, th = 150, ty = 310;
-      var top = ty + 2 * th + gap + 64, lineH = 58, room = Math.floor((MAX_H - 90 - top) / lineH);
-      var shown = lines.length > room ? lines.slice(0, room - 1) : lines;
-      var extra = shown.length < lines.length ? 1 : 0;
-      var H = Math.max(MIN_H, Math.min(MAX_H, top + 30 + (shown.length + extra) * lineH + 60));
 
       var canvas = document.createElement("canvas");
       canvas.width = W; canvas.height = H;
       var ctx = canvas.getContext("2d");
       ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = C.accent; ctx.fillRect(0, 0, W, 12);
+      ctx.fillStyle = C.ink;
 
-      // Brand + date (the date shrinks to fit, then truncates)
-      ctx.fillStyle = C.accent; roundRect(ctx, P, 76, 22, 22, 6); ctx.fill();
-      ctx.fillStyle = C.text; ctx.font = "600 34px " + FONT; ctx.textBaseline = "middle";
-      ctx.fillText("GymLLM", P + 36, 87);
-      ctx.textBaseline = "alphabetic";
-      ctx.fillStyle = C.muted; ctx.font = "500 30px " + FONT;
-      ctx.fillText("WORKOUT", P, 180);
-      ctx.fillStyle = C.text;
-      var label = data.label || data.date, size = 64;
-      ctx.font = "600 " + size + "px " + FONT;
-      while (size > 44 && ctx.measureText(label).width > W - 2 * P) { size -= 4; ctx.font = "600 " + size + "px " + FONT; }
-      ctx.fillText(ellipsis(ctx, label, W - 2 * P), P, 250);
+      // Top line: MAYA · THU 24 SEP ........ GYMLLM
+      ctx.font = "700 30px " + FONT; ctx.textBaseline = "alphabetic";
+      var brandW = trackedText(ctx, "GYMLLM", W - P, P + 30, 3, true);
+      var top = [data.name, data.short].filter(Boolean).join(" · ");
+      var maxTop = W - 2 * P - brandW - 40;
+      while (top.length > 1 && ctx.measureText(top).width + top.length * 3 > maxTop) top = top.slice(0, -1);
+      trackedText(ctx, top, P, P + 30, 3, false);
 
-      // Stat tiles, 2 x 2
-      var st = data.stats || {};
-      var tiles = [
-        ["Exercises", String(st.exercises || 0)],
-        ["Sets", String(st.sets || 0)],
-        ["Volume", fmtVolume(st.volume)],
-        st.cardio ? ["Cardio", st.cardio + (st.minutes ? " · " + st.minutes : "")] : ["Reps", String(st.reps || 0)]
-      ];
-      tiles.forEach(function (t, i) {
-        var x = P + (i % 2) * (tw + gap), y = ty + Math.floor(i / 2) * (th + gap);
-        ctx.fillStyle = C.surface; roundRect(ctx, x, y, tw, th, 18); ctx.fill();
-        ctx.strokeStyle = C.border; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = C.muted; ctx.font = "500 26px " + FONT; ctx.fillText(t[0], x + 28, y + 52);
-        ctx.fillStyle = C.text;
-        var vsize = t[1].length > 12 ? 36 : t[1].length > 8 ? 44 : 56;
-        ctx.font = "600 " + vsize + "px " + FONT;
-        ctx.fillText(ellipsis(ctx, t[1], tw - 56), x + 28, y + 114);
-      });
-
-      // Lifts and cardio, one line each
-      ctx.fillStyle = C.muted; ctx.font = "500 24px " + FONT;
-      ctx.fillText(lines.length === 1 ? "1 ENTRY" : lines.length + " ENTRIES", P, top - 20);
+      // Rows from the bottom up, so the headline sits right above them.
+      var rowH = 76, maxRows = 7;
+      var shown = lines.length > maxRows ? lines.slice(0, maxRows - 1) : lines;
+      var more = lines.length - shown.length;
+      var rowsTop = H - P - (shown.length + (more ? 1 : 0)) * rowH;
+      ctx.font = "600 36px " + FONT;
       shown.forEach(function (ln, i) {
-        var y = top + 30 + i * lineH;
-        ctx.strokeStyle = C.border; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(P, y + 22); ctx.lineTo(W - P, y + 22); ctx.stroke();
-        ctx.font = "500 30px " + FONT;
+        var y = rowsTop + i * rowH;
+        ctx.fillStyle = C.rule; ctx.fillRect(P, y, W - 2 * P, 3);
+        ctx.fillStyle = C.ink;
         var detailW = ctx.measureText(ln.detail).width;
-        ctx.fillStyle = C.muted; ctx.textAlign = "right"; ctx.fillText(ln.detail, W - P, y); ctx.textAlign = "left";
-        var nameMax = W - 2 * P - detailW - 40;
-        ctx.fillStyle = C.text; ctx.font = "500 30px " + FONT;
-        var name = ellipsis(ctx, ln.name, nameMax - (ln.pr ? 70 : 0));
-        ctx.fillText(name, P, y);
-        if (ln.pr) {
-          var nx = P + ctx.measureText(name).width + 14;
-          ctx.fillStyle = C.accent; roundRect(ctx, nx, y - 24, 54, 32, 8); ctx.fill();
-          ctx.fillStyle = C.accentFg; ctx.font = "600 20px " + FONT; ctx.fillText("PR", nx + 13, y - 1);
-        }
+        ctx.textAlign = "right"; ctx.fillText(ln.detail, W - P, y + 52); ctx.textAlign = "left";
+        var name = ln.name + (ln.pr ? " · new best" : "");
+        ctx.fillText(ellipsis(ctx, name, W - 2 * P - detailW - 32), P, y + 52);
       });
-      if (shown.length < lines.length) {
-        ctx.fillStyle = C.muted; ctx.font = "500 28px " + FONT;
-        ctx.fillText("+ " + (lines.length - shown.length) + " more", P, top + 30 + shown.length * lineH);
+      if (more) {
+        var my = rowsTop + shown.length * rowH;
+        ctx.fillStyle = C.rule; ctx.fillRect(P, my, W - 2 * P, 3);
+        ctx.fillStyle = C.ink; ctx.fillText("+ " + more + " more", P, my + 52);
       }
+
+      // Headline: "8 sets. / 3 mi." shrinks until the widest line fits.
+      var head = (data.headline && data.headline.length) ? data.headline : [data.label || data.date];
+      var size = 176;
+      var fit = function () {
+        ctx.font = "800 " + size + "px " + DISPLAY;
+        return Math.max.apply(null, head.map(function (t) { return ctx.measureText(t).width; }));
+      };
+      while (size > 72 && fit() > W - 2 * P) size -= 8;
+      var lh = size * 0.9;
+      var baseY = rowsTop - 48 - (head.length - 1) * lh;
+      head.forEach(function (t, i) { ctx.fillText(ellipsis(ctx, t, W - 2 * P), P - 4, baseY + i * lh); });
       return canvas;
     };
+    function compact(sr) {
+      var parts = sr.split(",").map(function (p) { return p.trim(); });
+      if (parts.length > 1 && /^\d+$/.test(parts[0]) && parts.every(function (p) { return p === parts[0]; })) return parts.length + "×" + parts[0];
+      return sr;
+    }
 
     var toBlob = function (canvas) {
       return new Promise(function (resolve, reject) {
@@ -902,7 +990,10 @@
     // Render as soon as the font is in, so the click can share right away (iOS drops the
     // user activation if we do slow work first).
     var ready = (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve())
-      .then(function () { return document.fonts && document.fonts.load ? document.fonts.load('600 64px "Inter"') : null; })
+      .then(function () {
+        if (!document.fonts || !document.fonts.load) return null;
+        return Promise.all([document.fonts.load('800 160px "Bricolage Grotesque"'), document.fonts.load('600 36px "Instrument Sans"'), document.fonts.load('700 30px "Instrument Sans"')]);
+      })
       .catch(function () { /* fall back to the system font */ })
       .then(function () { return shareData ? toBlob(renderShareCard(shareData)) : Promise.reject(new Error("Nothing to share.")); });
 
@@ -914,6 +1005,8 @@
       var preview = $("#share-preview");
       if (preview) { var img = $("img", preview); if (img) img.src = url; preview.hidden = false; }
     };
+    // The desktop header's "Share" hands its click (and the user activation) to this button.
+    $$("[data-share-trigger]").forEach(function (b) { b.addEventListener("click", function () { shareBtn.click(); }); });
     shareBtn.addEventListener("click", function () {
       shareBtn.disabled = true;
       var idle = shareBtn.textContent;
@@ -1067,15 +1160,29 @@
       btn.className = (input.className.replace(/\bclient-date\b/, "") + " date-trigger").trim();
       btn.setAttribute("aria-haspopup", "dialog");
       relabel(input, btn);
-      var sync = function () { btn.textContent = niceDate(input.value); };
+      // data-label: a fixed caption ("Pick a date"); data-relative: "Today · Thu 24 Sep".
+      var sync = function () { btn.textContent = input.dataset.label || ("relative" in input.dataset ? relativeDate(input.value) : niceDate(input.value)); };
       sync();
       input.addEventListener("change", sync);
       input.hidden = true;
       input.parentNode.insertBefore(btn, input.nextSibling);
-      btn.addEventListener("click", function () {
-        if (popover.isOpenFor(btn)) popover.close(true); else openCalendar(input, btn);
+      // data-trigger: other elements (the day page's title) that open the same calendar.
+      var triggers = [btn].concat(input.dataset.trigger ? $$(input.dataset.trigger) : []);
+      triggers.forEach(function (t) {
+        t.setAttribute("aria-haspopup", "dialog");
+        t.addEventListener("click", function () {
+          if (popover.isOpenFor(t)) popover.close(true); else openCalendar(input, t);
+        });
       });
     });
+  }
+  function relativeDate(v) {
+    var d = parseIso(v);
+    if (!d) return "Pick a date";
+    var today = parseIso(localDate());
+    var days = Math.round((today - d) / 86400000);
+    var short = DOW[d.getDay()] + " " + d.getDate() + " " + MONTH_NAMES[d.getMonth()].slice(0, 3) + (d.getFullYear() !== today.getFullYear() ? " " + d.getFullYear() : "");
+    return (days === 0 ? "Today · " : days === 1 ? "Yesterday · " : "") + short;
   }
 
   // ---------------------------------------------------------------- Autocomplete
@@ -1261,6 +1368,31 @@
       btn.disabled = false;
     });
   });
+  // "N comments" sits beside High five as a pill; the thread opens full width below.
+  // Without this script the <details> summary does the same job.
+  function initComments(root) {
+    $$(".social-bar > details.comments", root).forEach(function (details, n) {
+      if (details.dataset.enhanced) return;
+      details.dataset.enhanced = "1";
+      var summary = $("summary", details);
+      var pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = "comments-pill";
+      pill.textContent = summary.textContent.trim();
+      if (!details.id) details.id = "comments-" + n + "-" + Math.random().toString(36).slice(2, 7);
+      pill.setAttribute("aria-controls", details.id);
+      var sync = function () { pill.setAttribute("aria-expanded", details.open ? "true" : "false"); };
+      sync();
+      details.addEventListener("toggle", sync);
+      pill.addEventListener("click", function () {
+        details.open = !details.open;
+        var field = details.open && $("input[name=body]", details);
+        if (field) field.focus();
+      });
+      details.parentNode.insertBefore(pill, details);
+    });
+  }
+
   // Copy buttons: <button data-copy="#input-id">.
   document.addEventListener("click", function (ev) {
     var btn = ev.target.closest("button[data-copy]");
@@ -1268,7 +1400,8 @@
     var input = $(btn.dataset.copy);
     if (!input) return;
     var done = function () {
-      var label = btn.textContent;
+      var label = btn.dataset.label || btn.textContent;
+      btn.dataset.label = label;
       btn.textContent = "Copied";
       setTimeout(function () { btn.textContent = label; }, 1500);
     };
@@ -1287,6 +1420,7 @@
     initDatePickers(root);
     initSuggest(root);
     initSelects(root);
+    initComments(root);
     charts.renderAll();
   }
   enhance(document);

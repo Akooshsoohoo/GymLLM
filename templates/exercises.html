@@ -5,10 +5,9 @@
 {% if not total %}
 <div class="empty">
     <p>Nothing logged yet.</p>
-    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Log your first workout</a>
+    <a href="{{ url_for('main.log') }}" class="btn btn-primary">Log your first workout</a>
 </div>
 {% else %}
-{% include "_range_filter.html" %}
 {% if not summary and not cardio %}
 {% include "_empty_range.html" %}
 {% else %}

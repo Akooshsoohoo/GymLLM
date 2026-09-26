@@ -224,8 +224,8 @@ def test_feed_shows_friends_sessions_newest_first(app, pair, make_friends, add_w
     _add(app, Cardio, user_email=OTHER, date="2026-01-08", activity="running", distance="5 km")
     page = logged_in.get("/feed").data.decode()
     assert page.index("12 Jan") < page.index("8 Jan") < page.index("5 Jan")
-    assert "running" in page
-    assert "PR</span>" in page  # 225 beat 200
+    assert "Running" in page
+    assert "New best</span>" in page  # 225 beat 200
 
 
 def test_feed_skips_weigh_in_only_days(app, add_profile, make_friends, logged_in):
@@ -255,7 +255,7 @@ def test_home_shows_friends_activity(pair, make_friends, add_workout, logged_in)
     make_friends()
     add_workout(user_email=OTHER, exercise="deadlift")
     page = logged_in.get("/").data
-    assert b"deadlift" in page
+    assert b"Deadlift" in page  # names are shown with a capital
     assert b"See all" in page
 
 
@@ -334,7 +334,7 @@ def test_activity_badge_clears_on_friends_page(
     with app.app_context():
         assert social.unseen_count(USER) == 1
     page = logged_in.get("/friends").data
-    assert b"gave kudos to" in page
+    assert b"gave a high five on" in page
     with app.app_context():
         assert social.unseen_count(USER) == 0
 

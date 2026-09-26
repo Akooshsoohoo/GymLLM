@@ -47,7 +47,8 @@ CARDIO_FORM_FIELDS = ("activity", "distance", "duration", "notes")
 MAX_ENTRIES = 100
 MAX_LLM_OUTPUT = 200_000
 MAX_SITE_TAG_CALLS = 10  # per save, so tagging cannot drain the shared allowance
-HOME_FEED = 5  # friends' sessions beside the log form
+HOME_FEED = 6  # friends' sessions on Home
+HOME_RECENT = 3  # your own days in the "Your recent" list
 
 # Editable tables on the Sessions page: (model, cell name regex, delete regex,
 # editable fields, the field that may never be blanked).
@@ -130,35 +131,90 @@ def welcome():
     return render_template("welcome.html")
 
 
+def _client_hour() -> int:
+    """The hour of day on the user's clock, from the `tz_offset` cookie app.js sets."""
+    try:
+        offset = int(request.cookies.get("tz_offset", ""))
+    except ValueError:
+        offset = 0
+    if abs(offset) > 16 * 60:
+        offset = 0
+    return (datetime.now(timezone.utc) - timedelta(minutes=offset)).hour
+
+
+def _log_context(user_email: str, config: LLMConfig) -> dict:
+    """What the log box needs: the quota (shared model only), the unit toggle, and
+    this week's days with the streak."""
+    quota_left = quota_limit = None
+    if config.is_site:
+        quota_limit = _site_limit()
+        quota_left = quota.remaining(user_email, quota_limit)
+    today = _client_today()
+    rows, cardio, weights = (
+        sessions.all_rows(user_email),
+        sessions.all_cardio(user_email),
+        sessions.all_weights(user_email),
+    )
+    return {
+        "config": config,
+        "quota_left": quota_left,
+        "quota_limit": quota_limit,
+        "weight_unit": preferences.get_weight_unit(user_email),
+        "today": today.isoformat(),
+        "week": stats.week_strip(today, rows, cardio, weights),
+        "streak": stats.week_streak({x["date"] for x in rows + cardio}, today),
+        "all_data": (rows, cardio, weights),
+    }
+
+
 @bp.route("/")
 @login_required
 def home():
+    """Your week and your friends' sessions; on a wide screen the log box too."""
     config = _llm_config()
     if config is None:
         flash("Choose an LLM provider before logging a workout.", "info")
         return redirect(url_for("main.settings"))
     user_email = current_user_email()
-    quota_left = quota_limit = None
-    if config.is_site:
-        quota_limit = _site_limit()
-        quota_left = quota.remaining(user_email, quota_limit)
+    ctx = _log_context(user_email, config)
+    rows, cardio, weights = ctx.pop("all_data")
+    recent = sessions.group_sessions(rows, cardio, weights, HOME_RECENT)
+    for s in recent:
+        s["summary"] = sessions.session_summary(s)
     profile = social.get_profile(user_email)
-    recent = sessions.recent_sessions(user_email)
-    friend_cards = []
-    if profile:
-        recent = social.attach_social([dict(s, owner=profile) for s in recent], user_email)
-        friend_cards = social.feed(user_email, limit=HOME_FEED)[0][:HOME_FEED]
+    friend_cards = social.feed(user_email, limit=HOME_FEED)[0][:HOME_FEED] if profile else []
+    hour = _client_hour()
     return render_template(
-        "log.html",
-        config=config,
-        sessions=recent,
+        "home.html",
+        **ctx,
+        recent=recent,
         friend_cards=friend_cards,
         has_friends=bool(profile and social.friend_emails(user_email)),
-        exercise_names=[n.title() for n in EXERCISE_NAMES],
-        quota_left=quota_left,
-        quota_limit=quota_limit,
-        weight_unit=preferences.get_weight_unit(user_email),
+        invite_url=(
+            url_for("social.invite", code=profile.invite_code, _external=True) if profile else None
+        ),
+        greeting="Morning" if 4 <= hour < 12 else "Afternoon" if 12 <= hour < 17 else "Evening",
     )
+
+
+@bp.route("/log")
+@login_required
+def log():
+    """The log box on its own (the + tab on a phone)."""
+    config = _llm_config()
+    if config is None:
+        flash("Choose an LLM provider before logging a workout.", "info")
+        return redirect(url_for("main.settings"))
+    ctx = _log_context(current_user_email(), config)
+    ctx.pop("all_data")
+    return render_template("log.html", **ctx)
+
+
+@bp.route("/log/manual")
+@login_required
+def log_manual():
+    """Add lifts, cardio and a weigh-in by hand, with no model involved."""
+    return render_template("log_manual.html", exercise_names=[n.title() for n in EXERCISE_NAMES])
 
 
 @bp.route("/weight-unit", methods=["POST"])
@@ -194,6 +250,21 @@ def _group_by_exercise(rows: list[dict]) -> list[dict]:
     return [groups[k] for k in order]
 
 
+def _headline(summary: dict) -> list[str]:
+    """The big lines on the share poster: '8 sets.', '3 mi.' (or exercises / minutes
+    when there are no sets or distance)."""
+    lines = []
+    if summary["sets"]:
+        lines.append(f"{summary['sets']} set{'' if summary['sets'] == 1 else 's'}.")
+    elif summary["entries"]:
+        n = summary["exercises"]
+        lines.append(f"{n} exercise{'' if n == 1 else 's'}.")
+    cardio = summary["cardio"]
+    if cardio["lead"] or cardio["minutes_text"]:
+        lines.append(f"{cardio['lead'] or cardio['minutes_text']}.")
+    return lines
+
+
 @bp.route("/day/<when>")
 @login_required
 def day(when: str):
@@ -223,11 +294,16 @@ def day(when: str):
     cardio = [c for c in reversed(all_cardio) if c["date"] == when]
     weight = next((w for w in all_weights if w["date"] == when), None)
     summary = stats.day_summary(rows, cardio)
+    profile = social.get_profile(user_email)
+    d = date.fromisoformat(when)
 
     # Everything the share card may show. The weigh-in is deliberately not here.
     share = {
         "date": when,
-        "label": f"{date.fromisoformat(when):%A %d %B %Y}".replace(" 0", " "),
+        "label": f"{d:%A %d %B %Y}".replace(" 0", " "),
+        "short": f"{d:%a} {d.day} {d:%b}".upper(),
+        "name": (profile.display_name.split()[0] if profile else "").upper(),
+        "headline": _headline(summary),
         "stats": {
             "exercises": summary["entries"],
             "sets": summary["sets"],
@@ -250,7 +326,6 @@ def day(when: str):
             for c in cardio
         ],
     }
-    profile = social.get_profile(user_email)
     thread = None
     if profile and (rows or cardio):
         thread = social.attach_social([{"owner": profile, "date": when}], user_email)[0]
@@ -268,6 +343,7 @@ def day(when: str):
         nxt=nxt,
         total=len(all_rows) + len(all_cardio) + len(all_weights),
         edit_url=url_for("main.search", range="all", by="day") + "#day-" + when,
+        weight_unit=preferences.get_weight_unit(user_email),
     )
 
 
@@ -371,7 +447,7 @@ def review():
     workout_text = request.form.get("workout", "").strip()
     if not workout_text:
         flash("Describe your workout first.", "error")
-        return redirect(url_for("main.home"))
+        return redirect(url_for("main.log"))
     config = _llm_config()
     if config is None:
         flash("Set up an LLM provider first.", "error")
@@ -504,7 +580,7 @@ def confirm():
     when = request.form.get("date", "").strip()
     if not is_iso_date(when):
         flash("Date must be in YYYY-MM-DD format.", "error")
-        return redirect(url_for("main.home"))
+        return redirect(url_for("main.log"))
     config = _llm_config()
     in_browser = config is not None and config.runs_in_browser
     entries = _entries_from_form(request.form, with_tags=in_browser)
@@ -512,7 +588,7 @@ def confirm():
     bodyweight = request.form.get("bodyweight", "").strip()
     if not (entries or cardio or bodyweight):
         flash("Nothing to save: every row was empty or deleted.", "error")
-        return redirect(url_for("main.home"))
+        return redirect(url_for("main.log"))
 
     client = _llm_client(config) if config else None
     tag_calls_left = MAX_SITE_TAG_CALLS if config is not None and config.is_site else MAX_ENTRIES
@@ -677,6 +753,7 @@ def progress():
         total=len(all_rows) + len(cardio) + len(weights),
         range_key=range_key,
         by=by,
+        weight_unit=preferences.get_weight_unit(user_email),
     )
 
 
