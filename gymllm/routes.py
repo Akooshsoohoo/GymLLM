@@ -684,8 +684,13 @@ def confirm():
             )
         )
     db.session.add_all(Cardio(user_email=user_email, date=when, **c) for c in cardio)
+    if entries or cardio:
+        # Covers the whole day, so a later save that day can change it.
+        social.set_visibility(
+            user_email, when, social.clean_visibility(request.form.get("visibility"))
+        )
     if bodyweight:
-        _save_bodyweight(user_email, when, bodyweight)
+        _save_bodyweight(user_email, when, bodyweight)  # always private
     db.session.commit()
     # Straight to Home, where the day you just saved is on top and ready to share.
     # `recorded` tells the page to clear the finished recording from the browser.

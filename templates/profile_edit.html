@@ -10,8 +10,8 @@
     {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
     {% if not profile %}
     <p class="muted small card-lead">
-        Friends find you by your handle. They see your lifts and cardio, never your notes, and
-        your body weight only if you turn it on below. Logging works the same with or without a profile.
+        Friends find you by your handle. They see the workouts you share with them, never your
+        notes or your body weight. Logging works the same with or without a profile.
     </p>
     {% endif %}
     {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
@@ -35,13 +35,6 @@
     <div class="field">
         <label for="bio">Bio <span class="muted small">(optional)</span></label>
         <input type="text" id="bio" name="bio" class="input" value="{{ form.bio }}" maxlength="160" placeholder="Powerlifting, 5am club, training for a half marathon...">
-    </div>
-
-    <div class="field">
-        <label class="checkbox">
-            <input type="checkbox" name="share_bodyweight" {% if form.share_bodyweight == 'on' %}checked{% endif %}>
-            Show my body weight to friends
-        </label>
     </div>
 
     <div class="toolbar">

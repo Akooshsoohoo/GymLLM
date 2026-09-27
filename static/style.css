@@ -1237,6 +1237,20 @@ input.row-name:focus { border: 0; box-shadow: 0 2px 0 var(--you); border-radius:
 .bw-card { background: var(--surface); border-radius: 20px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .bw-card h2 { font-size: 17px; }
 .bw-card p { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+.vis-card { background: var(--surface); border-radius: 20px; padding: 14px 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.vis-card h2 { font-size: 17px; }
+.vis-help { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+.vis-help [data-vis] { display: none; color: var(--ink); }
+.vis-card:has(input[value="private"]:checked) [data-vis="private"],
+.vis-card:has(input[value="friends"]:checked) [data-vis="friends"],
+.vis-card:has(input[value="public"]:checked) [data-vis="public"] { display: inline; }
+.vis-toggle { display: inline-flex; background: var(--field); border-radius: 99px; padding: 3px; }
+.vis-btn { position: relative; padding: 8px 14px; border-radius: 99px; color: var(--muted); font-size: 14px; font-weight: 600; line-height: 1.1; cursor: pointer; }
+.vis-btn input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.vis-btn:hover { color: var(--ink); }
+.vis-btn:has(input:checked) { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-toggle); }
+.vis-btn:has(input:focus-visible) { outline: 2px solid var(--you); outline-offset: 2px; }
+.review-section.vis-card { padding: 0; background: none; border-radius: 0; }
 .review-save {
     position: fixed;
     left: 0;
@@ -1751,7 +1765,7 @@ a.feed-when:hover { color: var(--you-ink); }
     .review-pair .review-group { background: var(--surface); border-radius: 22px; padding: 18px 20px; gap: 4px; }
     .review-pair .group-card { padding: 0; }
     .review-pair .review-row { grid-template-columns: minmax(0, 1fr) auto auto; }
-    .bw-card { border-radius: 22px; padding: 18px 20px; }
+    .bw-card, .vis-card { border-radius: 22px; padding: 18px 20px; }
     .bw-card h2 { font-size: 18px; }
     .group-head h2 { font-size: 18px; }
     .review-save { position: static; padding: 0; background: none; flex-direction: row; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 6px; }

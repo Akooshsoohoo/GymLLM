@@ -113,6 +113,8 @@
             </section>
         </div>
 
+        {% include "_visibility.html" %}
+
         <div class="review-save">
             <span class="muted small" data-llm-status></span>
             <a href="{{ cancel_url }}" class="btn btn-text review-cancel">{{ 'Back to workout' if from_record else 'Cancel' }}</a>

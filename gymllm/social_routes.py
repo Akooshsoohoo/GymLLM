@@ -85,7 +85,6 @@ def profile_edit():
                 handle,
                 request.form.get("display_name", ""),
                 request.form.get("bio", ""),
-                request.form.get("share_bodyweight") == "on",
                 avatar_url=session.get(SESSION_GOOGLE_PICTURE) or None,
             )
             flash("Profile created. Find friends below." if first_time else "Profile saved.", "ok")
@@ -101,7 +100,6 @@ def profile_edit():
             "handle": profile.handle if profile else social.suggest_handle(email, name),
             "display_name": profile.display_name if profile else (name or email.split("@")[0]),
             "bio": (profile.bio or "") if profile else "",
-            "share_bodyweight": "on" if profile and profile.share_bodyweight else "",
         }
     return render_template(
         "profile_edit.html", profile=profile, form=form, error=error, next_url=next_url
