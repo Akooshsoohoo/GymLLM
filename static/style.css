@@ -1357,11 +1357,18 @@ a.day-step:hover { background: var(--line-2); color: var(--ink); }
     display: flex;
     flex-direction: column;
     gap: 18px;
+    position: relative;
+    overflow: hidden;
+    min-height: 380px;
 }
 .poster-top { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; }
 .poster-top span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.poster-headline { font-family: var(--font-head); font-size: 64px; font-weight: 800; line-height: 0.9; letter-spacing: -0.03em; margin: 0; }
-.poster-headline span { display: block; }
+.poster-top, .poster-head, .poster-rows { position: relative; }
+/* The day's muscle icon, in ink with a faint body; the focus name may sit over the body. */
+.poster-icon { position: absolute; right: 14px; top: 46px; color: var(--on-you); --mi-base: var(--on-you); --mi-base-opacity: .14; }
+.poster-head { margin-top: auto; display: grid; gap: 8px; }
+.poster-focus { font-family: var(--font-head); font-size: 46px; font-weight: 800; line-height: 0.92; letter-spacing: -0.03em; margin: 0; overflow-wrap: anywhere; }
+.poster-stats { font-size: 16px; font-weight: 600; margin: 0; }
 .poster-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 15px; font-weight: 600; }
 .poster-rows li { display: flex; justify-content: space-between; gap: 12px; border-top: 1.5px solid var(--you-rule); padding-top: 8px; }
 .poster-rows a { color: var(--on-you); text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1835,7 +1842,10 @@ a.feed-when:hover { color: var(--you-ink); }
     .day-actions .btn { height: 48px; }
     .day-grid { grid-template-columns: 420px minmax(0, 1fr); gap: 28px; }
     .poster { padding: 28px; min-height: 525px; gap: 20px; }
-    .poster-headline { font-size: 76px; margin-top: auto; }
+    .poster-focus { font-size: 60px; }
+    .poster-stats { font-size: 18px; }
+    .poster-icon { right: 20px; top: 60px; }
+    .poster-icon svg { width: 190px; height: 190px; }
     .poster-rows { font-size: 16px; gap: 8px; }
     .poster-rows li { padding-top: 10px; }
     .day-table { display: block; padding: 6px 20px; }
@@ -1894,7 +1904,7 @@ a.feed-when:hover { color: var(--you-ink); }
     h1 { font-size: 28px; }
     .stat-value { font-size: 28px; }
     .stat-grid-3 .stat-value { font-size: 22px; }
-    .poster-headline { font-size: 54px; }
+    .poster-focus { font-size: 40px; }
     .week-dot .dot { width: 30px; height: 30px; }
     .segmented a { padding: 7px 10px; }
     .tabbar { font-size: 11px; }

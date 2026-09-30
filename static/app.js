@@ -1050,9 +1050,28 @@
       return w;
     };
 
-    // The green poster from the day page at 1080x1350 (4:5): name and date on top,
-    // the big headline, then one row per lift or activity. Never the weigh-in.
-    var renderShareCard = function (data) {
+    // The day's muscle icon (MuscleIcons picks it from the payload's hint) as an image the
+    // canvas can draw: ink, with the rest of the body faint. Resolves to null without it.
+    var focusGroup = function (data) {
+      return window.MuscleIcons ? window.MuscleIcons.forTags(data.hint || "") : null;
+    };
+    var loadIcon = function (data) {
+      var group = focusGroup(data);
+      if (!group) return Promise.resolve(null);
+      var svg = window.MuscleIcons.svg(group, { size: 504 }).replace(
+        "<svg", '<svg style="color:' + C.ink + ";--mi-base:" + C.ink + ';--mi-base-opacity:.14"');
+      return new Promise(function (resolve) {
+        var img = new Image();
+        img.onload = function () { resolve(img); };
+        img.onerror = function () { resolve(null); };
+        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      });
+    };
+
+    // The green poster from the day page at 1080x1350 (4:5): name and date on top, the
+    // muscle icon top-right, the day's focus ("Upper body") with its numbers under it,
+    // then one row per lift or activity. Never the weigh-in.
+    var renderShareCard = function (data, icon) {
       var W = 1080, H = 1350, P = 80;
       var lines = [];
       var seen = {};
@@ -1073,6 +1092,7 @@
       canvas.width = W; canvas.height = H;
       var ctx = canvas.getContext("2d");
       ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+      if (icon) ctx.drawImage(icon, W - 50 - 504, 166, 504, 504);
       ctx.fillStyle = C.ink;
 
       // Top line: MAYA · THU 24 SEP ........ GYMLLM
@@ -1083,7 +1103,7 @@
       while (top.length > 1 && ctx.measureText(top).width + top.length * 3 > maxTop) top = top.slice(0, -1);
       trackedText(ctx, top, P, P + 30, 3, false);
 
-      // Rows from the bottom up, so the headline sits right above them.
+      // Rows from the bottom up, so the focus name sits right above them.
       var rowH = 76, maxRows = 7;
       var shown = lines.length > maxRows ? lines.slice(0, maxRows - 1) : lines;
       var more = lines.length - shown.length;
@@ -1104,17 +1124,22 @@
         ctx.fillStyle = C.ink; ctx.fillText("+ " + more + " more", P, my + 52);
       }
 
-      // Headline: "8 sets. / 3 mi." shrinks until the widest line fits.
-      var head = (data.headline && data.headline.length) ? data.headline : [data.label || data.date];
-      var size = 176;
-      var fit = function () {
-        ctx.font = "800 " + size + "px " + DISPLAY;
-        return Math.max.apply(null, head.map(function (t) { return ctx.measureText(t).width; }));
-      };
-      while (size > 72 && fit() > W - 2 * P) size -= 8;
-      var lh = size * 0.9;
-      var baseY = rowsTop - 48 - (head.length - 1) * lh;
-      head.forEach(function (t, i) { ctx.fillText(ellipsis(ctx, t, W - 2 * P), P - 4, baseY + i * lh); });
+      // The stat line ("8 sets · 3 mi") right above the rows, the focus name above that,
+      // shrinking until it fits on one line.
+      var y = rowsTop - 44;
+      if (data.stat_line) {
+        ctx.font = "600 44px " + FONT;
+        ctx.fillText(ellipsis(ctx, data.stat_line, W - 2 * P), P, y);
+        y -= 44 + 36;
+      }
+      var group = focusGroup(data);
+      var focus = group ? window.MuscleIcons.label(group) : (data.label || data.date);
+      var size = 150;
+      ctx.font = "800 " + size + "px " + DISPLAY;
+      while (size > 72 && ctx.measureText(focus).width > W - 2 * P) {
+        size -= 6; ctx.font = "800 " + size + "px " + DISPLAY;
+      }
+      ctx.fillText(ellipsis(ctx, focus, W - 2 * P), P - 4, y);
       return canvas;
     };
     function compact(sr) {
@@ -1143,8 +1168,8 @@
       var scope = btn.closest("[data-share-scope]");
       var errBox = scope ? $("[data-share-error]", scope) : $("#share-error");
       var preview = scope ? $("[data-share-preview]", scope) : $("#share-preview");
-      var ready = fontsReady.then(function () {
-        return shareData ? toBlob(renderShareCard(shareData)) : Promise.reject(new Error("Nothing to share."));
+      var ready = Promise.all([fontsReady, shareData ? loadIcon(shareData) : null]).then(function (loaded) {
+        return shareData ? toBlob(renderShareCard(shareData, loaded[1])) : Promise.reject(new Error("Nothing to share."));
       });
       ready.catch(function () { /* reported on click */ });
       // Desktop (or a share sheet that refused): save the file and show it on the page.
@@ -1599,7 +1624,12 @@
   function initMuscleIcons(root) {
     if (!window.MuscleIcons) return;
     $$("muscle-icon[data-icon-hint]", root).forEach(function (icon) {
-      icon.setAttribute("group", window.MuscleIcons.forTags(icon.dataset.iconHint));
+      var group = window.MuscleIcons.forTags(icon.dataset.iconHint);
+      icon.setAttribute("group", group);
+      // The share poster names the day after its icon: "Upper body", "Legs", "Run".
+      var poster = icon.closest(".poster");
+      var focus = poster && $("[data-poster-focus]", poster);
+      if (focus) focus.textContent = window.MuscleIcons.label(group);
     });
   }
 
