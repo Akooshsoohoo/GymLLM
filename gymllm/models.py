@@ -142,6 +142,19 @@ class SessionVisibility(db.Model):
     visibility = db.Column(db.String(10), nullable=False)  # private | friends | public
 
 
+class SessionMeta(db.Model):
+    """A day's own details: the title you gave it and, later, its photo. A day with
+    no row uses the default title and its muscle icon."""
+
+    __tablename__ = "session_meta"
+
+    owner_email = db.Column(db.String, primary_key=True)
+    date = db.Column(db.String, primary_key=True)
+    title = db.Column(db.String(80), nullable=True)
+    # Where the day's photo is stored; nothing writes it yet (see session_meta.photo_url).
+    photo_key = db.Column(db.String, nullable=True)
+
+
 class Kudos(db.Model):
     __tablename__ = "kudos"
     __table_args__ = (

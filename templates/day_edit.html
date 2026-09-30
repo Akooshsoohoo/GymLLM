@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "_entry_rows.html" import lift_row, cardio_row %}
+{% from "_session_visual.html" import visual as session_visual %}
+{% block title %}GymLLM | Edit {{ when|short_date }}{% endblock %}
+{% block body_class %}flow{% endblock %}
+{% block tabbar %}{% endblock %}
+{% block content %}
+{% set day_url = url_for('main.day', when=when) %}
+<div class="review-top">
+    <a href="{{ day_url }}">&lsaquo; Back to day</a>
+    <a href="{{ day_url }}">Cancel</a>
+</div>
+
+<form method="post" action="{{ url_for('main.day_edit', when=when) }}" id="day-edit-form" class="review-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="review-side">
+        <h1>Edit {{ when|day_label }}</h1>
+
+        <div class="card edit-identity">
+            {{ session_visual(visual, 64) }}
+            <div class="edit-title">
+                <label for="title" class="words-label">Title</label>
+                <input type="text" id="title" name="title" value="{{ title }}" placeholder="{{ default_title }}"
+                       maxlength="80" autocomplete="off" class="input">
+            </div>
+        </div>
+
+        <div class="review-date">
+            <label for="date" class="sr-only">Date</label>
+            <input type="date" id="date" name="date" value="{{ when }}" required class="date-pill" data-relative>
+            <span class="muted small">Changing it moves the whole day</span>
+        </div>
+    </div>
+
+    <div class="review-main">
+        <section class="review-group" aria-labelledby="lifts-h">
+            <div class="group-head">
+                <h2 id="lifts-h">Lifts</h2>
+                <button type="button" class="add-link" id="add-row">+ Add<span class="desktop-only"> lift</span></button>
+            </div>
+            <div class="group-card" id="entries-table">
+                {% for e in lifts %}{{ lift_row(e.id, e, prefix="lift") }}{% endfor %}
+            </div>
+            {% if not lifts %}<p class="muted small table-empty" data-empty-for="entries-table">No lifts on this day.</p>{% endif %}
+            <template id="entry-template">{{ lift_row("__i__", {}) }}</template>
+            <input type="hidden" name="num_entries" id="num_entries" value="0">
+        </section>
+
+        <div class="review-pair">
+            <section class="review-group" aria-labelledby="cardio-h">
+                <div class="group-head">
+                    <h2 id="cardio-h">Cardio</h2>
+                    <button type="button" class="add-link" id="add-cardio">+ Add</button>
+                </div>
+                <div class="group-card" id="cardio-table">
+                    {% for c in cardio %}{{ cardio_row(c.id, c, prefix="act") }}{% endfor %}
+                </div>
+                {% if not cardio %}<p class="muted small table-empty" data-empty-for="cardio-table">No cardio on this day.</p>{% endif %}
+                <template id="cardio-template">{{ cardio_row("__i__", {}) }}</template>
+                <input type="hidden" name="num_cardio" id="num_cardio" value="0">
+            </section>
+
+            <section class="bw-card" aria-labelledby="bw-h">
+                <div>
+                    <h2 id="bw-h">Body weight</h2>
+                    <p id="bodyweight-help">Only you see this. Clear it to remove the reading.</p>
+                </div>
+                <label class="vpill"><input type="text" id="bodyweight" name="bodyweight" value="{{ bodyweight }}" placeholder="+ weight" aria-label="Body weight" aria-describedby="bodyweight-help"></label>
+            </section>
+        </div>
+
+        {% include "_visibility.html" %}
+
+        <div class="review-save">
+            <a href="{{ day_url }}" class="btn btn-text review-cancel">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-xl save-btn">Save changes</button>
+        </div>
+    </div>
+</form>
+<datalist id="exercise-names"></datalist>
+{% endblock %}

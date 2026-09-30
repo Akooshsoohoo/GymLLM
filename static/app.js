@@ -260,52 +260,7 @@
     input.addEventListener("input", apply);
   }); }
 
-  // ---------------------------------------------------------------- History: edit mode + dirty tracking
-  var logForm = $("#log-edit-form");
-  if (logForm) {
-    var logRows = $$("tbody tr", logForm);
-    var dirty = $("#dirty-count");
-    var toggle = $("#edit-toggle");
-    var cancel = $("#edit-cancel");
-
-    var updateDirty = function () {
-      var changed = 0, deleted = 0;
-      logRows.forEach(function (row) {
-        var box = $(".delete-box", row);
-        if (box && box.checked) { deleted++; row.classList.add("row-deleted"); return; }
-        row.classList.remove("row-deleted");
-        var edited = $$("input[type=text]", row).some(function (i) { return i.value !== i.defaultValue; });
-        row.classList.toggle("row-dirty", edited);
-        if (edited) changed++;
-      });
-      if (dirty) {
-        var parts = [];
-        if (changed) parts.push(changed + " edited");
-        if (deleted) parts.push(deleted + " to delete");
-        dirty.textContent = parts.join(", ");
-        dirty.hidden = !parts.length;
-      }
-    };
-    logForm.addEventListener("input", updateDirty);
-    logForm.addEventListener("change", updateDirty);
-
-    var setEditing = function (on) {
-      logForm.classList.toggle("editing", on);
-      if (on) {
-        var first = $("tbody tr:not([hidden]) input[type=text]", logForm);
-        if (first) first.focus();
-      }
-    };
-    if (toggle) toggle.addEventListener("click", function () { setEditing(true); });
-    if (cancel) cancel.addEventListener("click", function () {
-      logForm.reset();
-      logRows.forEach(function (row) { row.classList.remove("row-dirty", "row-deleted"); });
-      if (dirty) { dirty.hidden = true; dirty.textContent = ""; }
-      setEditing(false);
-    });
-  }
-
-  // ---------------------------------------------------------------- Review page: remove/undo + add row
+  // ---------------------------------------------------------------- Review and day edit: remove/undo + add row
   var confirmForm = $("#confirm-form");
   var entriesTable = $("#entries-table");
   if (confirmForm && entriesTable && confirmForm.dataset.browserLlm) {
@@ -366,9 +321,11 @@
   }
   sizePills(document);
 
-  if (confirmForm && entriesTable) {
-    var saveBtn = $("button[type=submit]", confirmForm);
-    confirmForm.addEventListener("click", function (ev) {
+  // The day edit screen uses the same rows, Remove and "+ Add" as the review page.
+  var entryForm = confirmForm || $("#day-edit-form");
+  if (entryForm && entriesTable) {
+    var saveBtn = $("button[type=submit]", entryForm);
+    entryForm.addEventListener("click", function (ev) {
       var btn = ev.target.closest(".row-remove");
       if (!btn) return;
       var row = btn.closest("[data-row]");
@@ -389,7 +346,7 @@
         var row = holder.firstElementChild;
         list.appendChild(row);
         counter.value = i + 1;
-        var empty = $('[data-empty-for="' + list.id + '"]', confirmForm);
+        var empty = $('[data-empty-for="' + list.id + '"]', entryForm);
         if (empty) empty.hidden = true;
         if (saveBtn) saveBtn.disabled = false;
         sizePills(row);
@@ -1608,11 +1565,51 @@
     }
   });
 
+  // ---------------------------------------------------------------- Card filter
+  // <input data-card-filter=".card selector" data-group=".section" data-count="#counter">
+  // hides cards whose data-search text doesn't hold every word typed; sections left
+  // with no visible card are hidden too.
+  function initCardFilters(root) { $$("input[data-card-filter]", root).forEach(function (input) {
+    var cards = $$(input.dataset.cardFilter, root);
+    if (!cards.length) return;
+    var groups = input.dataset.group ? $$(input.dataset.group, root) : [];
+    var counter = input.dataset.count ? $(input.dataset.count, root) : null;
+    var none = $("#session-none", root);
+    var apply = function () {
+      var words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      var shown = 0;
+      cards.forEach(function (card) {
+        var text = card.dataset.search || card.textContent.toLowerCase();
+        var show = words.every(function (w) { return text.indexOf(w) !== -1; });
+        card.hidden = !show;
+        if (show) shown++;
+      });
+      groups.forEach(function (g) {
+        g.hidden = !$$(input.dataset.cardFilter, g).some(function (c) { return !c.hidden; });
+      });
+      if (counter) counter.textContent = shown + " session" + (shown === 1 ? "" : "s") + (words.length ? " match" : "");
+      if (none) none.hidden = shown > 0;
+    };
+    input.addEventListener("input", apply);
+    if (input.value) apply();
+  }); }
+
+  // ---------------------------------------------------------------- Muscle icons
+  // A day with no photo shows the icon MuscleIcons picks from its tags and activities.
+  function initMuscleIcons(root) {
+    if (!window.MuscleIcons) return;
+    $$("muscle-icon[data-icon-hint]", root).forEach(function (icon) {
+      icon.setAttribute("group", window.MuscleIcons.forTags(icon.dataset.iconHint));
+    });
+  }
+
   // ---------------------------------------------------------------- Page setup
   // Everything that has to run again when <main> is swapped in without a reload.
   function enhance(root) {
     initSortable(root);
     initFilters(root);
+    initCardFilters(root);
+    initMuscleIcons(root);
     initDatePickers(root);
     initSuggest(root);
     initSelects(root);
@@ -1629,8 +1626,7 @@
   });
 
   // ---------------------------------------------------------------- Filters without a reload
-  // Range and grouping links fetch the page and swap <main> in place. The Sessions
-  // edit form has state of its own, so its links still load a fresh page.
+  // Range and grouping links fetch the page and swap <main> in place.
   var main = $("main");
   function swapTo(url, push) {
     main.classList.add("is-loading");
@@ -1659,7 +1655,6 @@
     main.addEventListener("click", function (ev) {
       var a = ev.target.closest(".filters .segmented a, a.week-arrow, a.week-jump");
       if (!a || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
-      if ($("#log-edit-form")) return;
       ev.preventDefault();
       swapTo(a.href, true);
     });

@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from gymllm import create_app
+from gymllm import create_app, session_meta, social
 from gymllm.exercises import TAG_SYSTEM
 from gymllm.extensions import db
 from gymllm.llm.client import AuthError
@@ -38,7 +38,8 @@ def test_healthz(client):
         ("get", "/record"),
         ("post", "/review"),
         ("post", "/confirm"),
-        ("post", "/search"),
+        ("get", "/day/2026-01-10/edit"),
+        ("post", "/day/2026-01-10/edit"),
     ],
 )
 def test_anonymous_is_redirected_to_welcome(client, method, path):
@@ -67,7 +68,11 @@ def test_home_and_log_pages_keep_models_out_of_sight(logged_in):
     r = logged_in.get("/log")
     assert b'href="/log/manual"' in r.data and b"Writing tips" in r.data
     r = logged_in.get("/log/manual")
-    assert r.status_code == 200 and b'id="classic-form"' in r.data and b'placeholder="160 lbs"' in r.data
+    assert (
+        r.status_code == 200
+        and b'id="classic-form"' in r.data
+        and b'placeholder="160 lbs"' in r.data
+    )
 
 
 def test_home_lists_recent_sessions(logged_in, add_workout):
@@ -398,69 +403,6 @@ def test_confirm_rejects_bad_date_and_empty_forms(logged_in, app):
         assert Workout.query.count() == 0
 
 
-# --- search / edit ------------------------------------------------------------
-
-
-def test_search_lists_newest_first_and_only_own_rows(logged_in, add_workout):
-    add_workout(date="2026-01-01", exercise="older")
-    add_workout(date="2026-02-01", exercise="newer")
-    add_workout(date="2026-03-01", exercise="not mine", user_email=OTHER)
-    r = logged_in.get("/search")
-    body = r.data.decode()
-    assert body.index('value="newer"') < body.index('value="older"')
-    assert "not mine" not in body
-
-
-def test_search_edit_and_delete_by_id(logged_in, app, add_workout):
-    a = add_workout(exercise="a")
-    b = add_workout(exercise="b")
-    c = add_workout(exercise="c")
-    r = logged_in.post(
-        "/search",
-        data={
-            f"cell-{a}-weight": "200 lbs",
-            f"cell-{a}-date": "2026-01-10",
-            f"delete-{b}": "1",
-            f"cell-{c}-exercise": "",
-        },
-        follow_redirects=True,
-    )
-    assert b"1 updated, 1 deleted" in r.data
-    with app.app_context():
-        assert Workout.query.get(a).weight == "200 lbs"
-        assert Workout.query.get(b) is None
-        assert Workout.query.get(c).exercise == "c"  # blank name ignored
-
-
-def test_search_cannot_touch_other_users_rows(logged_in, app, add_workout):
-    theirs = add_workout(exercise="theirs", user_email=OTHER)
-    logged_in.post(
-        "/search",
-        data={f"delete-{theirs}": "1", f"cell-{theirs}-weight": "0"},
-        follow_redirects=True,
-    )
-    with app.app_context():
-        w = Workout.query.get(theirs)
-        assert w is not None and w.weight == "185 lbs"
-
-
-def test_search_rejects_invalid_date_without_saving(logged_in, app, add_workout):
-    a = add_workout()
-    r = logged_in.post(
-        "/search", data={f"cell-{a}-date": "Jan 5", f"cell-{a}-weight": "1"}, follow_redirects=True
-    )
-    assert b"YYYY-MM-DD" in r.data
-    with app.app_context():
-        assert Workout.query.get(a).weight == "185 lbs"
-
-
-def test_search_ignores_nonexistent_ids(logged_in):
-    r = logged_in.post(
-        "/search", data={"cell-99999-weight": "1", "delete-4242": "1"}, follow_redirects=True
-    )
-    assert r.status_code == 200
-
-
 # --- history ------------------------------------------------------------------
 
 
@@ -505,34 +447,6 @@ def test_range_filter_scopes_exercise_pages(logged_in, add_workout):
 
     body = logged_in.get("/exercise/barbell bench press?range=7d&today=2026-06-01").data.decode()
     assert "Nothing logged in this range" in body and "Show all time" in body
-
-
-def test_sessions_page_groups_by_period(logged_in, add_workout):
-    add_workout(date="2026-03-02", exercise="squat")
-    add_workout(date="2026-03-10", exercise="bench")
-    add_workout(date="2026-03-12", exercise="row")
-    add_workout(date="2026-03-12", exercise="not mine", user_email=OTHER)
-
-    body = logged_in.get("/search?today=2026-03-15").data.decode()  # default: all time, by day
-    assert "Thu 12 Mar 2026" in body and "Tue 10 Mar 2026" in body and "Mon 2 Mar 2026" in body
-    assert body.index("Thu 12 Mar 2026") < body.index("Mon 2 Mar 2026")
-    assert "not mine" not in body and "3 rows" in body
-
-    body = logged_in.get("/search?range=7d&by=week&today=2026-03-15").data.decode()
-    assert "9–15 Mar 2026" in body and "2 sessions" in body
-    assert "squat" not in body and "bench" in body and "row" in body
-
-    body = logged_in.get("/search?range=all&by=month&today=2026-03-15").data.decode()
-    assert "March 2026" in body and "3 sessions" in body
-
-    body = logged_in.get("/search?range=7d&today=2026-06-01").data.decode()
-    assert "Nothing logged in this range" in body
-
-
-def test_search_edits_redirect_back_to_same_view(logged_in, app, add_workout):
-    a = add_workout(exercise="a")
-    r = logged_in.post("/search?range=30d&by=week", data={f"cell-{a}-weight": "200 lbs"})
-    assert r.status_code == 302 and r.headers["Location"].endswith("/search?range=30d&by=week")
 
 
 def test_progress_overview(logged_in, add_workout):
@@ -599,7 +513,7 @@ def test_progress_today_from_tz_cookie(logged_in, add_workout, monkeypatch):
     add_workout(date="2026-09-22", exercise="barbell bench press", weight="185 lbs")
     logged_in.set_cookie("tz_offset", "300")
     body = logged_in.get("/progress").data.decode()
-    assert 'title="Wed 23 Sep 2026"' in body.split('week-day today')[1][:60]
+    assert 'title="Wed 23 Sep 2026"' in body.split("week-day today")[1][:60]
 
 
 def test_404_page(logged_in):
@@ -946,49 +860,6 @@ def test_home_cards_show_cardio_and_weight(logged_in, add_workout, add_cardio, a
     assert body.index("Swimming") < body.index("Bench")
 
 
-def test_sessions_page_lists_and_edits_cardio_and_weights(
-    logged_in, app, add_workout, add_cardio, add_weight
-):
-    add_workout(date="2026-03-10", exercise="bench")
-    c = add_cardio(date="2026-03-10", activity="walking", distance="3 miles")
-    theirs = add_cardio(date="2026-03-10", activity="not mine", user_email=OTHER)
-    w = add_weight(date="2026-03-12", weight="130 lbs")
-
-    body = logged_in.get("/search?today=2026-03-15").data.decode()
-    assert f'name="cardio-{c}-distance" value="3 miles"' in body
-    assert f'name="bw-{w}-weight" value="130 lbs"' in body
-    assert "not mine" not in body and "3 rows" in body
-    assert "1 cardio · 3 mi" in body and "weighed 130 lbs" in body
-
-    r = logged_in.post(
-        "/search",
-        data={
-            f"cardio-{c}-distance": "4 miles",
-            f"cardio-{c}-activity": "",
-            f"bwdelete-{w}": "1",
-            f"cdelete-{theirs}": "1",
-        },
-        follow_redirects=True,
-    )
-    assert b"1 updated, 1 deleted" in r.data
-    with app.app_context():
-        assert (
-            Cardio.query.get(c).distance == "4 miles" and Cardio.query.get(c).activity == "walking"
-        )
-        assert BodyWeight.query.get(w) is None
-        assert Cardio.query.get(theirs) is not None
-
-    # A bad date on any table blocks every change.
-    r = logged_in.post(
-        "/search",
-        data={f"cardio-{c}-date": "soon", f"cardio-{c}-distance": "9 miles"},
-        follow_redirects=True,
-    )
-    assert b"YYYY-MM-DD" in r.data
-    with app.app_context():
-        assert Cardio.query.get(c).distance == "4 miles"
-
-
 def test_progress_and_exercises_show_cardio_and_weight(logged_in, add_cardio, add_weight):
     add_cardio(date="2026-03-12", activity="walking", distance="3 miles", duration="45 min")
     add_cardio(date="2026-03-13", activity="running", distance="2 mi", duration="20 min")
@@ -1043,7 +914,8 @@ def test_day_page_shows_one_day_with_neighbours(logged_in, add_workout, add_card
     assert '<div class="stat-value">7</div>' in body  # 5 + 2 sets
     assert "4,625" in body  # 185 x 25
     assert "3 mi" in body and "45 min" in body
-    assert 'href="/search?range=all&amp;by=day#day-2026-03-10"' in body
+    assert 'href="/day/2026-03-10/edit"' in body
+    assert "Tuesday workout" in body and 'data-icon-hint="chest' in body
 
 
 def test_day_page_share_payload_excludes_body_weight(
@@ -1090,7 +962,11 @@ def test_day_page_stacks_same_exercise_rows(logged_in, add_workout):
         reps="5, 5, 5, 5, 5",
     )
     add_workout(
-        date="2026-03-10", exercise="barbell bench press", weight="185 lbs", sets="3", reps="3, 3, 3"
+        date="2026-03-10",
+        exercise="barbell bench press",
+        weight="185 lbs",
+        sets="3",
+        reps="3, 3, 3",
     )
     add_workout(date="2026-03-10", exercise="squat", weight="225 lbs")
     body = logged_in.get("/day/2026-03-10").data.decode()
@@ -1123,10 +999,209 @@ def test_dates_link_to_the_day_page(logged_in, add_workout):
     assert 'href="/day/2026-03-10"' in logged_in.get("/").data.decode()
     body = logged_in.get("/search?today=2026-03-15").data.decode()
     assert 'href="/day/2026-03-10"' in body and 'id="day-2026-03-10"' in body
-    body = logged_in.get("/search?by=week&today=2026-03-15").data.decode()
-    assert 'href="/day/' not in body and 'id="day-2026-03-09"' in body
     assert 'href="/day/2026-03-10"' in logged_in.get("/exercise/barbell bench press").data.decode()
     r = logged_in.post(
         "/confirm", data={"date": "2026-03-11", "bodyweight": "130 lbs"}, follow_redirects=True
     )
     assert 'href="/day/2026-03-11"' in r.data.decode()
+
+
+# --- sessions list -------------------------------------------------------------
+
+
+def test_sessions_lists_day_cards_newest_first_and_only_own(logged_in, add_workout):
+    add_workout(date="2026-01-01", exercise="older lift")
+    add_workout(date="2026-02-03", exercise="newer lift")
+    add_workout(date="2026-03-01", exercise="not mine", user_email=OTHER)
+    body = logged_in.get("/search?today=2026-03-15").data.decode()
+    assert body.index("Newer lift") < body.index("Older lift")
+    assert "not mine" not in body.lower()
+    assert 'class="session-tile" href="/day/2026-02-03"' in body
+    assert "Tuesday workout" in body  # the default title: the day's weekday
+    assert "February 2026" in body and "January 2026" in body  # month headings
+    assert "2 sessions" in body
+    assert '<input type="text"' not in body  # no spreadsheet
+
+
+def test_sessions_card_lines_icon_hint_and_search_text(
+    logged_in, add_workout, add_cardio, add_weight
+):
+    add_workout(date="2026-03-10", weight="185 lbs")
+    add_workout(date="2026-03-12", weight="190 lbs", notes="felt strong")
+    for name in ("squat", "deadlift", "curl"):
+        add_workout(date="2026-03-12", exercise=name, tags="legs")
+    add_cardio(date="2026-03-12", activity="walking", distance="3 miles")
+    add_weight(date="2026-03-14", weight="130 lbs")
+    body = logged_in.get("/search?today=2026-03-15").data.decode()
+    assert "190 lbs · 5×5" in body and "New best" in body
+    assert "+2 more" in body  # four exercises and a walk, three shown
+    assert 'data-icon-hint="chest, legs, walking"' in body
+    assert "felt strong" in body  # in the card's search text, not shown
+    assert "Weighed in" in body and "130 lbs" in body
+
+
+def test_sessions_range_filter_and_empty_states(logged_in, add_workout):
+    assert b"Nothing logged yet" in logged_in.get("/search").data
+    add_workout(date="2026-03-02", exercise="squat")
+    add_workout(date="2026-03-12", exercise="bench")
+    body = logged_in.get("/search?range=7d&today=2026-03-15").data.decode()
+    assert "Bench" in body and "Squat" not in body and "1 session<" in body
+    assert "Group by" not in body  # no day/week/month switch any more
+    body = logged_in.get("/search?range=7d&today=2026-06-01").data.decode()
+    assert "Nothing logged in this range" in body
+
+
+def test_sessions_show_a_custom_title(logged_in, app, add_workout):
+    add_workout(date="2026-03-10")
+    with app.app_context():
+        session_meta.set_title(USER, "2026-03-10", "Push day")
+        db.session.commit()
+    body = logged_in.get("/search?today=2026-03-15").data.decode()
+    assert "Push day" in body and "Tuesday workout" not in body
+    assert "Push day" in logged_in.get("/day/2026-03-10").data.decode()
+
+
+# --- editing one day ---------------------------------------------------------------
+
+
+def test_day_edit_page_shows_pills_for_the_day(logged_in, add_workout, add_cardio, add_weight):
+    a = add_workout(date="2026-03-10")
+    c = add_cardio(date="2026-03-10", activity="walking", distance="3 miles")
+    add_weight(date="2026-03-10", weight="130 lbs")
+    add_workout(date="2026-03-11", exercise="other day")
+    body = logged_in.get("/day/2026-03-10/edit").data.decode()
+    assert f'name="lift-{a}-weight" value="185 lbs"' in body
+    assert f'name="act-{c}-distance" value="3 miles"' in body
+    assert 'name="bodyweight" value="130 lbs"' in body
+    assert 'placeholder="Tuesday workout"' in body
+    assert 'name="date" value="2026-03-10"' in body
+    assert "other day" not in body
+    assert 'id="entry-template"' in body and 'id="cardio-template"' in body
+
+
+def test_day_edit_on_an_empty_day_goes_back_to_the_day(logged_in):
+    r = logged_in.get("/day/2026-03-10/edit")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/day/2026-03-10")
+    assert logged_in.get("/day/nope/edit").status_code == 404
+
+
+def test_day_edit_saves_changes_removals_and_new_rows(logged_in, app, add_workout, add_cardio):
+    a = add_workout(date="2026-03-10")
+    b = add_workout(date="2026-03-10", exercise="curl")
+    c = add_cardio(date="2026-03-10", activity="walking", distance="3 miles")
+    r = logged_in.post(
+        "/day/2026-03-10/edit",
+        data={
+            "date": "2026-03-10",
+            "title": "Chest day",
+            f"lift-{a}-weight": "200 lbs",
+            f"lift-{a}-exercise": "",  # blank name is ignored
+            f"lift-{b}-delete": "1",
+            f"act-{c}-distance": "4 miles",
+            "num_entries": "1",
+            "entry-0-exercise": "squat",
+            "entry-0-weight": "225 lbs",
+            "entry-0-sets": "3",
+            "entry-0-reps": "5",
+            "num_cardio": "1",
+            "cardio-0-activity": "rowing",
+            "cardio-0-duration": "10 min",
+            "bodyweight": "131 lbs",
+            "visibility": "private",
+        },
+    )
+    assert r.status_code == 302 and r.headers["Location"].endswith("/day/2026-03-10")
+    with app.app_context():
+        assert Workout.query.get(a).weight == "200 lbs"
+        assert Workout.query.get(a).exercise == "barbell bench press"
+        assert Workout.query.get(b) is None
+        assert Cardio.query.get(c).distance == "4 miles"
+        new = Workout.query.filter_by(date="2026-03-10").filter(Workout.id != a).one()
+        assert new.weight == "225 lbs" and new.tags  # matched and tagged
+        assert Cardio.query.filter_by(activity="rowing").one().duration == "10 min"
+        assert BodyWeight.query.filter_by(user_email=USER).one().weight == "131 lbs"
+        assert session_meta.get(USER, "2026-03-10").title == "Chest day"
+        assert social.visibilities(USER) == {"2026-03-10": "private"}
+
+
+def test_day_edit_title_back_to_default_clears_it(logged_in, app, add_workout):
+    add_workout(date="2026-03-10")
+    with app.app_context():
+        session_meta.set_title(USER, "2026-03-10", "Push day")
+        db.session.commit()
+    logged_in.post("/day/2026-03-10/edit", data={"date": "2026-03-10", "title": " "})
+    with app.app_context():
+        assert session_meta.get(USER, "2026-03-10") is None
+    logged_in.post("/day/2026-03-10/edit", data={"date": "2026-03-10", "title": "Tuesday workout"})
+    with app.app_context():
+        assert session_meta.get(USER, "2026-03-10") is None
+
+
+def test_day_edit_moves_the_whole_day(logged_in, app, add_workout, add_cardio, add_weight):
+    a = add_workout(date="2026-03-10")
+    c = add_cardio(date="2026-03-10")
+    w = add_weight(date="2026-03-10", weight="130 lbs")
+    stay = add_workout(date="2026-03-11", exercise="stays put")
+    r = logged_in.post(
+        "/day/2026-03-10/edit",
+        data={
+            "date": "2026-03-14",
+            "title": "Moved",
+            "bodyweight": "130 lbs",
+            "visibility": "public",
+        },
+    )
+    assert r.headers["Location"].endswith("/day/2026-03-14")
+    with app.app_context():
+        assert Workout.query.get(a).date == "2026-03-14"
+        assert Cardio.query.get(c).date == "2026-03-14"
+        assert BodyWeight.query.get(w).date == "2026-03-14"
+        assert Workout.query.get(stay).date == "2026-03-11"
+        assert session_meta.get(USER, "2026-03-10") is None
+        assert session_meta.get(USER, "2026-03-14").title == "Moved"
+        assert social.visibilities(USER) == {"2026-03-14": "public"}
+
+
+def test_day_edit_refuses_a_second_weigh_in_on_the_new_date(
+    logged_in, app, add_workout, add_weight
+):
+    a = add_workout(date="2026-03-10")
+    add_weight(date="2026-03-10", weight="130 lbs")
+    add_weight(date="2026-03-14", weight="128 lbs")
+    r = logged_in.post(
+        "/day/2026-03-10/edit",
+        data={"date": "2026-03-14", "bodyweight": "130 lbs"},
+        follow_redirects=True,
+    )
+    assert b"already weighed in" in r.data
+    with app.app_context():
+        assert Workout.query.get(a).date == "2026-03-10"
+
+
+def test_day_edit_rejects_a_bad_date_and_other_users_rows(logged_in, app, add_workout):
+    a = add_workout(date="2026-03-10")
+    theirs = add_workout(date="2026-03-10", user_email=OTHER)
+    r = logged_in.post(
+        "/day/2026-03-10/edit",
+        data={"date": "soon", f"lift-{a}-weight": "1 lbs"},
+        follow_redirects=True,
+    )
+    assert b"valid date" in r.data
+    logged_in.post(
+        "/day/2026-03-10/edit",
+        data={"date": "2026-03-10", f"lift-{theirs}-delete": "1", f"lift-{theirs}-weight": "0"},
+    )
+    with app.app_context():
+        assert Workout.query.get(a).weight == "185 lbs"
+        assert Workout.query.get(theirs).weight == "185 lbs"
+
+
+def test_day_edit_removing_everything_clears_the_day(logged_in, app, add_workout):
+    a = add_workout(date="2026-03-10")
+    with app.app_context():
+        session_meta.set_title(USER, "2026-03-10", "Gone")
+        db.session.commit()
+    r = logged_in.post("/day/2026-03-10/edit", data={"date": "2026-03-10", f"lift-{a}-delete": "1"})
+    assert r.headers["Location"].endswith("/search")
+    with app.app_context():
+        assert Workout.query.get(a) is None and session_meta.get(USER, "2026-03-10") is None

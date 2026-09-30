@@ -3,27 +3,7 @@
 {% block body_class %}flow{% endblock %}
 {% block tabbar %}{% endblock %}
 
-{#- One lift or cardio row: the name, value pills that edit in place, and Remove.
-    fields: [(name, placeholder, unit, extra attrs)]. `i` is "__i__" in the template
-    app.js copies for "+ Add". -#}
-{% macro row(prefix, i, name_field, name_value, name_attrs, fields, item) -%}
-<div class="review-row" data-row>
-    <div class="row-head">
-        <input type="text" class="row-name" name="{{ prefix }}-{{ i }}-{{ name_field }}" value="{{ name_value or '' }}" {{ name_attrs|safe }} aria-label="{{ name_field|capitalize }}">
-        <input type="checkbox" name="{{ prefix }}-{{ i }}-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">
-        <button type="button" class="row-remove">Remove</button>
-    </div>
-    <div class="vpills">
-        {% for f, placeholder, unit, attrs in fields %}
-        <label class="vpill"><input type="text" name="{{ prefix }}-{{ i }}-{{ f }}" value="{{ item[f] or '' }}" placeholder="+ {{ placeholder }}" aria-label="{{ f|capitalize }}" {{ attrs|safe }}>{% if unit %}<span class="vpill-unit">{{ unit }}</span>{% endif %}</label>
-        {% endfor %}
-    </div>
-</div>
-{%- endmacro %}
-{% set lift_fields = [("weight", "weight", "", ""), ("sets", "sets", "sets", 'inputmode="numeric"'), ("reps", "reps", "reps", ""), ("notes", "note", "", "")] %}
-{% set cardio_fields = [("distance", "distance", "", ""), ("duration", "time", "", ""), ("notes", "note", "", "")] %}
-{% macro lift_row(i, e) %}{{ row("entry", i, "exercise", e.exercise, 'list="exercise-names" placeholder="Exercise"', lift_fields, e) }}{% endmacro %}
-{% macro cardio_row(i, c) %}{{ row("cardio", i, "activity", c.activity, 'placeholder="Activity"', cardio_fields, c) }}{% endmacro %}
+{% from "_entry_rows.html" import lift_row, cardio_row %}
 
 {% block content %}
 {% set browser_llm = config.browser_config()|tojson if config and config.runs_in_browser else none %}

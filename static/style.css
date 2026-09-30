@@ -755,31 +755,9 @@ th.sort-desc::after { content: " \2193"; }
 }
 .table input.narrow { min-width: 56px; width: 64px; }
 .table td.exercise-cell { min-width: 200px; }
-.table td.date-cell input { width: 120px; min-width: 120px; }
 .table-editing input[type="text"] { background: transparent; border-color: transparent; }
 .table-editing input[type="text"]:hover { border-color: var(--chip-border); }
 .table-editing input[type="text"]:focus { background: var(--surface); border-color: var(--you); }
-
-/* Sessions page: read mode vs edit mode */
-.log-form .edit-only { display: none; }
-.log-form.editing .edit-only { display: revert; }
-.log-form.editing .read-only { display: none; }
-.log-form.editing td.col-actions.edit-only, .log-form.editing th.col-actions.edit-only { display: table-cell; }
-.log-form:not(.editing) input[type="text"] {
-    background: transparent;
-    border-color: transparent;
-    padding-left: 0;
-    padding-right: 0;
-    pointer-events: none;
-    min-width: 0;
-}
-.log-form:not(.editing) td.exercise-cell { min-width: 0; }
-.log-form.editing input[type="text"] { background: var(--field); border-color: transparent; }
-.log-form.editing input[type="text"]:focus { background: var(--surface); border-color: var(--you); }
-
-tr.row-dirty td { background: var(--you-tint) !important; }
-tr.row-deleted td { background: var(--danger-tint) !important; }
-tr.row-deleted input[type="text"] { opacity: 0.45; text-decoration: line-through; }
 
 .review-section { margin-top: 18px; }
 .table-empty { margin: 6px 0 0; }
@@ -832,8 +810,7 @@ a.session-exercise:hover { color: var(--you-ink); }
 .segmented-quiet a:hover { background: transparent; color: var(--ink); }
 .range-long { display: none; }
 
-/* --- Sessions page: entries grouped by day / week / month ------------- */
-.group { margin-bottom: 24px; }
+/* --- Group headings (review and edit screens) --------------------------- */
 .group-head {
     display: flex;
     align-items: baseline;
@@ -842,11 +819,77 @@ a.session-exercise:hover { color: var(--you-ink); }
     flex-wrap: wrap;
     margin-bottom: 8px;
 }
-.group-title { font-size: 17px; }
-.group-title a { text-decoration: none; }
-.group .table-wrap { margin-bottom: 0; }
-.group .table-wrap + .table-wrap { margin-top: 8px; }
-.log-form:not(.editing) .table.by-day .date-col { display: none; }
+
+/* --- Sessions: one card per day, under month headings -------------------- */
+.session-search { display: flex; align-items: center; gap: 12px; margin: 0 0 20px; }
+.session-search .input { flex: 1 1 auto; max-width: 420px; }
+.session-search .muted { white-space: nowrap; }
+.month { margin-bottom: 28px; }
+.month-head { font-size: 19px; margin: 0 0 12px; display: flex; align-items: baseline; gap: 10px; }
+.month-head span { color: var(--muted); font-family: var(--font-body); font-size: 14px; font-weight: 500; }
+.tile-grid { display: grid; gap: 14px; }
+.session-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: var(--surface);
+    border-radius: 24px;
+    color: var(--ink);
+    text-decoration: none;
+    min-width: 0;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.session-tile:hover { background: var(--surface-2); color: var(--ink); }
+.session-tile:active { transform: scale(0.99); }
+.session-tile:focus-visible { outline: 2px solid var(--you); outline-offset: 2px; }
+.tile-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line-2);
+}
+.tile-title { font-family: var(--font-head); font-size: 17px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile-date { color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.tile-body { display: flex; gap: 16px; align-items: center; min-width: 0; }
+.tile-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; flex: 1; min-width: 0; }
+.tile-lines li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 500; min-width: 0; }
+.tile-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.tile-ex { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile-name .badge { flex: none; }
+.tile-detail { color: var(--ink-2); white-space: nowrap; }
+.tile-lines .tile-more { color: var(--muted); font-size: 14px; }
+.empty-note { text-align: center; padding: 24px 0; }
+
+/* A day's picture: a photo, or its muscle icon (lit muscles in --you, per the handoff) */
+.session-visual {
+    --visual-size: 76px;
+    flex: none;
+    width: var(--visual-size);
+    height: var(--visual-size);
+    border-radius: 18px;
+    background: var(--field);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: var(--you);
+    --mi-base: var(--ink);
+    --mi-base-opacity: 0.1;
+}
+.session-visual.is-photo { object-fit: cover; background: var(--field); }
+
+/* Day page: the day's picture and title */
+.day-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.day-identity .session-visual { border-radius: 16px; }
+.day-name { font-size: 22px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Day edit screen: the picture beside the title field */
+.edit-identity { display: flex; align-items: center; gap: 14px; padding: 16px; margin: 0; }
+.edit-title { flex: 1; min-width: 0; }
+.edit-title .words-label { margin-bottom: 6px; }
 
 /* --- Stat tiles -------------------------------------------------------- */
 .stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
@@ -1745,6 +1788,8 @@ a.feed-when:hover { color: var(--you-ink); }
     .home-log .section-head { margin: 6px 0 0; }
     .feed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .feed-grid .session-card { padding: 18px; }
+    .tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .session-tile { padding: 18px 20px; }
     .home-side .week-hero { padding: 22px; }
     .week-hero-num { font-size: 48px; }
     .week-bar-letter { display: block; }
@@ -1856,6 +1901,14 @@ a.feed-when:hover { color: var(--you-ink); }
 }
 
 @media (max-width: 640px) {
+    /* Sessions cards: each line stacks its numbers under the name */
+    .tile-body { align-items: flex-start; gap: 14px; }
+    .tile-body .session-visual { --visual-size: 60px !important; border-radius: 16px; }
+    .tile-body muscle-icon svg { width: 48px; height: 48px; }
+    .tile-lines { gap: 10px; }
+    .tile-lines li { flex-direction: column; gap: 1px; }
+    .tile-detail { font-size: 14px; }
+
     .table th, .table td { padding: 10px 12px; }
     .hbars li { grid-template-columns: 84px 1fr 32px; }
     .people-list li { flex-wrap: wrap; }
