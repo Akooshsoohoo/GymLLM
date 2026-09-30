@@ -179,3 +179,30 @@ class Comment(db.Model):
     author_email = db.Column(db.String, nullable=False)
     body = db.Column(db.String(500), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
+
+
+# --- Routines -------------------------------------------------------------------
+# A named template of named blocks that pre-fills the recorder. The body stays free
+# text on purpose: it is exactly what the parser reads once the workout is done.
+
+
+class Routine(db.Model):
+    __tablename__ = "routine"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_email = db.Column(db.String, nullable=False, index=True)
+    name = db.Column(db.String(60), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class RoutineBlock(db.Model):
+    __tablename__ = "routine_block"
+
+    id = db.Column(db.Integer, primary_key=True)
+    routine_id = db.Column(
+        db.Integer, db.ForeignKey("routine.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    position = db.Column(db.Integer, nullable=False)
+    name = db.Column(db.String(40), nullable=True)
+    body = db.Column(db.Text, nullable=False, default="")

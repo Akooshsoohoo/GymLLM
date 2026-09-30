@@ -36,6 +36,12 @@ def test_healthz(client):
         ("get", "/progress"),
         ("get", "/day/2026-01-10"),
         ("get", "/record"),
+        ("get", "/routines"),
+        ("get", "/routines/new"),
+        ("post", "/routines/new"),
+        ("get", "/routines/1/edit"),
+        ("post", "/routines/1/delete"),
+        ("post", "/routines/1/duplicate"),
         ("post", "/review"),
         ("post", "/confirm"),
         ("get", "/day/2026-01-10/edit"),
@@ -266,7 +272,7 @@ def test_review_uses_and_persists_weight_unit(logged_in, fake_llm):
     assert b'value="kg"' in r.data  # reflected back in the hidden field / toggle
 
     fake_llm.queue(PARSED)
-    r2 = logged_in.post(
+    logged_in.post(
         "/review", data={"workout": "bench 185 5x5", "client_date": "2026-09-14"}
     )  # weight_unit omitted this time -> the earlier saved kg pick is still used, not reset to lbs
     assert 'weight: "185 kg"' in fake_llm.calls[1][0]
@@ -1208,3 +1214,157 @@ def test_day_edit_removing_everything_clears_the_day(logged_in, app, add_workout
     assert r.headers["Location"].endswith("/search")
     with app.app_context():
         assert Workout.query.get(a) is None and session_meta.get(USER, "2026-03-10") is None
+
+
+# --- routines -------------------------------------------------------------------
+
+
+def _new_routine(client, name="Push day", blocks=(("Chest", "Bench 185 lbs, 3 sets of ___"),)):
+    data = {
+        "name": name,
+        "block_name": [b[0] for b in blocks],
+        "block_body": [b[1] for b in blocks],
+    }
+    return client.post("/routines/new", data=data)
+
+
+def _routine_ids(app, email=USER):
+    from gymllm import routines
+
+    with app.app_context():
+        return [r["id"] for r in routines.list_for(email)]
+
+
+def test_routine_crud(logged_in, app):
+    from gymllm import routines
+
+    body = logged_in.get("/routines").data.decode()
+    assert "No routines yet." in body and 'href="/routines/new"' in body
+    assert 'name="block_body"' in logged_in.get("/routines/new").data.decode()
+
+    r = _new_routine(
+        logged_in, blocks=[("Warm-up", "Row 5 min"), ("", "Dips 3 sets of ___"), ("Chest", "Bench")]
+    )
+    assert r.status_code == 302 and r.headers["Location"].endswith("/routines")
+    [rid] = _routine_ids(app)
+    body = logged_in.get("/routines").data.decode()
+    assert "Push day" in body and "3 blocks" in body
+    with app.app_context():
+        assert [b["name"] for b in routines.blocks_of(routines.get(USER, rid))] == [
+            "Warm-up",
+            "",
+            "Chest",
+        ]
+
+    edit = logged_in.get(f"/routines/{rid}/edit").data.decode()
+    assert 'value="Push day"' in edit and "Dips 3 sets of ___" in edit
+    r = logged_in.post(
+        f"/routines/{rid}/edit",
+        data={
+            "name": "Push A",
+            "block_name": ["Chest", "Warm-up"],
+            "block_body": ["Bench", "Row 5 min"],
+        },
+    )
+    assert r.status_code == 302
+    with app.app_context():
+        routine = routines.get(USER, rid)
+        assert routine.name == "Push A"
+        assert routines.blocks_of(routine) == [
+            {"name": "Chest", "body": "Bench"},
+            {"name": "Warm-up", "body": "Row 5 min"},
+        ]
+
+    assert logged_in.post(f"/routines/{rid}/duplicate").status_code == 302
+    ids = _routine_ids(app)
+    assert len(ids) == 2
+    assert "Push A (copy)" in logged_in.get("/routines").data.decode()
+
+    assert logged_in.post(f"/routines/{rid}/delete").status_code == 302
+    assert _routine_ids(app) == [i for i in ids if i != rid]
+
+
+def test_routine_name_is_required(logged_in, app):
+    r = _new_routine(logged_in, name="   ")
+    assert r.status_code == 400 and b"Give the routine a name." in r.data
+    assert b"Bench 185 lbs, 3 sets of ___" in r.data  # what you wrote is still there
+    assert _routine_ids(app) == []
+
+
+def test_another_users_routine_is_not_found(logged_in, other_client, app):
+    _new_routine(other_client, name="Theirs")
+    [rid] = _routine_ids(app, OTHER)
+    assert logged_in.get(f"/routines/{rid}/edit").status_code == 404
+    assert logged_in.post(f"/routines/{rid}/edit", data={"name": "Mine now"}).status_code == 404
+    assert logged_in.post(f"/routines/{rid}/delete").status_code == 404
+    assert logged_in.post(f"/routines/{rid}/duplicate").status_code == 404
+    assert logged_in.get(f"/record?routine={rid}").status_code == 404
+    assert "Theirs" not in logged_in.get("/routines").data.decode()
+    assert "Theirs" not in logged_in.get("/record").data.decode()
+    assert _routine_ids(app, OTHER) == [rid] and _routine_ids(app) == []
+
+
+def test_routine_posts_need_csrf():
+    cfg = base_test_config()
+    cfg["WTF_CSRF_ENABLED"] = True
+    app = create_app(cfg)
+    client = app.test_client()
+    with client.session_transaction() as s:
+        s["user_email"] = USER
+    r = client.post("/routines/new", data={"name": "Push"})
+    assert r.status_code == 400
+    with app.app_context():
+        db.session.remove()
+        db.drop_all()
+
+
+def test_record_lists_routines_and_starts_one(logged_in, app):
+    body = logged_in.get("/record").data.decode()
+    assert "No routines yet." in body and 'href="/routines"' in body
+    assert "data-rec-routine=" not in body
+
+    _new_routine(logged_in, blocks=[("Chest", "Bench 185 lbs, 3 sets of ___"), ("", "Dips")])
+    [rid] = _routine_ids(app)
+    body = logged_in.get("/record").data.decode()
+    assert f'href="/record?routine={rid}"' in body and "Push day" in body and "2 blocks" in body
+
+    body = logged_in.get(f"/record?routine={rid}").data.decode()
+    start = json.loads(body.split("data-rec-routine='", 1)[1].split("'", 1)[0])
+    assert start == {
+        "id": rid,
+        "name": "Push day",
+        "blocks": [
+            {"name": "Chest", "body": "Bench 185 lbs, 3 sets of ___"},
+            {"name": "", "body": "Dips"},
+        ],
+    }
+    assert 'name="routine_name"' in body
+    assert logged_in.get("/record?routine=999").status_code == 404
+    assert logged_in.get("/record?routine=abc").status_code == 404
+
+
+def test_review_carries_the_routine_name(logged_in, fake_llm):
+    fake_llm.queue(PARSED)
+    body = logged_in.post(
+        "/review",
+        data={"workout": "Chest\nbench 185 5x5", "from_record": "1", "routine_name": "Push day"},
+    ).data.decode()
+    assert body.count('name="routine_name" value="Push day"') == 2  # try-again form and save form
+    fake_llm.queue(PARSED)
+    body = logged_in.post("/review", data={"workout": "bench 185 5x5"}).data.decode()
+    assert "routine_name" not in body
+
+
+def test_confirm_with_routine_name_titles_the_day(logged_in, app):
+    lift = {
+        "num_entries": "1",
+        "entry-0-exercise": "barbell bench press",
+        "entry-0-weight": "185 lbs",
+    }
+    logged_in.post("/confirm", data={"date": "2026-09-13", "routine_name": " Push  day ", **lift})
+    logged_in.post("/confirm", data={"date": "2026-09-14", **lift})
+    logged_in.post("/confirm", data={"date": "2026-09-15", "routine_name": "", **lift})
+    with app.app_context():
+        assert session_meta.get(USER, "2026-09-13").title == "Push day"
+        assert session_meta.get(USER, "2026-09-14") is None
+        assert session_meta.get(USER, "2026-09-15") is None
