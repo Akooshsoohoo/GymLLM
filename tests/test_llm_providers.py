@@ -85,10 +85,11 @@ def test_openai_compat_falls_back_without_response_format():
 
 
 def _fake_response(status):
-    import httpx
+    # openai 3.x is built on httpx2 and type-checks its errors' requests against it.
+    import httpx2
 
-    req = httpx.Request("POST", "http://x")
-    return httpx.Response(status, request=req)
+    req = httpx2.Request("POST", "http://x")
+    return httpx2.Response(status, request=req)
 
 
 @pytest.mark.parametrize(
