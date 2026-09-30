@@ -1044,6 +1044,7 @@ a.week-day.logged:hover { background: var(--you-hover); color: var(--on-you); }
 .try-label { color: var(--muted); font-size: 13px; font-weight: 600; margin: 0 0 10px; }
 .log-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px 16px; flex-wrap: wrap; color: var(--muted); font-size: 14px; font-weight: 500; }
 .log-foot a { color: var(--ink); }
+.log-foot-alt { display: inline-flex; align-items: center; gap: 10px; }
 .link-btn {
     height: auto;
     padding: 0;
@@ -1118,7 +1119,11 @@ a.week-day.logged:hover { background: var(--you-hover); color: var(--on-you); }
 .rec-start:hover .rec-start-btn span { background: var(--you-hover); transform: scale(1.05); }
 .rec-start-label { font-family: var(--font-head); font-size: 21px; font-weight: 700; }
 .rec-quota { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
-.rec-alt { width: 100%; margin-top: 40px; justify-content: center; }
+.rec-alt { width: 100%; margin-top: 40px; }
+.rec-alt-label { margin: 0 0 10px; color: var(--muted); font-size: 14px; font-weight: 500; }
+.rec-alt-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rec-alt-actions .btn { height: 48px; padding: 0 12px; }
+@media (max-width: 360px) { .rec-alt-actions { grid-template-columns: 1fr; } }
 
 .rec-blocks { display: grid; gap: 12px; }
 /* A block of notes, in the recorder and the routine editor alike: the whole block
@@ -1216,6 +1221,7 @@ a.week-day.logged:hover { background: var(--you-hover); color: var(--on-you); }
 .routine-delete:hover { color: var(--danger); }
 .routine-empty { margin: 0; color: var(--muted); font-size: 15px; }
 .routine-empty a { color: var(--ink); font-weight: 600; }
+.routine-empty .btn { margin-left: 6px; }
 .routine-lede { margin: -6px 0 18px; }
 .routine-help { margin: -6px 0 14px; }
 .routine-blocks { margin-bottom: 12px; }
