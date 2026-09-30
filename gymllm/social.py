@@ -1,8 +1,8 @@
 """Profiles, friendships, kudos and comments, and what one user may see of another.
 
 Every social view reads another user's log through visible_data(), which is the
-only place the privacy rules live: friends (and yourself) only, notes stripped,
-body weight only when its owner shares it."""
+only place the privacy rules live: each day is private, friends-only (the
+default) or public, notes are stripped, and body weight is never shown."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from sqlalchemy import and_, or_
 
 from . import sessions, stats
 from .extensions import db
-from .models import Comment, Friendship, Kudos, Profile
+from .models import Comment, Friendship, Kudos, Profile, SessionVisibility
 
 HANDLE_RE = re.compile(r"^[a-z0-9_]{3,20}$")
 RESERVED_HANDLES = {
@@ -28,6 +28,10 @@ FEED_PAGE = 20
 SEARCH_LIMIT = 10
 
 SELF, FRIENDS, OUTGOING, INCOMING, NONE = "self", "friends", "outgoing", "incoming", "none"
+
+# Who may see a day's lifts and cardio. FRIENDS_ONLY is the same word as FRIENDS.
+PRIVATE, FRIENDS_ONLY, PUBLIC = "private", "friends", "public"
+VISIBILITIES = (PRIVATE, FRIENDS_ONLY, PUBLIC)
 
 
 def _now() -> datetime:
@@ -92,7 +96,6 @@ def save_profile(
     handle: str,
     display_name: str,
     bio: str = "",
-    share_bodyweight: bool = False,
     avatar_url: str | None = None,
 ) -> Profile:
     """Create or update the profile. The caller validates the handle first."""
@@ -103,7 +106,6 @@ def save_profile(
     profile.handle = handle
     profile.display_name = display_name.strip()[:NAME_MAX] or handle
     profile.bio = bio.strip()[:BIO_MAX] or None
-    profile.share_bodyweight = share_bodyweight
     if avatar_url:
         profile.avatar_url = avatar_url
     db.session.commit()
@@ -231,23 +233,38 @@ def can_view(viewer: str, owner: str) -> bool:
     return relationship(viewer, owner) in (SELF, FRIENDS)
 
 
+def clean_visibility(raw: str | None) -> str:
+    return raw if raw in VISIBILITIES else FRIENDS_ONLY
+
+
+def set_visibility(owner: str, when: str, visibility: str) -> None:
+    """Set who may see `owner`'s day `when`. The caller commits."""
+    row = db.session.get(SessionVisibility, (owner, when))
+    if row is None:
+        db.session.add(SessionVisibility(owner_email=owner, date=when, visibility=visibility))
+    else:
+        row.visibility = visibility
+
+
+def visibilities(owner: str) -> dict[str, str]:
+    """{date: visibility} for the days `owner` set; any other day is FRIENDS_ONLY."""
+    return {v.date: v.visibility for v in SessionVisibility.query.filter_by(owner_email=owner)}
+
+
 def visible_data(viewer: str, owner: str) -> tuple[list[dict], list[dict], list[dict]] | None:
     """(rows, cardio, weights) of `owner` as `viewer` may see them, or None if
     they may not see any of it. Newest first, like sessions.all_of()."""
-    if not can_view(viewer, owner):
+    rel = relationship(viewer, owner)
+    rows, cardio = sessions.all_rows(owner), sessions.all_cardio(owner)
+    if rel == SELF:
+        return rows, cardio, sessions.all_weights(owner)
+    allowed = (FRIENDS_ONLY, PUBLIC) if rel == FRIENDS else (PUBLIC,)
+    days = visibilities(owner)
+    rows = [dict(r, notes="") for r in rows if days.get(r["date"], FRIENDS_ONLY) in allowed]
+    cardio = [dict(c, notes="") for c in cardio if days.get(c["date"], FRIENDS_ONLY) in allowed]
+    if rel != FRIENDS and not (rows or cardio):
         return None
-    rows, cardio, weights = (
-        sessions.all_rows(owner),
-        sessions.all_cardio(owner),
-        sessions.all_weights(owner),
-    )
-    if viewer == owner:
-        return rows, cardio, weights
-    profile = get_profile(owner)
-    rows = [dict(r, notes="") for r in rows]
-    cardio = [dict(c, notes="") for c in cardio]
-    weights = weights if profile and profile.share_bodyweight else []
-    return rows, cardio, weights
+    return rows, cardio, []
 
 
 def has_session(viewer: str, owner: str, when: str) -> bool:

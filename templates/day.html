@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}GymLLM | {{ when|nice_date }}{% endblock %}
 {% block content %}
+{% from "_session_visual.html" import visual as session_visual %}
 {% set rel = when|day_label %}
 <nav class="day-head" aria-label="Day">
     {% if prev %}
@@ -70,6 +71,10 @@
     </div>
 
     <div class="day-main">
+        <div class="day-identity">
+            {{ session_visual(visual, 56) }}
+            <h2 class="day-name">{{ title }}</h2>
+        </div>
         <div class="stat-grid desktop-only">
             <div class="stat"><div class="stat-label">Exercises</div><div class="stat-value">{{ summary.entries }}</div></div>
             <div class="stat"><div class="stat-label">Sets</div><div class="stat-value">{{ summary.sets }}</div></div>

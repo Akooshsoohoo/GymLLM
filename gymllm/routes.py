@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from datetime import date, datetime, timedelta, timezone
 
 from flask import (
@@ -18,7 +17,7 @@ from flask import (
 )
 from sqlalchemy import func
 
-from . import preferences, quota, sessions, social, stats
+from . import preferences, quota, session_meta, sessions, social, stats
 from .auth import current_user_email, login_required
 from .exercises import EXERCISE_NAMES, TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
@@ -30,7 +29,7 @@ from .llm.client import (
     test_connection,
 )
 from .llm.providers import PROVIDERS, LLMConfig
-from .models import BODYWEIGHT_FIELDS, CARDIO_FIELDS, FIELDS, BodyWeight, Cardio, Workout
+from .models import BodyWeight, Cardio, Workout
 from .parsing import (
     build_system_prompt,
     is_iso_date,
@@ -50,25 +49,14 @@ MAX_SITE_TAG_CALLS = 10  # per save, so tagging cannot drain the shared allowanc
 HOME_FEED = 6  # friends' sessions on Home
 HOME_RECENT = 3  # your own days in the "Your recent" list
 
-# Editable tables on the Sessions page: (model, cell name regex, delete regex,
-# editable fields, the field that may never be blanked).
-EDITABLE = (
-    (Workout, re.compile(r"^cell-(\d+)-(\w+)$"), re.compile(r"^delete-(\d+)$"), FIELDS, "exercise"),
-    (
-        Cardio,
-        re.compile(r"^cardio-(\d+)-(\w+)$"),
-        re.compile(r"^cdelete-(\d+)$"),
-        CARDIO_FIELDS,
-        "activity",
-    ),
-    (
-        BodyWeight,
-        re.compile(r"^bw-(\d+)-(\w+)$"),
-        re.compile(r"^bwdelete-(\d+)$"),
-        BODYWEIGHT_FIELDS,
-        "weight",
-    ),
+# The day edit screen's existing lifts and cardio: (form prefix, editable fields,
+# the field that may never be blanked). Fields are named "<prefix>-<id>-<field>" and
+# "<prefix>-<id>-delete"; new rows use the review page's "entry-N-*" / "cardio-N-*".
+DAY_EDIT_ROWS = (
+    ("lift", ENTRY_FIELDS, "exercise"),
+    ("act", CARDIO_FORM_FIELDS, "activity"),
 )
+SESSION_TILE_LINES = 3  # lines on a Sessions card before "+N more"
 
 
 def _llm_config() -> LLMConfig | None:
@@ -302,7 +290,7 @@ def _headline(summary: dict) -> list[str]:
 
 
 def _edit_url(when: str) -> str:
-    return url_for("main.search", range="all", by="day") + "#day-" + when
+    return url_for("main.day_edit", when=when)
 
 
 def _day_detail(when: str, all_rows: list[dict], all_cardio: list[dict], profile) -> dict:
@@ -394,9 +382,12 @@ def day(when: str):
     thread = None
     if profile and (rows or cardio):
         thread = social.attach_social([{"owner": profile, "date": when}], user_email)[0]
+    meta = session_meta.get(user_email, when)
     return render_template(
         "day.html",
         when=when,
+        title=session_meta.title_for(when, meta),
+        visual=session_meta.visual({"rows": rows, "cardio": cardio}, meta),
         thread=thread,
         rows=rows,
         grouped_rows=_group_by_exercise(rows),
@@ -684,8 +675,13 @@ def confirm():
             )
         )
     db.session.add_all(Cardio(user_email=user_email, date=when, **c) for c in cardio)
+    if entries or cardio:
+        # Covers the whole day, so a later save that day can change it.
+        social.set_visibility(
+            user_email, when, social.clean_visibility(request.form.get("visibility"))
+        )
     if bodyweight:
-        _save_bodyweight(user_email, when, bodyweight)
+        _save_bodyweight(user_email, when, bodyweight)  # always private
     db.session.commit()
     # Straight to Home, where the day you just saved is on top and ready to share.
     # `recorded` tells the page to clear the finished recording from the browser.
@@ -695,92 +691,191 @@ def confirm():
     return redirect(url_for("main.home", **args) + "#my-latest")
 
 
-# --- Search / edit ------------------------------------------------------------
+# --- Sessions -----------------------------------------------------------------
 
 
-@bp.route("/search", methods=["GET", "POST"])
+def _tile_lines(rows: list[dict], cardio: list[dict]) -> list[dict]:
+    """A day's lines for its Sessions card: one per exercise (its new best, or the
+    first set logged) and one per cardio activity, in the order they were logged."""
+    lines = []
+    for g in _group_by_exercise(rows):
+        top = next((e for e in g["entries"] if e["pr"]), g["entries"][0])
+        detail = " · ".join(filter(None, [top["weight"], sessions.compact_sets(top["sets_reps"])]))
+        lines.append({"name": g["exercise"], "detail": detail, "pr": top["pr"]})
+    for c in cardio:
+        detail = " · ".join(filter(None, [c["distance"], c["duration"]]))
+        lines.append({"name": c["activity"], "detail": detail, "pr": False})
+    return lines
+
+
+def _search_text(day: dict) -> str:
+    """Everything the Sessions search box matches a card on, lowercased."""
+    parts = [day["title"]]
+    for r in day["rows"]:
+        parts += [r["exercise"], r["notes"], r["tags"].replace(";", " ")]
+    for c in day["cardio"]:
+        parts += [c["activity"], c["notes"]]
+    if day["weight"]:
+        parts += ["weighed in", day["weight"]["notes"]]
+    return " ".join(p for p in parts if p).lower()
+
+
+@bp.route("/search")
 @login_required
 def search():
+    """Every day you logged as a card, newest first, under month headings."""
     user_email = current_user_email()
-    if request.method == "POST":
-        return _apply_search_edits(user_email)
     range_key = stats.clean_range(request.args.get("range"))
-    by = stats.clean_grouping(request.args.get("by"), "7d")  # entries default to per-day
     today = _client_today()
     all_rows, all_cardio, all_weights = (
         sessions.all_rows(user_email),
         sessions.all_cardio(user_email),
         sessions.all_weights(user_email),
     )
-    rows = stats.filter_range(all_rows, today, range_key)
-    cardio = stats.filter_range(all_cardio, today, range_key)
-    weights = stats.filter_range(all_weights, today, range_key)
+    days = sessions.group_sessions(
+        stats.filter_range(all_rows, today, range_key),
+        stats.filter_range(all_cardio, today, range_key),
+        stats.filter_range(all_weights, today, range_key),
+    )
+    prs = {r["id"] for r in stats.personal_records(all_rows, None)}
+    metas = session_meta.for_days(user_email, [d["date"] for d in days])
+    months: list[dict] = []
+    for d in days:
+        d["rows"] = [dict(r, pr=r["id"] in prs) for r in reversed(d["rows"])]  # log order
+        d["cardio"] = list(reversed(d["cardio"]))
+        meta = metas.get(d["date"])
+        d["title"] = session_meta.title_for(d["date"], meta)
+        d["visual"] = session_meta.visual(d, meta)
+        d["lines"] = _tile_lines(d["rows"], d["cardio"])
+        d["search"] = _search_text(d)
+        key = d["date"][:7]
+        if not months or months[-1]["key"] != key:
+            label = f"{date.fromisoformat(d['date']):%B %Y}"
+            months.append({"key": key, "label": label, "days": []})
+        months[-1]["days"].append(d)
     return render_template(
         "search.html",
-        groups=stats.group_rows(rows, by, cardio=cardio, weights=weights),
+        months=months,
+        shown=len(days),
+        tile_lines=SESSION_TILE_LINES,
         total=len(all_rows) + len(all_cardio) + len(all_weights),
-        shown=len(rows) + len(cardio) + len(weights),
         range_key=range_key,
-        by=by,
     )
 
 
-def _collect_edits(form, cell_re, delete_re, fields) -> tuple[dict, set]:
-    edits: dict[int, dict[str, str]] = {}
-    deletes: set[int] = set()
-    for key, value in form.items():
-        m = cell_re.match(key)
-        if m and m.group(2) in fields:
-            edits.setdefault(int(m.group(1)), {})[m.group(2)] = value.strip()
-            continue
-        m = delete_re.match(key)
-        if m and value:
-            deletes.add(int(m.group(1)))
-    return edits, deletes
+# --- Editing one day ------------------------------------------------------------
 
 
-def _apply_search_edits(user_email: str):
-    keep = {k: v for k, v in request.args.items() if k in ("range", "by")}
-    pending = []  # (rows by id, edits, deletes, required field) per table
-    for model, cell_re, delete_re, fields, required in EDITABLE:
-        edits, deletes = _collect_edits(request.form, cell_re, delete_re, fields)
-        ids = set(edits) | deletes
-        if not ids:
-            continue
-        rows = model.query.filter(model.user_email == user_email, model.id.in_(ids)).all()
-        pending.append(({r.id: r for r in rows}, edits, deletes, required))
-    if not pending:
-        return redirect(url_for("main.search", **keep))
+def _day_records(user_email: str, when: str):
+    """The day's lifts and cardio (in log order) and its weigh-in, as models."""
+    lifts = Workout.query.filter_by(user_email=user_email, date=when).order_by(Workout.id).all()
+    cardio = Cardio.query.filter_by(user_email=user_email, date=when).order_by(Cardio.id).all()
+    weight = BodyWeight.query.filter_by(user_email=user_email, date=when).first()
+    return lifts, cardio, weight
 
-    for by_id, edits, deletes, _required in pending:
-        for rid, cells in edits.items():
-            if rid in by_id and rid not in deletes and "date" in cells:
-                if not is_iso_date(cells["date"]):
-                    flash("Dates must be in YYYY-MM-DD format. No changes were saved.", "error")
-                    return redirect(url_for("main.search", **keep))
 
-    deleted = changed = 0
-    for by_id, edits, deletes, required in pending:
-        for rid, row in by_id.items():
-            if rid in deletes:
+@bp.route("/day/<when>/edit", methods=["GET", "POST"])
+@login_required
+def day_edit(when: str):
+    """Change, remove or add a day's lifts, cardio and weigh-in, rename it, or move
+    the whole day to another date."""
+    if not is_iso_date(when):
+        abort(404)
+    user_email = current_user_email()
+    lifts, cardio, weight = _day_records(user_email, when)
+    if request.method == "POST":
+        return _save_day_edit(user_email, when, lifts, cardio, weight)
+    if not (lifts or cardio or weight):
+        flash("Nothing is logged on that day.", "info")
+        return redirect(url_for("main.day", when=when))
+    meta = session_meta.get(user_email, when)
+    lift_dicts, cardio_dicts = [w.as_dict() for w in lifts], [c.as_dict() for c in cardio]
+    return render_template(
+        "day_edit.html",
+        when=when,
+        lifts=lift_dicts,
+        cardio=cardio_dicts,
+        bodyweight=weight.weight if weight else "",
+        title=meta.title if meta and meta.title else "",
+        default_title=session_meta.default_title(when),
+        visual=session_meta.visual({"rows": lift_dicts, "cardio": cardio_dicts}, meta),
+        visibility=social.visibilities(user_email).get(when, social.FRIENDS_ONLY),
+    )
+
+
+def _save_day_edit(user_email: str, when: str, lifts, cardio, weight):
+    form = request.form
+    new_date = form.get("date", "").strip() or when
+    if not is_iso_date(new_date):
+        flash("Pick a valid date. No changes were saved.", "error")
+        return redirect(_edit_url(when))
+    moving = new_date != when
+    bodyweight = form.get("bodyweight", "").strip()
+    if moving and bodyweight and _day_records(user_email, new_date)[2] is not None:
+        flash(
+            "You already weighed in on that day. Clear one of the two readings first. "
+            "No changes were saved.",
+            "error",
+        )
+        return redirect(_edit_url(when))
+
+    kept = 0
+    for records, (prefix, fields, required) in zip((lifts, cardio), DAY_EDIT_ROWS, strict=True):
+        for row in records:
+            key = f"{prefix}-{row.id}"
+            if form.get(f"{key}-delete"):
                 db.session.delete(row)
-                deleted += 1
                 continue
-            cells = edits.get(rid, {})
-            if required in cells and not cells[required]:
-                cells.pop(required)  # never blank the name / reading itself
-            dirty = False
-            for field_name, value in cells.items():
-                if (getattr(row, field_name) or "") != value:
-                    setattr(row, field_name, value)
-                    dirty = True
-            changed += dirty
+            kept += 1
+            for field in fields:
+                if f"{key}-{field}" not in form:
+                    continue
+                value = form[f"{key}-{field}"].strip()
+                if field == required and not value:
+                    continue  # never blank the name itself
+                if (getattr(row, field) or "") != value:
+                    setattr(row, field, value)
+                    if field == "exercise":  # a renamed lift gets its new muscle groups
+                        match = match_exercise(value)
+                        row.tags = match[1] if match else ""
+            row.date = new_date
+
+    for entry in _entries_from_form(form):
+        match = match_exercise(entry["exercise"])
+        if match:
+            entry["exercise"], tags = match
+        else:
+            tags = ""
+        db.session.add(Workout(user_email=user_email, date=new_date, tags=tags, **entry))
+        kept += 1
+    for c in _cardio_from_form(form):
+        db.session.add(Cardio(user_email=user_email, date=new_date, **c))
+        kept += 1
+
+    if weight is not None and not bodyweight:
+        db.session.delete(weight)
+        weight = None
+    elif weight is not None:
+        weight.weight, weight.date = bodyweight, new_date
+    elif bodyweight:
+        weight = _save_bodyweight(user_email, new_date, bodyweight)
+
+    if not kept and weight is None:
+        session_meta.clear_day(user_email, when)
+        db.session.commit()
+        flash("Removed everything from that day.", "ok")
+        return redirect(url_for("main.search"))
+
+    title = form.get("title", "")
+    if moving:
+        session_meta.move_day(user_email, when, new_date)
+    if title.strip() or not moving:  # a blank title doesn't wipe the other day's name
+        session_meta.set_title(user_email, new_date, title)
+    if kept and "visibility" in form:
+        social.set_visibility(user_email, new_date, social.clean_visibility(form["visibility"]))
     db.session.commit()
-    if deleted or changed:
-        flash(f"Saved: {changed} updated, {deleted} deleted.", "ok")
-    else:
-        flash("No changes to save.", "info")
-    return redirect(url_for("main.search", **keep))
+    flash("Saved.", "ok")
+    return redirect(url_for("main.day", when=new_date))
 
 
 # --- Progress -----------------------------------------------------------------

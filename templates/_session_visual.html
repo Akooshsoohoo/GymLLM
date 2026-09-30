@@ -1,0 +1,11 @@
+{#- A day's picture: its photo when it has one, else the muscle icon app.js picks
+    from the day's tags (MuscleIcons.forTags). `v` comes from session_meta.visual(). -#}
+{% macro visual(v, size=76, cls="") -%}
+{% if v.kind == "photo" %}
+<img class="session-visual is-photo {{ cls }}" src="{{ v.url }}" alt="" width="{{ size }}" height="{{ size }}" style="--visual-size: {{ size }}px" loading="lazy">
+{% else %}
+<span class="session-visual is-icon {{ cls }}" style="--visual-size: {{ size }}px" aria-hidden="true">
+    <muscle-icon group="full" size="{{ (size * 0.8)|int }}" data-icon-hint="{{ v.hint }}"></muscle-icon>
+</span>
+{% endif %}
+{%- endmacro %}

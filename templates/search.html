@@ -1,137 +1,49 @@
 {% extends "base.html" %}
+{% from "_session_visual.html" import visual %}
 {% block title %}GymLLM | Sessions{% endblock %}
 {% block content %}
+{% set show_by = False %}
 {% include "_progress_tabs.html" %}
 {% if not total %}
 <div class="empty">
     <p>Nothing logged yet.</p>
     <a href="{{ url_for('main.log') }}" class="btn btn-primary">Log your first workout</a>
 </div>
-{% else %}
-{% if not groups %}
+{% elif not months %}
 {% include "_empty_range.html" %}
 {% else %}
-<form method="post" action="{{ url_for('main.search', range=range_key, by=by) }}" id="log-edit-form" class="log-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="toolbar toolbar-split">
-        <div class="toolbar-group">
-            <input type="search" id="query" class="input input-filter" autocomplete="off"
-                   placeholder="Filter by exercise, date, tag, note" aria-label="Filter entries"
-                   data-filter="table.filterable" data-count="#row-count" data-group=".group">
-            <span class="muted small" id="row-count">{{ shown }} rows</span>
-        </div>
-        <div class="toolbar-group">
-            <span class="muted small" id="dirty-count" hidden></span>
-            <button type="button" class="btn btn-ghost btn-sm edit-only" id="edit-cancel">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm edit-only">Save changes</button>
-            <button type="button" class="btn btn-ghost btn-sm read-only" id="edit-toggle">Edit</button>
-        </div>
+<div class="session-search">
+    <label for="session-query" class="sr-only">Search sessions</label>
+    <input type="search" id="session-query" class="input" autocomplete="off"
+           placeholder="Search sessions"
+           data-card-filter=".session-tile" data-group=".month" data-count="#session-count">
+    <span class="muted small" id="session-count">{{ shown }} session{{ '' if shown == 1 else 's' }}</span>
+</div>
+{% for m in months %}
+<section class="month" aria-labelledby="month-{{ m.key }}">
+    <h2 class="month-head" id="month-{{ m.key }}">{{ m.label }} <span>{{ m.days|length }} session{{ '' if m.days|length == 1 else 's' }}</span></h2>
+    <div class="tile-grid">
+        {% for d in m.days %}
+        <a class="session-tile" href="{{ url_for('main.day', when=d.date) }}" id="day-{{ d.date }}" data-search="{{ d.search }} {{ d.date|day_label|lower }}">
+            <div class="tile-head">
+                <span class="tile-title">{{ d.title }}</span>
+                <time class="tile-date" datetime="{{ d.date }}">{{ d.date|day_label }}</time>
+            </div>
+            <div class="tile-body">
+                {{ visual(d.visual) }}
+                <ul class="tile-lines">
+                    {% for l in d.lines[:tile_lines] %}
+                    <li><span class="tile-name"><span class="tile-ex">{{ l.name|cap_first }}</span>{% if l.pr %}<span class="badge badge-best">New best</span>{% endif %}</span>{% if l.detail %}<span class="tile-detail">{{ l.detail }}</span>{% endif %}</li>
+                    {% endfor %}
+                    {% if d.lines|length > tile_lines %}<li class="tile-more">+{{ d.lines|length - tile_lines }} more</li>{% endif %}
+                    {% if d.weight and not d.lines %}<li><span class="tile-name"><span class="tile-ex">Weighed in</span></span><span class="tile-detail">{{ d.weight.weight }}</span></li>{% endif %}
+                </ul>
+            </div>
+        </a>
+        {% endfor %}
     </div>
-    {% for g in groups %}
-    <section class="group" data-group="{{ g.key }}" id="day-{{ g.key }}">
-        <header class="group-head">
-            <h2 class="group-title">{% if by == 'day' and g.key|length == 10 %}<a href="{{ url_for('main.day', when=g.key) }}" class="cell-link">{{ g.label }}</a>{% else %}{{ g.label }}{% endif %}</h2>
-            <span class="muted small group-summary">
-                {%- set parts = [] -%}
-                {%- if by != 'day' %}{% set _ = parts.append(g.sessions ~ ' session' ~ ('' if g.sessions == 1 else 's')) %}{% endif -%}
-                {%- if g.entries %}{% set _ = parts.append(g.entries ~ ' exercise' ~ ('' if g.entries == 1 else 's')) %}{% endif -%}
-                {%- if g.volume %}{% set _ = parts.append((g.volume|fmt_num) ~ ' volume') %}{% endif -%}
-                {%- if g.cardio %}{% set _ = parts.append(g.cardio|length ~ ' cardio' ~ (' · ' ~ g.cardio_text if g.cardio_text else '')) %}{% endif -%}
-                {%- if g.weights %}{% set _ = parts.append('weighed ' ~ g.weights[0].weight) %}{% endif -%}
-                {{ parts|join(' · ') }}
-            </span>
-        </header>
-        {% if g.rows %}
-        <div class="table-wrap card card-flush">
-        <table class="table sortable filterable {{ 'by-day' if by == 'day' }}">
-            <thead>
-            <tr>
-                <th data-sort="date" class="date-col">Date</th>
-                <th data-sort="text">Exercise</th>
-                <th data-sort="number">Weight</th>
-                <th data-sort="number">Sets</th>
-                <th data-sort="text">Reps</th>
-                <th data-sort="text">Notes</th>
-                <th data-sort="text">Tags</th>
-                <th class="col-actions edit-only">Delete</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for r in g.rows %}
-            <tr data-id="{{ r.id }}">
-                <td class="date-cell date-col"><input type="text" name="cell-{{ r.id }}-date" value="{{ r.date }}" pattern="\d{4}-\d{2}-\d{2}" title="YYYY-MM-DD" aria-label="Date"></td>
-                <td class="exercise-cell">
-                    <a class="cell-link read-only" href="{{ url_for('main.exercise_history', name=r.exercise) }}">{{ r.exercise }}</a>
-                    <input type="text" name="cell-{{ r.id }}-exercise" value="{{ r.exercise }}" class="edit-only" aria-label="Exercise">
-                </td>
-                <td><input type="text" name="cell-{{ r.id }}-weight" value="{{ r.weight }}" aria-label="Weight"></td>
-                <td><input type="text" name="cell-{{ r.id }}-sets" value="{{ r.sets }}" class="narrow" aria-label="Sets"></td>
-                <td><input type="text" name="cell-{{ r.id }}-reps" value="{{ r.reps }}" aria-label="Reps"></td>
-                <td><input type="text" name="cell-{{ r.id }}-notes" value="{{ r.notes }}" aria-label="Notes"></td>
-                <td class="tags-cell"><input type="text" name="cell-{{ r.id }}-tags" value="{{ r.tags }}" aria-label="Tags"></td>
-                <td class="col-actions edit-only"><input type="checkbox" name="delete-{{ r.id }}" value="1" class="delete-box" aria-label="Delete row"></td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-        {% endif %}
-        {% if g.cardio %}
-        <div class="table-wrap card card-flush">
-        <table class="table sortable filterable {{ 'by-day' if by == 'day' }}">
-            <thead>
-            <tr>
-                <th data-sort="date" class="date-col">Date</th>
-                <th data-sort="text">Cardio</th>
-                <th data-sort="number">Distance</th>
-                <th data-sort="text">Duration</th>
-                <th data-sort="text">Notes</th>
-                <th class="col-actions edit-only">Delete</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for c in g.cardio %}
-            <tr data-id="c{{ c.id }}">
-                <td class="date-cell date-col"><input type="text" name="cardio-{{ c.id }}-date" value="{{ c.date }}" pattern="\d{4}-\d{2}-\d{2}" title="YYYY-MM-DD" aria-label="Date"></td>
-                <td class="exercise-cell"><input type="text" name="cardio-{{ c.id }}-activity" value="{{ c.activity }}" aria-label="Activity"></td>
-                <td><input type="text" name="cardio-{{ c.id }}-distance" value="{{ c.distance }}" aria-label="Distance"></td>
-                <td><input type="text" name="cardio-{{ c.id }}-duration" value="{{ c.duration }}" aria-label="Duration"></td>
-                <td><input type="text" name="cardio-{{ c.id }}-notes" value="{{ c.notes }}" aria-label="Notes"></td>
-                <td class="col-actions edit-only"><input type="checkbox" name="cdelete-{{ c.id }}" value="1" class="delete-box" aria-label="Delete row"></td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-        {% endif %}
-        {% if g.weights %}
-        <div class="table-wrap card card-flush">
-        <table class="table filterable {{ 'by-day' if by == 'day' }}">
-            <thead>
-            <tr>
-                <th class="date-col">Date</th>
-                <th>Body weight</th>
-                <th>Notes</th>
-                <th class="col-actions edit-only">Delete</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for w in g.weights %}
-            <tr data-id="w{{ w.id }}">
-                <td class="date-cell date-col"><input type="text" name="bw-{{ w.id }}-date" value="{{ w.date }}" pattern="\d{4}-\d{2}-\d{2}" title="YYYY-MM-DD" aria-label="Date"></td>
-                <td><input type="text" name="bw-{{ w.id }}-weight" value="{{ w.weight }}" aria-label="Body weight"></td>
-                <td><input type="text" name="bw-{{ w.id }}-notes" value="{{ w.notes }}" aria-label="Notes"></td>
-                <td class="col-actions edit-only"><input type="checkbox" name="bwdelete-{{ w.id }}" value="1" class="delete-box" aria-label="Delete row"></td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-        {% endif %}
-    </section>
-    {% endfor %}
-    <p class="muted small">Click a column header to sort within a {{ by }}. Use Edit to change or delete rows.</p>
-</form>
-{% endif %}
+</section>
+{% endfor %}
+<p class="empty-note muted" id="session-none" hidden>No sessions match that search.</p>
 {% endif %}
 {% endblock %}

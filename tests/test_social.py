@@ -188,13 +188,69 @@ def test_friend_sees_lifts_but_not_notes_or_bodyweight(
         assert weights == []
 
 
-def test_bodyweight_visible_when_shared(app, add_profile, make_friends, add_workout):
-    add_profile(USER, "tester", share_bodyweight=True)
-    add_profile(OTHER, "sam")
+def test_profile_form_has_no_bodyweight_sharing(pair, logged_in):
+    assert b"share_bodyweight" not in logged_in.get("/profile/edit").data
+
+
+def _confirm(client, visibility=None, when="2026-01-10", **extra):
+    data = {"date": when, "num_entries": "1", "entry-0-exercise": "bench press",
+            "entry-0-weight": "135 lbs", "entry-0-sets": "3", "entry-0-reps": "5", **extra}  # fmt: skip
+    if visibility is not None:
+        data["visibility"] = visibility
+    return client.post("/confirm", data=data)
+
+
+def test_saved_workouts_are_friends_only_by_default(app, pair, make_friends, logged_in):
     make_friends()
-    _add(app, BodyWeight, user_email=USER, date="2026-01-10", weight="181 lbs")
+    _confirm(logged_in)
     with app.app_context():
-        assert social.visible_data(OTHER, USER)[2][0]["weight"] == "181 lbs"
+        assert social.visibilities(USER) == {"2026-01-10": "friends"}
+        assert len(social.visible_data(OTHER, USER)[0]) == 1
+        assert social.visible_data(THIRD, USER) is None
+
+
+def test_private_workout_is_hidden_from_friends(app, pair, make_friends, logged_in, other_client):
+    make_friends()
+    _confirm(logged_in, "private")
+    _confirm(logged_in, "friends", when="2026-01-11")
+    with app.app_context():
+        assert [r["date"] for r in social.visible_data(OTHER, USER)[0]] == ["2026-01-11"]
+        assert len(social.visible_data(USER, USER)[0]) == 2
+    assert other_client.post("/kudos/tester/2026-01-10").status_code == 404
+    assert other_client.post("/kudos/tester/2026-01-11").status_code == 302
+
+
+def test_public_workout_is_seen_by_strangers(app, pair, logged_in, other_client):
+    _confirm(logged_in, "public", bodyweight="181 lbs")
+    _confirm(logged_in, "friends", when="2026-01-11")
+    page = other_client.get("/u/tester").data
+    assert b"bench press" in page.lower()
+    assert b"181 lbs" not in page
+    with app.app_context():
+        rows, cardio, weights = social.visible_data(OTHER, USER)
+        assert [r["date"] for r in rows] == ["2026-01-10"] and weights == []
+    assert other_client.get("/u/tester/compare").status_code == 404  # still friends-only
+
+
+def test_resaving_a_day_changes_its_visibility(app, pair, logged_in):
+    _confirm(logged_in, "public")
+    _confirm(logged_in, "private")
+    with app.app_context():
+        assert social.visibilities(USER) == {"2026-01-10": "private"}
+
+
+def test_unknown_visibility_falls_back_to_friends(app, pair, logged_in):
+    _confirm(logged_in, "everyone")
+    with app.app_context():
+        assert social.visibilities(USER) == {"2026-01-10": "friends"}
+
+
+def test_weigh_in_alone_sets_no_visibility(app, pair, logged_in):
+    logged_in.post(
+        "/confirm", data={"date": "2026-01-10", "bodyweight": "181 lbs", "visibility": "public"}
+    )
+    with app.app_context():
+        assert social.visibilities(USER) == {}
 
 
 def test_you_see_your_own_notes(app, pair, add_workout):
@@ -230,7 +286,7 @@ def test_feed_shows_friends_sessions_newest_first(app, pair, make_friends, add_w
 
 def test_feed_skips_weigh_in_only_days(app, add_profile, make_friends, logged_in):
     add_profile(USER, "tester")
-    add_profile(OTHER, "sam", share_bodyweight=True)
+    add_profile(OTHER, "sam")
     make_friends()
     _add(app, BodyWeight, user_email=OTHER, date="2026-01-10", weight="150 lbs")
     with app.app_context():

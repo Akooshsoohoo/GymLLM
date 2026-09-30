@@ -108,6 +108,8 @@ class Profile(db.Model):
     display_name = db.Column(db.String(60), nullable=False)
     avatar_url = db.Column(db.String, nullable=True)
     bio = db.Column(db.String(160), nullable=True)
+    # No longer read: body weight is never shown to anyone else. Kept so inserts
+    # still fill the existing NOT NULL column.
     share_bodyweight = db.Column(db.Boolean, nullable=False, default=False)
     invite_code = db.Column(db.String(24), nullable=False, unique=True)
     activity_seen_at = db.Column(db.DateTime, nullable=True)
@@ -128,6 +130,29 @@ class Friendship(db.Model):
     status = db.Column(db.String(10), nullable=False, default="pending")  # pending | accepted
     created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
     accepted_at = db.Column(db.DateTime, nullable=True)
+
+
+class SessionVisibility(db.Model):
+    """Who may see one day's lifts and cardio. A day with no row is friends-only."""
+
+    __tablename__ = "session_visibility"
+
+    owner_email = db.Column(db.String, primary_key=True)
+    date = db.Column(db.String, primary_key=True)
+    visibility = db.Column(db.String(10), nullable=False)  # private | friends | public
+
+
+class SessionMeta(db.Model):
+    """A day's own details: the title you gave it and, later, its photo. A day with
+    no row uses the default title and its muscle icon."""
+
+    __tablename__ = "session_meta"
+
+    owner_email = db.Column(db.String, primary_key=True)
+    date = db.Column(db.String, primary_key=True)
+    title = db.Column(db.String(80), nullable=True)
+    # Where the day's photo is stored; nothing writes it yet (see session_meta.photo_url).
+    photo_key = db.Column(db.String, nullable=True)
 
 
 class Kudos(db.Model):
