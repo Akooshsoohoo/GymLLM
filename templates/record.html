@@ -37,13 +37,16 @@
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="routine-empty">No routines yet. <a href="{{ url_for('main.routine_new') }}">Create one.</a></p>
+            <p class="routine-empty">No routines yet. <a href="{{ url_for('main.routine_new') }}" class="btn btn-ghost btn-sm">+ New routine</a></p>
             {% endif %}
         </div>
         {% if config.is_site %}<p class="quota rec-quota">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today</p>{% endif %}
-        <div class="log-foot rec-alt">
-            <span>Already done? <a href="{{ url_for('main.log') }}">Log a past workout</a></span>
-            <a href="{{ url_for('main.log_manual') }}">Add manually</a>
+        <div class="rec-alt">
+            <p class="rec-alt-label">Already done?</p>
+            <div class="rec-alt-actions">
+                <a href="{{ url_for('main.log') }}" class="btn btn-ghost">Log a past workout</a>
+                <a href="{{ url_for('main.log_manual') }}" class="btn btn-ghost">Add manually</a>
+            </div>
         </div>
     </section>
 

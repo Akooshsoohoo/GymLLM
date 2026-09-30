@@ -24,7 +24,7 @@
     {% set link_days = True %}{% include "_week_dots.html" %}
 
     <div class="log-foot">
-        <span>Prefer a form? <a href="{{ url_for('main.log_manual') }}">Add manually</a></span>
+        <span class="log-foot-alt">Prefer a form? <a href="{{ url_for('main.log_manual') }}" class="btn btn-ghost btn-sm">Add manually</a></span>
         <button type="button" class="link-btn" data-dialog-open="tips">Writing tips</button>
         {% if config.is_site %}<span class="quota">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today</span>{% endif %}
     </div>
