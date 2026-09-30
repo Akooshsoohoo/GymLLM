@@ -17,7 +17,7 @@ from flask import (
 )
 from sqlalchemy import func
 
-from . import preferences, quota, session_meta, sessions, social, stats
+from . import preferences, quota, routines, session_meta, sessions, social, stats
 from .auth import current_user_email, login_required
 from .exercises import EXERCISE_NAMES, TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
@@ -224,6 +224,14 @@ def record():
         return redirect(url_for("main.settings"))
     user_email = current_user_email()
     quota_left, quota_limit = _quota(user_email, config)
+    # ?routine=<id> starts a workout from that routine (unless one is already live;
+    # app.js decides that, since the live recording only exists in the browser).
+    start = None
+    if "routine" in request.args:
+        routine = routines.get(user_email, request.args.get("routine", type=int) or 0)
+        if routine is None:
+            abort(404)
+        start = {"id": routine.id, "name": routine.name, "blocks": routines.blocks_of(routine)}
     return render_template(
         "record.html",
         config=config,
@@ -231,7 +239,84 @@ def record():
         quota_limit=quota_limit,
         weight_unit=preferences.get_weight_unit(user_email),
         today=_client_today().isoformat(),
+        routines=routines.list_for(user_email),
+        start_routine=start,
     )
+
+
+# --- Routines -------------------------------------------------------------------
+
+
+def _routine_or_404(routine_id: int):
+    routine = routines.get(current_user_email(), routine_id)
+    if routine is None:
+        abort(404)
+    return routine
+
+
+def _routine_editor(routine=None):
+    """The editor for a new routine (routine=None) or an existing one; POST saves."""
+    if request.method == "POST":
+        name, error = routines.validate(request.form.get("name"))
+        blocks = routines.clean_blocks(
+            request.form.getlist("block_name"), request.form.getlist("block_body")
+        )
+        if error:
+            flash(error, "error")
+            return render_template(
+                "routine_edit.html", routine=routine, name=name, blocks=blocks
+            ), 400
+        if routine is None:
+            routines.create(current_user_email(), name, blocks)
+        else:
+            routines.update(routine, name, blocks)
+        db.session.commit()
+        flash(f"Saved {name}.", "ok")
+        return redirect(url_for("main.routine_list"))
+    return render_template(
+        "routine_edit.html",
+        routine=routine,
+        name=routine.name if routine else "",
+        blocks=routines.blocks_of(routine) if routine else [{"name": "", "body": ""}],
+    )
+
+
+@bp.route("/routines")
+@login_required
+def routine_list():
+    return render_template("routines.html", routines=routines.list_for(current_user_email()))
+
+
+@bp.route("/routines/new", methods=["GET", "POST"])
+@login_required
+def routine_new():
+    return _routine_editor()
+
+
+@bp.route("/routines/<int:routine_id>/edit", methods=["GET", "POST"])
+@login_required
+def routine_edit(routine_id: int):
+    return _routine_editor(_routine_or_404(routine_id))
+
+
+@bp.route("/routines/<int:routine_id>/delete", methods=["POST"])
+@login_required
+def routine_delete(routine_id: int):
+    routine = _routine_or_404(routine_id)
+    name = routine.name
+    routines.delete(routine)
+    db.session.commit()
+    flash(f"Deleted {name}.", "ok")
+    return redirect(url_for("main.routine_list"))
+
+
+@bp.route("/routines/<int:routine_id>/duplicate", methods=["POST"])
+@login_required
+def routine_duplicate(routine_id: int):
+    copy = routines.duplicate(_routine_or_404(routine_id))
+    db.session.commit()
+    flash(f"Made {copy.name}.", "ok")
+    return redirect(url_for("main.routine_list"))
 
 
 @bp.route("/log/manual")
@@ -524,6 +609,7 @@ def review():
         "config": config,
         "weight_unit": unit,
         "from_record": request.form.get("from_record") == "1",
+        "routine_name": routines.clean_title(request.form.get("routine_name")),
     }
     if config.is_site:
         limit = _site_limit()
@@ -684,6 +770,9 @@ def confirm():
         )
     if bodyweight:
         _save_bodyweight(user_email, when, bodyweight)  # always private
+    routine_name = routines.clean_title(request.form.get("routine_name"))
+    if routine_name:
+        session_meta.set_title(user_email, when, routine_name)  # started from a routine
     db.session.commit()
     # Straight to Home, where the day you just saved is on top and ready to share.
     # `recorded` tells the page to clear the finished recording from the browser.

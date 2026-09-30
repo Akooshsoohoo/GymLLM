@@ -36,6 +36,7 @@
             <input type="hidden" name="llm_output" value="">
             <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
             {% if from_record %}<input type="hidden" name="from_record" value="1">{% endif %}
+            {% if routine_name %}<input type="hidden" name="routine_name" value="{{ routine_name }}">{% endif %}
             <label for="workout" class="words-label">Your words</label>
             <textarea id="workout" name="workout" rows="3" class="textarea words-text">{{ workout_text }}</textarea>
             <div class="words-actions">
@@ -56,6 +57,7 @@
           {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if from_record %}<input type="hidden" name="from_record" value="1">{% endif %}
+        {% if routine_name %}<input type="hidden" name="routine_name" value="{{ routine_name }}">{% endif %}
 
         <section class="review-group" aria-labelledby="lifts-h">
             <div class="group-head">

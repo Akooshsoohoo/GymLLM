@@ -1108,7 +1108,8 @@ a.week-day.logged:hover { background: var(--you-hover); color: var(--on-you); }
     height: 136px;
     border-radius: 50%;
     background: var(--surface);
-    box-shadow: var(--shadow-card), inset 0 0 0 8px var(--line-2);
+    border: 8px solid var(--line-2); /* a border, not an inset shadow: --shadow-card is "none" in dark mode */
+    box-shadow: var(--shadow-card);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1120,11 +1121,28 @@ a.week-day.logged:hover { background: var(--you-hover); color: var(--on-you); }
 .rec-alt { width: 100%; margin-top: 40px; justify-content: center; }
 
 .rec-blocks { display: grid; gap: 12px; }
-.rec-block { padding: 14px 18px 16px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow-card); }
-.rec-block:focus-within { box-shadow: var(--shadow-card), 0 0 0 1.5px var(--you); }
-.rec-block-head { display: none; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.rec-blocks.has-many .rec-block-head { display: flex; }
-.rec-block-num { color: var(--muted); font-size: 13px; font-weight: 600; }
+/* A block of notes, in the recorder and the routine editor alike: the whole block
+   lights up while you type anywhere in it (its fields have no ring of their own). */
+.block { padding: 14px 18px 16px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow-card); outline: 2px solid transparent; transition: outline-color 0.15s ease; }
+/* An outline, not a shadow ring: --shadow-card is "none" in dark mode, which would void a combined box-shadow. */
+.block:focus-within { outline-color: var(--you); }
+.block input.block-name {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 700;
+}
+.block input.block-name:hover, .block input.block-name:focus { border: 0; }
+.block input.block-name::placeholder { color: var(--muted); font-weight: 600; }
+/* One unnamed block looks as it always did: no head until there are two or it has a name. */
+.rec-block-head { display: none; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
+.rec-blocks.has-many .rec-block-head, .rec-block.has-name .rec-block-head, .rec-block-head:focus-within { display: flex; }
 .rec-block-remove { height: auto; padding: 0; border: 0; background: none; color: var(--muted-2); font-size: 13px; font-weight: 500; }
 .rec-block-remove:hover { background: none; color: var(--danger); }
 .rec-block.is-confirming .rec-block-remove { color: var(--danger); font-weight: 700; }
@@ -1167,6 +1185,47 @@ a.week-day.logged:hover { background: var(--you-hover); color: var(--on-you); }
 .rec-sheet-actions .btn { width: 100%; }
 .rec-keep { background: var(--field); }
 .rec-sheet-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
+
+/* --- Routines ---------------------------------------------------------- */
+.rec-routines { width: 100%; margin-top: 36px; text-align: left; }
+.rec-routines .section-head { margin-bottom: 10px; }
+.routine-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.routine-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; padding: 14px 16px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow-card); }
+.routine-start {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name go" "meta go";
+    align-content: center;
+    row-gap: 2px;
+    color: var(--ink);
+    text-decoration: none;
+    transition: transform 0.15s ease;
+}
+.routine-start:active { transform: scale(0.97); }
+.routine-start .routine-name { grid-area: name; }
+.routine-start .routine-meta { grid-area: meta; }
+.routine-go { grid-area: go; padding: 7px 14px; border-radius: 99px; background: var(--you-tint); color: var(--you-ink); font-size: 14px; font-weight: 700; }
+.routine-start:hover .routine-go { background: var(--you); color: var(--on-you); }
+.routine-main { flex: 1 1 180px; min-width: 0; display: grid; gap: 2px; color: var(--ink); text-decoration: none; }
+.routine-main:hover .routine-name { color: var(--you-ink); }
+.routine-name { font-family: var(--font-head); font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.routine-meta { color: var(--muted); font-size: 13px; font-weight: 500; }
+.routine-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.routine-actions form { display: contents; }
+.routine-delete { color: var(--danger); }
+.routine-delete:hover { color: var(--danger); }
+.routine-empty { margin: 0; color: var(--muted); font-size: 15px; }
+.routine-empty a { color: var(--ink); font-weight: 600; }
+.routine-lede { margin: -6px 0 18px; }
+.routine-help { margin: -6px 0 14px; }
+.routine-blocks { margin-bottom: 12px; }
+.routine-block-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.routine-block-tools { display: flex; align-items: center; gap: 4px; }
+.block-tool { width: 32px; height: 32px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: var(--field); color: var(--ink-2); font-size: 15px; }
+.block-tool:hover { background: var(--line); color: var(--ink); }
+.block-tool:disabled { opacity: 0.35; cursor: default; }
+.routine-block .rec-block-remove { margin-left: 6px; }
+.routine-save { margin-top: 18px; }
 
 /* Help sheet */
 dialog.sheet {

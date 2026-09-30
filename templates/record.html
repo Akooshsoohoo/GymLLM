@@ -7,7 +7,7 @@
 {#- Idle: one big record button. Live: a timer and blocks of notes you fill in as you
     train. app.js keeps everything in the browser (so a reload or a locked phone loses
     nothing) and Stop posts the blocks to /review as one text. -#}
-<div class="rec" data-recorder data-state="idle">
+<div class="rec" data-recorder data-state="idle"{% if start_routine %} data-rec-routine='{{ start_routine|tojson }}'{% endif %}>
     <div class="rec-top">
         <a href="{{ url_for('main.home') }}">&lsaquo; Home</a>
         <span class="rec-clock"><span class="rec-live-dot" aria-hidden="true"></span><span class="sr-only">Workout time </span><time data-rec-clock>0:00</time></span>
@@ -21,6 +21,25 @@
             <span class="rec-start-btn" aria-hidden="true"><span></span></span>
             <span class="rec-start-label">Start workout</span>
         </button>
+        <div class="rec-routines" aria-labelledby="rec-routines-h">
+            <div class="section-head">
+                <h2 id="rec-routines-h">Routines</h2>
+                <a href="{{ url_for('main.routine_list') }}" class="link-quiet">Manage routines</a>
+            </div>
+            {% if routines %}
+            <ul class="routine-list">
+                {% for r in routines %}
+                <li><a href="{{ url_for('main.record', routine=r.id) }}" class="routine-row routine-start">
+                    <span class="routine-name">{{ r.name }}</span>
+                    <span class="routine-meta">{{ r.blocks }} block{{ '' if r.blocks == 1 else 's' }}</span>
+                    <span class="routine-go" aria-hidden="true">Start</span>
+                </a></li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="routine-empty">No routines yet. <a href="{{ url_for('main.routine_new') }}">Create one.</a></p>
+            {% endif %}
+        </div>
         {% if config.is_site %}<p class="quota rec-quota">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today</p>{% endif %}
         <div class="log-foot rec-alt">
             <span>Already done? <a href="{{ url_for('main.log') }}">Log a past workout</a></span>
@@ -35,6 +54,7 @@
         <input type="hidden" name="llm_output" value="">
         <input type="hidden" name="weight_unit" class="weight-unit-field" value="{{ weight_unit or 'lbs' }}">
         <input type="hidden" name="from_record" value="1">
+        <input type="hidden" name="routine_name" value="" data-rec-routine-name>
         <textarea name="workout" hidden></textarea>
 
         <div class="rec-blocks" data-rec-blocks></div>
@@ -53,6 +73,7 @@
             </div>
             <p class="rec-summary"><strong data-rec-duration></strong> <span data-rec-count></span></p>
             <div class="alert error" id="llm-error" hidden></div>
+            <p class="muted small" data-rec-skipped hidden></p>
             <p class="muted small" data-rec-empty hidden>Nothing written yet. Add what you did, then log it.</p>
             <div class="rec-sheet-actions">
                 <button type="submit" class="btn btn-you btn-xl" data-rec-log>Log it</button>
@@ -65,9 +86,9 @@
     </form>
 
     <template id="rec-block-template">
-        <div class="rec-block" data-rec-block>
+        <div class="block rec-block" data-rec-block>
             <div class="rec-block-head">
-                <span class="rec-block-num"></span>
+                <input type="text" class="block-name" maxlength="40" aria-label="Block name" autocomplete="off" data-rec-name>
                 <button type="button" class="rec-block-remove" data-rec-remove>Remove</button>
             </div>
             <textarea class="rec-text" rows="3" aria-label="Workout notes" placeholder="Bench 185, 3 sets of 8. Then some pull ups…"></textarea>

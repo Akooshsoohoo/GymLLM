@@ -457,32 +457,67 @@
     var list = $("[data-rec-blocks]", recorder);
     var tpl = $("#rec-block-template");
     var words = $("textarea[name=workout]", form);
+    var routineField = $("[data-rec-routine-name]", form);
     var clock = $("[data-rec-clock]", recorder);
     var finish = $("#rec-finish");
     var state = null, timer = null;
 
-    var fields = function () { return $$(".rec-text", list); };
-    // The hidden "workout" field always holds the blocks joined, so the browser-model
-    // hook (which reads it on submit) and a plain post both see the latest text.
-    var joined = function () {
-      return fields().map(function (t) { return t.value.trim(); }).filter(Boolean).join("\n\n");
+    // A recording saved before routines had blocks as plain strings and no routine.
+    var normalize = function (s) {
+      s.routine = s.routine && s.routine.name ? s.routine : null;
+      s.blocks = s.blocks.map(function (b) {
+        return typeof b === "string" ? { name: "", text: b } : { name: (b && b.name) || "", text: (b && b.text) || "" };
+      });
+      return s;
     };
+    var blockNodes = function () { return $$("[data-rec-block]", list); };
+    var fields = function () { return $$(".rec-text", list); };
+    var blockData = function () {
+      return blockNodes().map(function (node) {
+        return { name: $("[data-rec-name]", node).value, text: $(".rec-text", node).value };
+      });
+    };
+    // What gets parsed: each block as "Name\nbody" (or just the body), a blank line
+    // between blocks. A line still holding a ___ placeholder was skipped, so it goes.
+    var build = function () {
+      var skipped = 0, parts = [];
+      blockData().forEach(function (b) {
+        var body = b.text.split("\n").filter(function (line) {
+          if (line.indexOf("___") === -1) return true;
+          skipped++;
+          return false;
+        }).join("\n").trim();
+        if (!body) return;
+        var name = b.name.trim();
+        parts.push(name ? name + "\n" + body : body);
+      });
+      return { text: parts.join("\n\n"), blocks: parts.length, skipped: skipped };
+    };
+    // The hidden "workout" field always holds the built text, so the browser-model
+    // hook (which reads it on submit) and a plain post both see the latest.
     var save = function () {
-      words.value = joined();
+      words.value = build().text;
       if (!state) return;
-      state.blocks = fields().map(function (t) { return t.value; });
+      state.blocks = blockData();
+      routineField.value = state.routine ? state.routine.name : "";
       recStore.set(state);
     };
     var grow = function (t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
     var renumber = function () {
-      var blocks = $$("[data-rec-block]", list);
-      blocks.forEach(function (b, i) { $(".rec-block-num", b).textContent = "Block " + (i + 1); });
+      var blocks = blockNodes();
+      blocks.forEach(function (b, i) {
+        var name = $("[data-rec-name]", b);
+        name.placeholder = "Block " + (i + 1);
+        b.classList.toggle("has-name", !!name.value.trim());
+      });
       list.classList.toggle("has-many", blocks.length > 1);
     };
-    var addBlock = function (text, focus) {
+    var emptyBlock = function () { return { name: "", text: "" }; };
+    var addBlock = function (block, focus) {
       var node = tpl.content.firstElementChild.cloneNode(true);
       var field = $(".rec-text", node);
-      field.value = text || "";
+      $("[data-rec-name]", node).value = block.name;
+      field.value = block.text;
       list.appendChild(node);
       grow(field);
       renumber();
@@ -491,9 +526,9 @@
     };
     var tick = function () { clock.textContent = clockText(Date.now() - state.startedAt); };
     var goLive = function (s, focus) {
-      state = s;
+      state = normalize(s);
       list.innerHTML = "";
-      (s.blocks.length ? s.blocks : [""]).forEach(function (text) { addBlock(text); });
+      (state.blocks.length ? state.blocks : [emptyBlock()]).forEach(function (b) { addBlock(b); });
       recorder.dataset.state = "live";
       tick();
       clearInterval(timer);
@@ -503,11 +538,12 @@
     };
 
     $("[data-rec-start]", recorder).addEventListener("click", function () {
-      goLive({ startedAt: Date.now(), blocks: [""] }, true);
+      goLive({ startedAt: Date.now(), routine: null, blocks: [emptyBlock()] }, true);
     });
     list.addEventListener("input", function (ev) {
-      if (!ev.target.classList.contains("rec-text")) return;
-      grow(ev.target);
+      if (ev.target.classList.contains("rec-text")) grow(ev.target);
+      else if (ev.target.matches("[data-rec-name]")) renumber();
+      else return;
       save();
     });
     // Remove a block; one with writing in it asks first ("Remove?" for a few seconds).
@@ -515,28 +551,32 @@
       var btn = ev.target.closest("[data-rec-remove]");
       if (!btn) return;
       var block = btn.closest("[data-rec-block]");
-      if ($(".rec-text", block).value.trim() && !block.classList.contains("is-confirming")) {
+      var written = $(".rec-text", block).value.trim() || $("[data-rec-name]", block).value.trim();
+      if (written && !block.classList.contains("is-confirming")) {
         block.classList.add("is-confirming");
         btn.textContent = "Remove?";
         setTimeout(function () { block.classList.remove("is-confirming"); btn.textContent = "Remove"; }, 3000);
         return;
       }
       block.remove();
-      if (!fields().length) addBlock("", true);
+      if (!fields().length) addBlock(emptyBlock(), true);
       renumber();
       save();
     });
     $("[data-rec-add]", recorder).addEventListener("click", function () {
-      addBlock("", true);
+      addBlock(emptyBlock(), true);
       save();
     });
 
     // Stop: the finish sheet with the time so far and "Log it".
     $("[data-rec-stop]", recorder).addEventListener("click", function () {
       save();
-      var n = fields().filter(function (t) { return t.value.trim(); }).length;
+      var built = build(), n = built.blocks;
+      var skippedNote = $("[data-rec-skipped]", finish);
       $("[data-rec-duration]", finish).textContent = durationText(Date.now() - state.startedAt);
       $("[data-rec-count]", finish).textContent = n > 1 ? "· " + n + " blocks" : "";
+      skippedNote.textContent = built.skipped + (built.skipped === 1 ? " line" : " lines") + " left blank, skipped.";
+      skippedNote.hidden = !built.skipped;
       $("[data-rec-empty]", finish).hidden = n > 0;
       $("[data-rec-log]", finish).disabled = n === 0;
       var errBox = $("#llm-error"); if (errBox) errBox.hidden = true;
@@ -557,14 +597,78 @@
       state = null;
       list.innerHTML = "";
       words.value = "";
+      routineField.value = "";
       recorder.dataset.state = "idle";
       $("#rec-discard").close();
     });
     // The timer is worked out from the start time, so catch up the moment the page is back.
     document.addEventListener("visibilitychange", function () { if (state && !document.hidden) tick(); });
 
-    var saved = recStore.get();
+    // A live recording always wins; ?routine= only starts a new one.
+    var saved = recStore.get(), start = null;
+    try { start = JSON.parse(recorder.dataset.recRoutine || "null"); } catch (e) { start = null; }
     if (saved) goLive(saved, false);
+    else if (start) {
+      goLive({
+        startedAt: Date.now(),
+        routine: { id: start.id, name: start.name },
+        blocks: start.blocks.map(function (b) { return { name: b.name, text: b.body }; })
+      }, false);
+    }
+    // Drop ?routine= so a reload after Discard doesn't start the routine again.
+    if (start && window.history.replaceState) window.history.replaceState(null, "", window.location.pathname);
+  })();
+
+  // ---------------------------------------------------------------- Routine editor
+  // Add, remove and reorder blocks. The form posts them as repeated block_name /
+  // block_body fields in the order they sit on the page.
+  var routineEditor = $("[data-routine-editor]");
+  if (routineEditor) (function () {
+    var list = $("[data-routine-blocks]", routineEditor);
+    var tpl = $("#routine-block-template");
+    var addBtn = $("[data-routine-add]", routineEditor);
+    var MAX_BLOCKS = 20;
+    var grow = function (t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
+    var blocks = function () { return $$("[data-routine-block]", list); };
+    var refresh = function () {
+      var all = blocks();
+      all.forEach(function (b, i) {
+        $("[data-routine-move='-1']", b).disabled = i === 0;
+        $("[data-routine-move='1']", b).disabled = i === all.length - 1;
+      });
+      addBtn.hidden = all.length >= MAX_BLOCKS;
+    };
+    var add = function (focus) {
+      var node = tpl.content.firstElementChild.cloneNode(true);
+      list.appendChild(node);
+      refresh();
+      if (focus) { $(".block-name", node).focus(); node.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+    };
+    $$(".rec-text", list).forEach(grow);
+    if (!blocks().length) add(false);
+    refresh();
+
+    addBtn.addEventListener("click", function () { add(true); });
+    list.addEventListener("input", function (ev) { if (ev.target.classList.contains("rec-text")) grow(ev.target); });
+    list.addEventListener("click", function (ev) {
+      var block = ev.target.closest("[data-routine-block]");
+      if (!block) return;
+      var move = ev.target.closest("[data-routine-move]");
+      if (move) {
+        var sibling = move.dataset.routineMove === "-1" ? block.previousElementSibling : block.nextElementSibling;
+        if (!sibling) return;
+        if (move.dataset.routineMove === "-1") list.insertBefore(block, sibling);
+        else list.insertBefore(sibling, block);
+        refresh();
+        move.focus();
+        return;
+      }
+      if (ev.target.closest("[data-routine-remove]")) {
+        block.remove();
+        if (!blocks().length) add(true);
+        refresh();
+      }
+    });
   })();
 
   // Menus built on <details>: close on a click elsewhere or on Escape.

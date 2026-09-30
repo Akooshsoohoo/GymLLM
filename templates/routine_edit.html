@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | {{ 'Edit routine' if routine else 'New routine' }}{% endblock %}
+{% block main_class %}page page-narrow{% endblock %}
+
+{% macro routine_block(b) -%}
+<div class="block routine-block" data-routine-block>
+    <div class="routine-block-head">
+        <input type="text" name="block_name" class="block-name" maxlength="40" value="{{ b.name or '' }}"
+               placeholder="Block name (optional)" aria-label="Block name" autocomplete="off">
+        <div class="routine-block-tools">
+            <button type="button" class="block-tool" data-routine-move="-1" aria-label="Move block up">&uarr;</button>
+            <button type="button" class="block-tool" data-routine-move="1" aria-label="Move block down">&darr;</button>
+            <button type="button" class="rec-block-remove" data-routine-remove>Remove</button>
+        </div>
+    </div>
+    <textarea name="block_body" class="rec-text" rows="3" maxlength="4000" aria-label="What to do in this block"
+              placeholder="Bench press 185 lbs, 3 sets of ___">{{ b.body or '' }}</textarea>
+</div>
+{%- endmacro %}
+
+{% block content %}
+<p class="crumb"><a href="{{ url_for('main.routine_list') }}">&lsaquo; Routines</a></p>
+<div class="page-head">
+    <h1>{{ 'Edit routine' if routine else 'New routine' }}</h1>
+</div>
+
+<form method="post" class="routine-form" data-routine-editor
+      action="{{ url_for('main.routine_edit', routine_id=routine.id) if routine else url_for('main.routine_new') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+        <label for="routine-name">Name</label>
+        <input type="text" id="routine-name" name="name" class="input" value="{{ name }}" maxlength="60" required
+               placeholder="Push day" autocomplete="off">
+    </div>
+
+    <p class="field-help routine-help">Write each block the way you'd log it. Put <strong>___</strong> where a number goes and fill it in while you train. Any line still showing ___ when you finish is skipped.</p>
+
+    <div class="rec-blocks routine-blocks" data-routine-blocks>
+        {% for b in blocks %}{{ routine_block(b) }}{% endfor %}
+    </div>
+    <button type="button" class="rec-add" data-routine-add>+ Add a block</button>
+    <template id="routine-block-template">{{ routine_block({}) }}</template>
+
+    <div class="toolbar routine-save">
+        <button type="submit" class="btn btn-primary">Save routine</button>
+        <a href="{{ url_for('main.routine_list') }}" class="btn btn-ghost">Cancel</a>
+    </div>
+</form>
+{% endblock %}

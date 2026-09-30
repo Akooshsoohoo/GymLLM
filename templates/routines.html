@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Routines{% endblock %}
+{% block main_class %}page page-narrow{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('main.record') }}">&lsaquo; Record</a></p>
+<div class="page-head">
+    <h1>Routines</h1>
+    <a href="{{ url_for('main.routine_new') }}" class="btn btn-primary btn-sm">New routine</a>
+</div>
+<p class="muted routine-lede">A routine fills in the recorder for you. Start one from the record screen and fill in the numbers as you train.</p>
+
+{% if routines %}
+<ul class="routine-list">
+    {% for r in routines %}
+    <li class="routine-row">
+        <a href="{{ url_for('main.record', routine=r.id) }}" class="routine-main">
+            <span class="routine-name">{{ r.name }}</span>
+            <span class="routine-meta">{{ r.blocks }} block{{ '' if r.blocks == 1 else 's' }}</span>
+        </a>
+        <div class="routine-actions">
+            <a href="{{ url_for('main.routine_edit', routine_id=r.id) }}" class="btn btn-ghost btn-sm">Edit</a>
+            <form method="post" action="{{ url_for('main.routine_duplicate', routine_id=r.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost btn-sm">Duplicate</button>
+            </form>
+            <button type="button" class="btn btn-text btn-sm routine-delete" data-dialog-open="routine-delete-{{ r.id }}">Delete</button>
+        </div>
+        <dialog class="sheet rec-sheet" id="routine-delete-{{ r.id }}" aria-labelledby="routine-delete-{{ r.id }}-title">
+            <div class="sheet-head">
+                <h2 id="routine-delete-{{ r.id }}-title">Delete {{ r.name }}?</h2>
+                <button type="button" class="sheet-close" data-dialog-close aria-label="Close">&times;</button>
+            </div>
+            <p class="muted">Workouts you already logged with it stay as they are.</p>
+            <div class="rec-sheet-actions">
+                <form method="post" action="{{ url_for('main.routine_delete', routine_id=r.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-xl">Delete</button>
+                </form>
+                <button type="button" class="btn btn-xl rec-keep" data-dialog-close>Keep it</button>
+            </div>
+        </dialog>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="routine-empty">No routines yet. <a href="{{ url_for('main.routine_new') }}">Create one.</a></p>
+{% endif %}
+{% endblock %}
