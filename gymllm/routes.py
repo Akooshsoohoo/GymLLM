@@ -274,19 +274,19 @@ def _group_by_exercise(rows: list[dict]) -> list[dict]:
     return [groups[k] for k in order]
 
 
-def _headline(summary: dict) -> list[str]:
-    """The big lines on the share poster: '8 sets.', '3 mi.' (or exercises / minutes
-    when there are no sets or distance)."""
-    lines = []
+def _stat_line(summary: dict) -> str:
+    """The numbers under the share poster's focus name: '8 sets · 3 mi' (or exercises /
+    minutes when there are no sets or distance)."""
+    parts = []
     if summary["sets"]:
-        lines.append(f"{summary['sets']} set{'' if summary['sets'] == 1 else 's'}.")
+        parts.append(f"{summary['sets']} set{'' if summary['sets'] == 1 else 's'}")
     elif summary["entries"]:
         n = summary["exercises"]
-        lines.append(f"{n} exercise{'' if n == 1 else 's'}.")
+        parts.append(f"{n} exercise{'' if n == 1 else 's'}")
     cardio = summary["cardio"]
     if cardio["lead"] or cardio["minutes_text"]:
-        lines.append(f"{cardio['lead'] or cardio['minutes_text']}.")
-    return lines
+        parts.append(cardio["lead"] or cardio["minutes_text"])
+    return " · ".join(parts)
 
 
 def _edit_url(when: str) -> str:
@@ -317,7 +317,9 @@ def _day_detail(when: str, all_rows: list[dict], all_cardio: list[dict], profile
         "label": f"{d:%A %d %B %Y}".replace(" 0", " "),
         "short": f"{d:%a} {d.day} {d:%b}".upper(),
         "name": (profile.display_name.split()[0] if profile else "").upper(),
-        "headline": _headline(summary),
+        "stat_line": _stat_line(summary),
+        # What MuscleIcons.forTags() picks the poster's icon and focus name from.
+        "hint": session_meta.icon_hint(rows, cardio),
         "stats": {
             "exercises": summary["entries"],
             "sets": summary["sets"],

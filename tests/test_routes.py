@@ -939,8 +939,11 @@ def test_day_page_share_payload_excludes_body_weight(
     assert share["cardio"] == [{"activity": "walking", "distance": "3 miles", "duration": "45 min"}]
     assert share["stats"]["sets"] == 5 and share["stats"]["cardio"] == "3 mi"
     assert "130" not in json.dumps(share)
-    assert share["headline"] == ["5 sets.", "3 mi."] and share["short"] == "TUE 10 MAR"
-    assert set(share) == {"date", "label", "short", "name", "headline", "stats", "lifts", "cardio"}
+    assert share["stat_line"] == "5 sets · 3 mi" and share["short"] == "TUE 10 MAR"
+    assert share["hint"].startswith("chest") and share["hint"].endswith("walking")
+    assert set(share) == {
+        "date", "label", "short", "name", "stat_line", "hint", "stats", "lifts", "cardio"
+    }
 
 
 def test_day_page_marks_personal_records(logged_in, add_workout):

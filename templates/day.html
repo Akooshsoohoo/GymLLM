@@ -45,7 +45,11 @@
         {% if rows or cardio %}
         <section class="poster" aria-label="Share preview">
             <div class="poster-top"><span>{% if share.name %}{{ share.name }} · {% endif %}{{ share.short }}</span><span>GYMLLM</span></div>
-            <p class="poster-headline">{% for line in share.headline %}<span>{{ line }}</span>{% endfor %}</p>
+            <muscle-icon class="poster-icon" group="full" size="140" data-icon-hint="{{ share.hint }}" aria-hidden="true"></muscle-icon>
+            <div class="poster-head">
+                <p class="poster-focus" data-poster-focus>{{ title }}</p>
+                {% if share.stat_line %}<p class="poster-stats">{{ share.stat_line }}</p>{% endif %}
+            </div>
             <ul class="poster-rows">
                 {% for g in grouped_rows %}
                 {% set best = g.entries|selectattr('pr')|first %}
