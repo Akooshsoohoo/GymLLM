@@ -1,6 +1,6 @@
 {
-  "name": "GymLLM",
-  "short_name": "GymLLM",
+  "name": "Levra",
+  "short_name": "Levra",
   "icons": [
     { "src": "/static/favicon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/static/favicon-512.png", "sizes": "512x512", "type": "image/png" }

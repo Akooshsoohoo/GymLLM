@@ -18,7 +18,7 @@ from .models import Comment, Friendship, Kudos, Profile, SessionVisibility
 
 HANDLE_RE = re.compile(r"^[a-z0-9_]{3,20}$")
 RESERVED_HANDLES = {
-    "admin", "api", "edit", "feed", "friends", "gymllm", "help", "invite", "login",
+    "admin", "api", "edit", "feed", "friends", "gymllm", "levra", "help", "invite", "login",
     "logout", "me", "new", "profile", "root", "settings", "setup", "support", "system",
 }  # fmt: skip
 NAME_MAX = 60

@@ -71,7 +71,7 @@ def _connection_message(config: LLMConfig) -> str:
     if config.is_local or config.provider == "custom":
         return (
             f"Could not reach {label} at {config.effective_base_url}. Make sure the server "
-            "is running and reachable from where GymLLM is hosted."
+            "is running and reachable from where Levra is hosted."
         )
     return f"Could not connect to {label}. Check your network and the base URL, then try again."
 

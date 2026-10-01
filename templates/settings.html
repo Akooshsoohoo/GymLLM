@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}GymLLM | Settings{% endblock %}
+{% block title %}Levra | Settings{% endblock %}
 {% block content %}
 {% set origin_is_local = request.host.split(':')[0] in ('localhost', '127.0.0.1', '::1', '[::1]') %}
 <div class="page-head">
@@ -77,11 +77,11 @@
     <p class="small">
         <span data-setup-label>This provider</span> is called directly from this page, so it has to be
         running on <em>this</em> computer. Your workout text goes from the page to the model and never
-        through the GymLLM server.
+        through the Levra server.
     </p>
 
     {% if origin_is_local %}
-    <p class="muted small">You are running GymLLM locally, so no extra setup is needed.</p>
+    <p class="muted small">You are running Levra locally, so no extra setup is needed.</p>
     {% else %}
     <div data-setup-for="ollama" hidden>
         <h3 class="setup-heading">Allow this site once</h3>

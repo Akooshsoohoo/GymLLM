@@ -38,7 +38,7 @@ PROVIDERS: dict[str, Provider] = {
         # it is the default choice wherever it is available.
         Provider(
             id=SITE_PROVIDER,
-            label="GymLLM shared model",
+            label="Levra shared model",
             kind="openai",
             base_url=None,
             default_model="",
@@ -197,7 +197,7 @@ class LLMConfig:
     @property
     def runs_in_browser(self) -> bool:
         """Local providers are called from the user's browser, never from the server,
-        so a hosted copy of GymLLM can still reach the model on the visitor's machine."""
+        so a hosted copy of Levra can still reach the model on the visitor's machine."""
         return self.provider_info.is_local
 
     def browser_config(self) -> dict | None:

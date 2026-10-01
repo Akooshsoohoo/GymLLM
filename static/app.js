@@ -1,4 +1,4 @@
-/* GymLLM front-end helpers. Every block guards on the elements it needs, so
+/* Levra front-end helpers. Every block guards on the elements it needs, so
    this one file is safe to load on every page. */
 (function () {
   "use strict";
@@ -1199,9 +1199,9 @@
       if (icon) ctx.drawImage(icon, W - 50 - 504, 166, 504, 504);
       ctx.fillStyle = C.ink;
 
-      // Top line: MAYA · THU 24 SEP ........ GYMLLM
+      // Top line: MAYA · THU 24 SEP ........ LEVRA
       ctx.font = "700 30px " + FONT; ctx.textBaseline = "alphabetic";
-      var brandW = trackedText(ctx, "GYMLLM", W - P, P + 30, 3, true);
+      var brandW = trackedText(ctx, "LEVRA", W - P, P + 30, 3, true);
       var top = [data.name, data.short].filter(Boolean).join(" · ");
       var maxTop = W - 2 * P - brandW - 40;
       while (top.length > 1 && ctx.measureText(top).width + top.length * 3 > maxTop) top = top.slice(0, -1);
@@ -1290,7 +1290,7 @@
         if (errBox) errBox.hidden = true;
         var done = function () { btn.disabled = false; btn.textContent = idle; };
         ready.then(function (blob) {
-          var name = "gymllm-" + shareData.date + ".png";
+          var name = "levra-" + shareData.date + ".png";
           var file = new File([blob], name, { type: "image/png" });
           if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
             return navigator.share({ files: [file], title: "Workout " + shareData.date }).catch(function (err) {

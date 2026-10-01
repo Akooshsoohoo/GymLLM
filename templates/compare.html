@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "_social.html" as social with context %}
-{% block title %}GymLLM | You vs {{ other.display_name }}{% endblock %}
+{% block title %}Levra | You vs {{ other.display_name }}{% endblock %}
 {% macro lead(t, side) -%}{{ (' lead-you' if side == 'mine' else ' lead-friend') if t.lead == side }}{%- endmacro %}
 {% macro total_value(t, side) -%}
 {{ t[side]|round|int|short_num }}{% if t.units %} <small>{{ t.units[0 if side == 'mine' else 1] }}</small>{% endif %}

@@ -1,4 +1,4 @@
-/* GymLLM muscle icons — one anatomical figure, cropped + highlighted per group.
+/* Levra muscle icons — one anatomical figure, cropped + highlighted per group.
    Usage:
      <script src="muscle-icons.js"></script>
      <muscle-icon group="chest" size="48"></muscle-icon>           (web component)

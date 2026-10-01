@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "_social.html" as social with context %}
-{% block title %}GymLLM | {{ other.display_name }} (@{{ other.handle }}){% endblock %}
+{% block title %}Levra | {{ other.display_name }} (@{{ other.handle }}){% endblock %}
 {% block content %}
 {% set is_self = rel == 'self' %}
 {% set tone = 'solid-you' if is_self else 'solid-friend' %}

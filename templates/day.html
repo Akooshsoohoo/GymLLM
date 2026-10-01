@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}GymLLM | {{ when|nice_date }}{% endblock %}
+{% block title %}Levra | {{ when|nice_date }}{% endblock %}
 {% block content %}
 {% from "_session_visual.html" import visual as session_visual %}
 {% set rel = when|day_label %}
@@ -44,7 +44,7 @@
     <div class="day-side">
         {% if rows or cardio %}
         <section class="poster" aria-label="Share preview">
-            <div class="poster-top"><span>{% if share.name %}{{ share.name }} · {% endif %}{{ share.short }}</span><span>GYMLLM</span></div>
+            <div class="poster-top"><span>{% if share.name %}{{ share.name }} · {% endif %}{{ share.short }}</span><span>LEVRA</span></div>
             <muscle-icon class="poster-icon" group="full" size="140" data-icon-hint="{{ share.hint }}" aria-hidden="true"></muscle-icon>
             <div class="poster-head">
                 <p class="poster-focus" data-poster-focus>{{ title }}</p>

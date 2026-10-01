@@ -1,6 +1,6 @@
-# GymLLM
+# Levra
 
-Log workouts in plain English. GymLLM sends your text to the LLM of your choice
+Log workouts in plain English. Levra sends your text to the LLM of your choice
 (OpenAI, Anthropic, Gemini, Groq, OpenRouter, a local Ollama or LM Studio, or any
 OpenAI-compatible server), shows you what it understood to review and edit, then
 saves each piece where it belongs: lifts with sets and reps, cardio with distance
@@ -89,18 +89,18 @@ Install [Ollama](https://ollama.com), run `ollama pull llama3.2`, keep Ollama
 running, and choose **Ollama (local)** on the Settings page (LM Studio works the
 same way). Local providers are called **from your browser**, not from the server,
 so they work on the hosted site too: your workout text goes straight from the page
-to the model on your machine and never through GymLLM's server.
+to the model on your machine and never through Levra's server.
 
-When GymLLM is served from anywhere other than `localhost`, tell the local server
+When Levra is served from anywhere other than `localhost`, tell the local server
 to accept requests from that site (a one-time step; the Settings page shows these
 commands with the real address filled in):
 
 - **Ollama, Windows** (PowerShell, then quit Ollama from the tray and reopen it):
-  `[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS", "https://your-gymllm.example.com", "User")`
+  `[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS", "https://levraapp.com", "User")`
 - **Ollama, macOS** (then quit and reopen the Ollama app):
-  `launchctl setenv OLLAMA_ORIGINS "https://your-gymllm.example.com"`
+  `launchctl setenv OLLAMA_ORIGINS "https://levraapp.com"`
 - **Ollama, Linux (systemd):** `sudo systemctl edit ollama`, add
-  `Environment="OLLAMA_ORIGINS=https://your-gymllm.example.com"` under `[Service]`,
+  `Environment="OLLAMA_ORIGINS=https://levraapp.com"` under `[Service]`,
   then `sudo systemctl restart ollama`.
 - **LM Studio:** Developer tab, server settings, turn on **Enable CORS**.
 
@@ -114,7 +114,7 @@ browser; use the **Custom (OpenAI-compatible)** provider with that URL.
 
 ### Free shared model (recommended for a public site)
 
-Set `SITE_LLM_API_KEY` and GymLLM offers a **GymLLM shared model** provider,
+Set `SITE_LLM_API_KEY` and Levra offers a **Levra shared model** provider,
 selected by default for everyone, so a first-time visitor can parse a workout
 without creating an API key or installing anything. The key stays on the server:
 user sessions only record that they use the shared provider.

@@ -123,7 +123,7 @@ def test_custom_connection_error_names_the_url():
     with pytest.raises(LLMConnectionError) as info:
         c.complete_json("s", "u")
     assert "http://models.example.com/v1" in info.value.user_message
-    assert "reachable from where GymLLM is hosted" in info.value.user_message
+    assert "reachable from where Levra is hosted" in info.value.user_message
 
 
 def test_test_connection_reports_success_and_local_models():
@@ -175,7 +175,7 @@ def test_site_config_resolves_to_owner_settings(site_app):
             "openai/gpt-oss-120b",
             "gsk-site",
         )
-        assert cfg.describe() == "GymLLM shared model · openai/gpt-oss-120b"
+        assert cfg.describe() == "Levra shared model · openai/gpt-oss-120b"
         assert LLMConfig.site_default().provider == "site"
         client = get_client(cfg)
         assert isinstance(client, OpenAICompatClient)

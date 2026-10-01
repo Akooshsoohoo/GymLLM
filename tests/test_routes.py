@@ -551,7 +551,7 @@ def test_site_model_is_default_for_new_users(site_user):
     r = site_user.get("/")
     assert r.status_code == 200
     assert b"2 free logs left today" in r.data
-    assert b"GymLLM shared model" not in r.data
+    assert b"Levra shared model" not in r.data
 
 
 def test_site_review_uses_owner_key_and_counts_quota(site_user, site_app, fake_llm):
@@ -607,7 +607,7 @@ def test_site_confirm_caps_tag_calls(site_user, app, site_app, fake_llm):
 
 def test_site_option_only_offered_when_configured(site_user, logged_in):
     r = site_user.get("/settings")
-    assert b'value="site" selected' in r.data and b"GymLLM shared model (free)" in r.data
+    assert b'value="site" selected' in r.data and b"Levra shared model (free)" in r.data
     r = logged_in.get("/settings")
     assert b'value="site"' not in r.data
     r = logged_in.post("/settings", data={"provider": "site"})
@@ -618,7 +618,7 @@ def test_site_settings_save_and_test(site_user, site_app, fake_llm):
     from gymllm import quota
 
     r = site_user.post("/settings", data={"provider": "site"}, follow_redirects=True)
-    assert b"Saved. Using GymLLM shared model" in r.data
+    assert b"Saved. Using Levra shared model" in r.data
     with site_user.session_transaction() as s:
         assert s["llm"] == {"provider": "site", "model": "", "api_key": "", "base_url": ""}
     fake_llm.queue({"ok": True})
