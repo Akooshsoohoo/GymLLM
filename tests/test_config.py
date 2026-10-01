@@ -1,8 +1,22 @@
 import pytest
 
-from gymllm.config import ConfigError, build_config, site_llm_config
+from gymllm.config import ConfigError, admin_emails, build_config, is_local_sqlite, site_llm_config
 
 BASE = {"FLASK_SECRET_KEY": "s"}
+
+
+def test_admin_emails_parses_and_lowercases_comma_separated_list():
+    assert admin_emails({"ADMIN_EMAILS": "Me@Example.com, other@example.com"}) == {
+        "me@example.com",
+        "other@example.com",
+    }
+    assert admin_emails({}) == set()
+
+
+def test_is_local_sqlite():
+    assert is_local_sqlite("sqlite:///gymllm.db") is True
+    assert is_local_sqlite("sqlite://") is True
+    assert is_local_sqlite("postgresql://user:pass@host/db") is False
 
 
 def test_no_site_key_means_no_shared_model():

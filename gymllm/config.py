@@ -54,6 +54,22 @@ def is_production(env: Mapping[str, str] | None = None) -> bool:
     return env.get("FLASK_ENV", "").lower() == "production" or env.get("RENDER", "") == "true"
 
 
+def admin_emails(env: Mapping[str, str] | None = None) -> set[str]:
+    env = os.environ if env is None else env
+    raw = env.get("ADMIN_EMAILS", "")
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+
+def is_local_sqlite(database_url: str) -> bool:
+    """Whether `database_url` is a local SQLite file, never a real database.
+
+    Used to gate the /dev fake-login routes: IS_PRODUCTION alone isn't
+    enough, since a local run can still point DATABASE_URL at a real
+    (e.g. Render Postgres) database.
+    """
+    return database_url.startswith("sqlite")
+
+
 def build_config(env: Mapping[str, str] | None = None) -> dict:
     """Build the Flask config dict from environment variables.
 
@@ -93,4 +109,5 @@ def build_config(env: Mapping[str, str] | None = None) -> dict:
         "GOOGLE_OAUTH_CLIENT_ID": env.get("GOOGLE_CLIENT_ID", ""),
         "GOOGLE_OAUTH_CLIENT_SECRET": env.get("GOOGLE_CLIENT_SECRET", ""),
         "SITE_LLM": site_llm_config(env),
+        "ADMIN_EMAILS": admin_emails(env),
     }

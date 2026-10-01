@@ -17,7 +17,7 @@ from flask import (
 )
 from sqlalchemy import func
 
-from . import preferences, quota, routines, session_meta, sessions, social, stats
+from . import activity, preferences, quota, routines, session_meta, sessions, social, stats
 from .auth import current_user_email, login_required
 from .exercises import EXERCISE_NAMES, TAG_SYSTEM, clean_tags, llm_tags, match_exercise
 from .extensions import db
@@ -649,6 +649,7 @@ def review():
             entries=None,
             **context,
         )
+    activity.record_parse(user_email)
     return render_template(
         "review.html",
         error=None,

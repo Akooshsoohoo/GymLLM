@@ -80,6 +80,29 @@ class LLMUsage(db.Model):
     count = db.Column(db.Integer, nullable=False, default=0)
 
 
+class UserActivity(db.Model):
+    """Cheap 'who's around' signal for the admin dashboard: the last UTC day
+    each known user was seen. Updated at most once per day, not per request."""
+
+    __tablename__ = "user_activity"
+
+    user_email = db.Column(db.String, primary_key=True)
+    last_active_date = db.Column(db.String, nullable=False)  # YYYY-MM-DD, UTC
+
+
+class ParseLog(db.Model):
+    """How many workouts a user parsed on a given day, with any provider --
+    unlike LLMUsage, which only caps the shared site model."""
+
+    __tablename__ = "parse_log"
+    __table_args__ = (db.UniqueConstraint("user_email", "day", name="uq_parse_log_user_day"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_email = db.Column(db.String, nullable=False, index=True)
+    day = db.Column(db.String, nullable=False)  # YYYY-MM-DD, UTC
+    count = db.Column(db.Integer, nullable=False, default=0)
+
+
 class UserPreference(db.Model):
     """Small per-account settings that aren't the LLM provider config (that one
     lives in a session cookie, see LLMConfig)."""

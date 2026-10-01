@@ -54,6 +54,7 @@ def base_test_config():
         "GOOGLE_OAUTH_CLIENT_SECRET": "y",
         "IS_PRODUCTION": False,
         "SITE_LLM": None,
+        "ADMIN_EMAILS": set(),
     }
 
 

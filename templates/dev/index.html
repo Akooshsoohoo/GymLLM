@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Dev login{% endblock %}
+{% block content %}
+<div class="page-head">
+    <h1>Dev login</h1>
+    <p>Local-only: not available in production. Logging in seeds each account with
+        workouts, cardio, body weight and friendships the first time it's used.</p>
+</div>
+<section class="card card-narrow">
+    <h2 class="card-title">Log in as</h2>
+    <ul class="list">
+        {% for u in dev_users %}
+        <li>
+            <a href="{{ url_for('dev.login', slug=u.slug) }}" class="btn btn-primary btn-block">{{ u.display_name }} ({{ u.email }})</a>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}

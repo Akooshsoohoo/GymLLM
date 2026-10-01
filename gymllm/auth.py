@@ -5,8 +5,10 @@ from __future__ import annotations
 from functools import wraps
 
 import requests
-from flask import Blueprint, flash, redirect, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, request, session, url_for
 from flask_dance.contrib.google import google, make_google_blueprint
+
+from . import activity
 
 SESSION_EMAIL = "user_email"
 SESSION_GOOGLE_NAME = "google_name"  # prefills profile setup
@@ -86,6 +88,22 @@ def login_required(view):
     return wrapped
 
 
+def admin_required(view):
+    """Like login_required, but 404s (rather than reveals the route exists) for
+    anyone whose email isn't in the ADMIN_EMAILS allowlist."""
+
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        email = current_user_email()
+        if not email:
+            return redirect(url_for("main.welcome"))
+        if email.lower() not in current_app.config.get("ADMIN_EMAILS", set()):
+            abort(404)
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
 @bp.before_app_request
 def _fix_google_token_expires():
     """Google sometimes returns expires_in as a float, which oauthlib rejects."""
@@ -98,6 +116,15 @@ def _fix_google_token_expires():
         except (ValueError, TypeError):
             token["expires_in"] = 0
         google_bp.token = token
+
+
+@bp.before_app_request
+def _track_activity():
+    if request.endpoint == "static":
+        return
+    email = current_user_email()
+    if email:
+        activity.touch(email)
 
 
 @bp.route("/login")

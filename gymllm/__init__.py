@@ -11,7 +11,7 @@ from flask import Flask, render_template, request, url_for
 from flask_wtf.csrf import CSRFError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from .config import build_config
+from .config import build_config, is_local_sqlite
 from .extensions import csrf, db
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -43,11 +43,17 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     app.config.setdefault("LLM_CLIENT_FACTORY", get_client)
 
-    from . import auth, routes, social_routes
+    from . import admin_routes, auth, routes, social_routes
 
     auth.init_app(app)
     app.register_blueprint(routes.bp)
     app.register_blueprint(social_routes.bp)
+    app.register_blueprint(admin_routes.bp)
+
+    if not app.config["IS_PRODUCTION"] and is_local_sqlite(app.config["SQLALCHEMY_DATABASE_URI"]):
+        from . import dev_routes
+
+        app.register_blueprint(dev_routes.bp)
 
     _register_error_handlers(app)
     _register_context(app)

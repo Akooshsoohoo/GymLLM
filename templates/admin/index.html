@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}GymLLM | Admin{% endblock %}
+{% block content %}
+<div class="page-head">
+    <h1>Admin</h1>
+    <p>No request/traffic logging here, so these aren't page-view counts.
+        "Active" means signed in and loaded at least one page that day; "parses"
+        means a workout was successfully parsed, with any provider.</p>
+</div>
+<section class="card card-narrow">
+    <h2 class="card-title">Right now</h2>
+    <ul class="list">
+        <li>Active today: <strong>{{ stats.active_today }}</strong></li>
+        <li>Active this week: <strong>{{ stats.active_this_week }}</strong></li>
+        <li>Parses today, any provider: <strong>{{ stats.parses_today }}</strong></li>
+    </ul>
+</section>
+<section class="card card-narrow">
+    <h2 class="card-title">Totals</h2>
+    <ul class="list">
+        <li>Accounts created: <strong>{{ stats.total_users }}</strong></li>
+        <li>Workouts logged: <strong>{{ stats.total_workouts }}</strong></li>
+        <li>Cardio entries: <strong>{{ stats.total_cardio }}</strong></li>
+        <li>Body-weight entries: <strong>{{ stats.total_bodyweight }}</strong></li>
+        <li>Profiles created: <strong>{{ stats.total_profiles }}</strong></li>
+        <li>Accepted friendships: <strong>{{ stats.total_friendships }}</strong></li>
+    </ul>
+</section>
+<section class="card card-narrow">
+    <h2 class="card-title">Users</h2>
+    <table>
+        <thead>
+            <tr><th>Email</th><th>Handle</th><th>Workouts</th><th>Last workout logged</th><th>Last seen</th></tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.email }}</td>
+                <td>{{ '@' ~ u.handle if u.handle else '' }}</td>
+                <td>{{ u.workouts }}</td>
+                <td>{{ u.last_workout or '' }}</td>
+                <td>{{ u.last_seen or '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
