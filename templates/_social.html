@@ -128,12 +128,18 @@
 {%- endmacro %}
 
 {#- One row of a session: '225 lbs · 5×5', with a NEW BEST badge for a record. -#}
-{% macro _row(name, detail, pr=False, href=None) -%}
+{#- An exercise's weights, each kept whole: wraps only between them. -#}
+{% macro sub_parts(parts) -%}
+{% for p in parts %}<span class="sub-part">{{ p }}{% if not loop.last %},{% endif %}</span> {% endfor %}
+{%- endmacro %}
+
+{% macro _row(name, detail, pr=False, href=None, parts=()) -%}
 <li>
     {% if href %}<a href="{{ href }}" class="session-exercise">{% else %}<span class="session-exercise">{% endif %}
         <span class="session-name">{{ name|cap_first }}</span>{% if pr %} <span class="badge badge-best" title="Heaviest logged for this exercise">New best</span>{% endif -%}
     {% if href %}</a>{% else %}</span>{% endif %}
-    <span class="session-detail num">{{ detail }}</span>
+    {% if detail %}<span class="session-detail num">{{ detail }}</span>{% endif %}
+    {% if parts %}<span class="session-sub num">{{ sub_parts(parts) }}</span>{% endif %}
 </li>
 {%- endmacro %}
 
@@ -141,7 +147,7 @@
 <ul class="session-rows">
     {% for r in card.rows|exercise_lines %}
     {{ _row(r.exercise, r.detail, r.pr,
-            url_for('main.exercise_history', name=r.exercise) if links else None) }}
+            url_for('main.exercise_history', name=r.exercise) if links else None, r.parts) }}
     {% endfor %}
     {% for c in card.cardio %}
     {{ _row(c.activity, [c.distance, c.duration]|select|join(' · ')) }}

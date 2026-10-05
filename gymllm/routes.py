@@ -801,12 +801,12 @@ def _tile_lines(rows: list[dict], cardio: list[dict]) -> list[dict]:
     """A day's lines for its Sessions card: one per exercise and one per cardio
     activity, in the order they were logged."""
     lines = [
-        {"name": ln["exercise"], "detail": ln["detail"], "pr": ln["pr"]}
+        {"name": ln["exercise"], "detail": ln["detail"], "parts": ln["parts"], "pr": ln["pr"]}
         for ln in sessions.exercise_lines(rows)
     ]
     for c in cardio:
         detail = " · ".join(filter(None, [c["distance"], c["duration"]]))
-        lines.append({"name": c["activity"], "detail": detail, "pr": False})
+        lines.append({"name": c["activity"], "detail": detail, "parts": [], "pr": False})
     return lines
 
 
