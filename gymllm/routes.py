@@ -19,7 +19,14 @@ from sqlalchemy import func
 
 from . import activity, preferences, quota, routines, session_meta, sessions, social, stats
 from .auth import current_user_email, login_required
-from .exercises import EXERCISE_NAMES, TAG_SYSTEM, clean_tags, llm_tags, match_exercise
+from .exercises import (
+    ACTIVITY_NAMES,
+    EXERCISE_NAMES,
+    TAG_SYSTEM,
+    clean_tags,
+    llm_tags,
+    match_exercise,
+)
 from .extensions import db
 from .llm.client import (
     BadOutputError,
@@ -330,7 +337,11 @@ def routine_duplicate(routine_id: int):
 @login_required
 def log_manual():
     """Add lifts, cardio and a weigh-in by hand, with no model involved."""
-    return render_template("log_manual.html", exercise_names=[n.title() for n in EXERCISE_NAMES])
+    return render_template(
+        "log_manual.html",
+        exercise_names=[n.title() for n in EXERCISE_NAMES],
+        cardio_names=ACTIVITY_NAMES,
+    )
 
 
 @bp.route("/weight-unit", methods=["POST"])

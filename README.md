@@ -175,7 +175,8 @@ gymllm/
   llm/providers.py        provider registry + per-browser LLMConfig
   llm/client.py           OpenAI-compatible and Anthropic adapters, error mapping
   models.py               Workout, Cardio, BodyWeight, Profile, Friendship, Kudos, Comment tables
-data/taggedExerciseList.csv   canonical names and tags (edit to customise)
+data/taggedExerciseList.csv   canonical names, tags and aliases (edit to customise; earlier rows win ties)
+data/activityList.csv         cardio and sport names suggested when logging by hand
 templates/, static/       Jinja templates, CSS, and the small front-end script
 tests/                    pytest suite
 ```

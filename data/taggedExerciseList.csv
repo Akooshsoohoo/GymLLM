@@ -1,236 +1,792 @@
-exercise,tags
-barbell bench press,chest;compound;front delt;push;triceps;upper
-incline barbell bench press,chest;compound;front delt;push;triceps;upper
-decline barbell bench press,chest;compound;front delt;push;triceps;upper
-flat dumbbell bench press,chest;compound;front delt;push;triceps;upper
-incline dumbbell bench press,chest;compound;front delt;push;triceps;upper
-decline dumbbell bench press,chest;compound;front delt;push;triceps;upper
-machine chest press,chest;compound;front delt;push;triceps;upper
-smith machine bench press,chest;compound;front delt;push;triceps;upper
-cable chest fly,chest;isolation;push;upper
-low cable chest fly,chest;isolation;push;upper
-high cable chest fly,chest;isolation;push;upper
-pec deck machine,chest;isolation;push;upper
-reverse pec deck rear delt fly,rear delt;shoulders;isolation;pull;upper
-barbell overhead press,compound;front delt;push;shoulders;triceps;upper
-seated barbell overhead press,compound;front delt;push;shoulders;triceps;upper
-dumbbell shoulder press,compound;front delt;push;shoulders;triceps;upper
-arnold press,compound;front delt;push;shoulders;triceps;upper
-smith machine overhead press,compound;front delt;push;shoulders;triceps;upper
-cable lateral raise,side delt;isolation;push;shoulders;upper
-dumbbell lateral raise,side delt;isolation;push;shoulders;upper
-machine lateral raise,side delt;isolation;push;shoulders;upper
-dumbbell front raise,front delt;isolation;push;shoulders;upper
-cable front raise,front delt;isolation;push;shoulders;upper
-barbell front raise,front delt;isolation;push;shoulders;upper
-rear delt fly (machine),rear delt;isolation;pull;shoulders;upper
-rear delt dumbbell fly,rear delt;isolation;pull;shoulders;upper
-rear delt cable fly,rear delt;isolation;pull;shoulders;upper
-barbell bent-over row,back;compound;lats;pull;traps;upper;upper back
-t-bar row,back;compound;lats;pull;traps;upper;upper back
-machine t-bar row,back;compound;lats;pull;traps;upper;upper back
-dumbbell one-arm row,back;compound;lats;pull;traps;upper;upper back
-dumbbell seal row,back;compound;lats;pull;traps;upper;upper back
-barbell seal row,back;compound;lats;pull;traps;upper;upper back
-dumbbell chest-supported row,back;compound;lats;pull;traps;upper;upper back
-cable seated row,back;compound;lats;pull;traps;upper;upper back
-machine seated row,back;compound;lats;pull;traps;upper;upper back
-wide-grip cable row,back;compound;lats;pull;traps;upper;upper back
-close-grip cable row,back;compound;lats;pull;traps;upper;upper back
-lat pulldown (cable),back;compound;lats;pull;upper
-wide-grip lat pulldown,back;compound;lats;pull;upper
-close-grip lat pulldown,back;compound;lats;pull;upper
-reverse-grip lat pulldown,back;compound;lats;pull;upper
-behind-the-neck lat pulldown,back;compound;lats;pull;upper
-machine lat pulldown,back;compound;lats;pull;upper
-assisted pull-up,back;compound;lats;pull;upper
-bodyweight pull-up,back;compound;lats;pull;upper
-weighted pull-up,back;compound;lats;pull;upper
-neutral grip pull-up,back;compound;lats;pull;upper
-chin-up,back;biceps;compound;pull;upper
-weighted chin-up,back;biceps;compound;pull;upper
-single arm cable pulldown,back;isolation;lats;pull;upper
-straight arm lat pulldown,back;isolation;lats;pull;upper
-cable lat pullover,back;isolation;lats;pull;upper
-dumbbell pullover,back;isolation;lats;pull;upper;chest
-barbell back squat,compound;glutes;hamstrings;legs;lower;quads
-high bar back squat,compound;glutes;hamstrings;legs;lower;quads
-low bar back squat,compound;glutes;hamstrings;legs;lower;quads
-front squat (barbell),compound;glutes;hamstrings;legs;lower;quads
-smith machine squat,compound;glutes;hamstrings;legs;lower;quads
-hack squat machine,compound;glutes;hamstrings;legs;lower;quads
-v-squat machine,compound;glutes;hamstrings;legs;lower;quads
-pendulum squat machine,compound;glutes;hamstrings;legs;lower;quads
-leg press machine,compound;glutes;hamstrings;legs;lower;quads
-horizontal leg press,compound;glutes;hamstrings;legs;lower;quads
-45-degree leg press,compound;glutes;hamstrings;legs;lower;quads
-dumbbell goblet squat,compound;glutes;hamstrings;legs;lower;quads
-dumbbell sumo squat,compound;glutes;hamstrings;legs;lower;quads
-barbell sumo squat,compound;glutes;hamstrings;legs;lower;quads
-walking lunges (dumbbell),compound;glutes;hamstrings;legs;lower;quads;unilateral
-walking lunges (barbell),compound;glutes;hamstrings;legs;lower;quads;unilateral
-bulgarian split squat (dumbbell),compound;glutes;hamstrings;legs;lower;quads;unilateral
-bulgarian split squat (barbell),compound;glutes;hamstrings;legs;lower;quads;unilateral
-step-ups (dumbbell),compound;glutes;hamstrings;legs;lower;quads;unilateral
-step-ups (barbell),compound;glutes;hamstrings;legs;lower;quads;unilateral
-romanian deadlift (barbell),compound;glutes;hamstrings;legs;lower;lower back;traps
-romanian deadlift (dumbbell),compound;glutes;hamstrings;legs;lower;lower back;traps
-conventional deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps
-sumo deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps
-trap bar deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps
-deficit deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps
-snatch grip deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps
-rack pull,compound;glutes;hamstrings;legs;lower;lower back;traps
-single leg romanian deadlift (dumbbell),compound;glutes;hamstrings;legs;lower;unilateral
-single leg romanian deadlift (barbell),compound;glutes;hamstrings;legs;lower;unilateral
-good mornings (barbell),compound;glutes;hamstrings;legs;lower;lower back
-seated leg curl (machine),isolation;hamstrings;legs;lower
-lying leg curl (machine),isolation;hamstrings;legs;lower
-standing single leg leg curl,isolation;hamstrings;legs;lower;unilateral
-glute bridge (barbell),compound;glutes;hamstrings;legs;lower
-glute bridge (bodyweight),compound;glutes;hamstrings;legs;lower
-hip thrust (barbell),compound;glutes;hamstrings;legs;lower
-hip thrust (machine),compound;glutes;hamstrings;legs;lower
-single leg hip thrust,compound;glutes;hamstrings;legs;lower;unilateral
-kickback (cable),isolation;glutes;hamstrings;legs;lower;unilateral
-reverse hyperextension,compound;glutes;hamstrings;lower back;legs;lower
-barbell bicep curl,biceps;isolation;pull;upper
-ez bar bicep curl,biceps;isolation;pull;upper
-preacher curl (ez bar),biceps;isolation;pull;upper
-preacher curl machine,biceps;isolation;pull;upper
-dumbbell bicep curl,biceps;isolation;pull;upper
-alternating dumbbell curl,biceps;isolation;pull;upper
-dumbbell concentration curl,biceps;isolation;pull;upper
-cable rope curl,biceps;isolation;pull;upper
-cable straight-bar curl,biceps;isolation;pull;upper
-reverse curl (barbell),biceps;forearms;isolation;pull;upper
-hammer curl (dumbbell),biceps;brachialis;isolation;pull;upper
-cable hammer curl,biceps;brachialis;isolation;pull;upper
-spider curl (dumbbell),biceps;isolation;pull;upper
-spider curl (barbell),biceps;isolation;pull;upper
-cable triceps pushdown (rope),triceps;isolation;push;upper
-cable triceps pushdown (straight bar),triceps;isolation;push;upper
-v-bar triceps pushdown,triceps;isolation;push;upper
-dumbbell triceps kickback,triceps;isolation;push;upper
-skullcrushers (ez bar),triceps;isolation;push;upper
-skullcrushers (barbell),triceps;isolation;push;upper
-dumbbell skullcrushers,triceps;isolation;push;upper
-overhead triceps extension (dumbbell),triceps;isolation;push;upper
-overhead triceps extension (barbell),triceps;isolation;push;upper
-overhead triceps extension (ez bar),triceps;isolation;push;upper
-overhead triceps extension (cable),triceps;isolation;push;upper
-single-arm overhead triceps extension,triceps;isolation;push;upper;unilateral
-dips (bodyweight),triceps;chest;shoulders;compound;push;upper
-dips (weighted),triceps;chest;shoulders;compound;push;upper
-assisted dips machine,triceps;chest;shoulders;compound;push;upper
-triceps dip machine,triceps;chest;shoulders;compound;push;upper
-machine shoulder press,shoulders;triceps;front delt;compound;push;upper
-barbell overhead press,shoulders;triceps;front delt;compound;push;upper
-dumbbell overhead press,shoulders;triceps;front delt;compound;push;upper
-arnold press,shoulders;triceps;front delt;compound;push;upper
-cable lateral raise,shoulders;side delt;isolation;push;upper
-dumbbell lateral raise,shoulders;side delt;isolation;push;upper
-machine lateral raise,shoulders;side delt;isolation;push;upper
-cable front raise,shoulders;front delt;isolation;push;upper
-dumbbell front raise,shoulders;front delt;isolation;push;upper
-plate front raise,shoulders;front delt;isolation;push;upper
-rear delt fly (dumbbell),shoulders;rear delt;isolation;pull;upper
-rear delt fly (machine),shoulders;rear delt;isolation;pull;upper
-reverse pec deck fly,shoulders;rear delt;isolation;pull;upper
-bent-over rear delt raise (dumbbell),shoulders;rear delt;isolation;pull;upper
-cable rear delt fly,shoulders;rear delt;isolation;pull;upper
-barbell shrug,traps;isolation;upper;pull
-dumbbell shrug,traps;isolation;upper;pull
-smith machine shrug,traps;isolation;upper;pull
-behind-the-back barbell shrug,traps;isolation;upper;pull
-machine shrug,traps;isolation;upper;pull
-cable shrug,traps;isolation;upper;pull
-trap bar shrug,traps;isolation;upper;pull
-neck curl (plate),neck;isolation;upper
-neck extension (plate),neck;isolation;upper
-neck harness extension,neck;isolation;upper
-dumbbell neck raise,neck;isolation;upper
-machine neck extension,neck;isolation;upper
-machine neck flexion,neck;isolation;upper
-standing calf raise (barbell),calves;isolation;lower
-standing calf raise (machine),calves;isolation;lower
-seated calf raise (machine),calves;isolation;lower
-donkey calf raise,calves;isolation;lower
-single-leg calf raise,calves;isolation;lower;unilateral
-smith machine calf raise,calves;isolation;lower
-leg press calf raise,calves;isolation;lower
-barbell standing calf raise,calves;isolation;lower
-tibialis raise (dumbbell),tibialis;isolation;lower
-tib bar raise,tibialis;isolation;lower
-reverse calf raise,tibialis;isolation;lower
-face pull (rope),traps;rear delt;upper back;pull;isolation;shoulders
-cable high row,lats;upper back;traps;compound;pull;upper
-chest-supported row (machine),lats;upper back;compound;pull
-incline prone row,dumbbell;upper back;lats;pull;compound
-wide-grip cable row,lats;upper back;compound;pull;isolation
-underhand cable row,lats;upper back;compound;pull;isolation
-cable side bend,obliques;core;isolation
-dumbbell side bend,obliques;core;isolation
-landmine twist,obliques;core;rotation;compound
-landmine anti-rotation press,obliques;core;stabilization;compound
-cable woodchopper,obliques;core;rotation;isolation
-medicine ball rotational throw,obliques;core;rotation;power
-barbell rollout,abs;core;compound;stabilization
-stability ball rollout,abs;core;compound;stabilization
-weighted plank,abs;core;stabilization
-suitcase carry (dumbbell),core;grip;unilateral;stabilization
-farmer’s carry (dumbbell),grip;core;traps;compound
-zercher carry,core;compound;legs;upper back
-overhead barbell carry,core;compound;shoulders;triceps;upper
-sandbag carry,core;compound;legs;grip;upper back
-barbell good morning,hamstrings;glutes;lower back;compound
-reverse hyperextension,glutes;hamstrings;lower back;isolation
-hip abduction machine,glutes;isolation;legs;lower
-hip adduction machine,adductors;isolation;legs;lower
-cable hip abduction,glutes;isolation;legs;lower
-cable hip adduction,adductors;isolation;legs;lower
-sumo squat (dumbbell),glutes;quads;adductors;compound;lower;legs
-curtsy lunge,glutes;quads;adductors;compound;legs;unilateral
-jefferson squat,glutes;quads;hamstrings;compound;legs;core;lower
-jefferson deadlift,glutes;quads;hamstrings;compound;legs;core;lower
-z press,shoulders;core;front delt;triceps;compound;upper
-band face pull,shoulders;rear delt;traps;isolation;upper
-band pull-apart,shoulders;rear delt;traps;isolation;upper
-cable rear delt fly,shoulders;rear delt;isolation;upper
-incline rear delt raise,dumbbell;shoulders;rear delt;isolation;upper
-atlas stone lift,compound;full body;glutes;hamstrings;quads;core;grip
-log press,compound;shoulders;triceps;chest;upper;core
-axle bar deadlift,compound;glutes;hamstrings;quads;lower;grip
-yoke carry,compound;core;legs;traps;glutes;balance
-sandbag clean,compound;glutes;quads;hamstrings;grip;full body
-sandbag squat,compound;glutes;quads;hamstrings;core
-safety bar squat,compound;glutes;quads;hamstrings;lower;core
-cambered bar squat,compound;quads;glutes;hamstrings;lower;core
-duffalo bar bench press,compound;chest;triceps;front delt;upper
-spoto press,compound;chest;triceps;front delt;upper
-board press,compound;chest;triceps;front delt;upper
-floor press,compound;chest;triceps;upper
-pin press (overhead),compound;shoulders;triceps;upper
-reverse grip bench press,chest;triceps;front delt;compound;upper
-dead stop row,compound;lats;traps;back;pull;upper
-meadows row,lats;traps;rear delt;compound;pull;upper
-snatch grip RDL,hamstrings;glutes;traps;lower;compound
-barbell shrug,traps;isolation;upper
-dumbbell shrug,traps;isolation;upper
-behind-the-back shrug,traps;isolation;upper
-smith machine shrug,traps;isolation;upper
-cable shrug,traps;isolation;upper
-reverse pec deck,rear delt;shoulders;isolation;upper
-seated calf raise,calves;isolation;lower
-standing calf raise (machine),calves;isolation;lower
-donkey calf raise,calves;isolation;lower
-single-leg calf raise,calves;isolation;unilateral;lower
-smith machine calf raise,calves;isolation;lower
-cable upright row,shoulders;traps;isolation;upper
-barbell upright row,shoulders;traps;isolation;upper
-dumbbell upright row,shoulders;traps;isolation;upper
-incline dumbbell curl,biceps;isolation;upper
-zottman curl,biceps;forearms;isolation;upper
-reverse curl,biceps;forearms;isolation;upper
-spider curl,biceps;isolation;upper
-drag curl,biceps;isolation;upper
+exercise,tags,aliases
+barbell bench press,chest;compound;front delt;push;triceps;upper,bench
+incline barbell bench press,chest;compound;front delt;push;triceps;upper,
+decline barbell bench press,chest;compound;front delt;push;triceps;upper,
+flat dumbbell bench press,chest;compound;front delt;push;triceps;upper,
+incline dumbbell bench press,chest;compound;front delt;push;triceps;upper,
+decline dumbbell bench press,chest;compound;front delt;push;triceps;upper,
+machine chest press,chest;compound;front delt;push;triceps;upper,
+smith machine bench press,chest;compound;front delt;push;triceps;upper,
+cable chest fly,chest;isolation;push;upper,cable crossover;crossover
+low cable chest fly,chest;isolation;push;upper,
+high cable chest fly,chest;isolation;push;upper,
+pec deck machine,chest;isolation;push;upper,machine chest fly;machine fly;pec fly;pec deck fly;butterfly machine
+reverse pec deck rear delt fly,rear delt;shoulders;isolation;pull;upper,
+barbell overhead press,compound;front delt;push;shoulders;triceps;upper,
+seated barbell overhead press,compound;front delt;push;shoulders;triceps;upper,
+dumbbell shoulder press,compound;front delt;push;shoulders;triceps;upper,
+arnold press,compound;front delt;push;shoulders;triceps;upper,
+smith machine overhead press,compound;front delt;push;shoulders;triceps;upper,
+cable lateral raise,side delt;isolation;push;shoulders;upper,
+dumbbell lateral raise,side delt;isolation;push;shoulders;upper,lateral raise
+machine lateral raise,side delt;isolation;push;shoulders;upper,
+dumbbell front raise,front delt;isolation;push;shoulders;upper,
+cable front raise,front delt;isolation;push;shoulders;upper,
+barbell front raise,front delt;isolation;push;shoulders;upper,
+rear delt fly (machine),rear delt;isolation;pull;shoulders;upper,
+rear delt dumbbell fly,rear delt;isolation;pull;shoulders;upper,
+rear delt cable fly,rear delt;isolation;pull;shoulders;upper,
+barbell bent-over row,back;compound;lats;pull;traps;upper;upper back,
+t-bar row,back;compound;lats;pull;traps;upper;upper back,
+machine t-bar row,back;compound;lats;pull;traps;upper;upper back,
+dumbbell one-arm row,back;compound;lats;pull;traps;upper;upper back,dumbbell row
+dumbbell seal row,back;compound;lats;pull;traps;upper;upper back,
+barbell seal row,back;compound;lats;pull;traps;upper;upper back,
+dumbbell chest-supported row,back;compound;lats;pull;traps;upper;upper back,
+cable seated row,back;compound;lats;pull;traps;upper;upper back,
+machine seated row,back;compound;lats;pull;traps;upper;upper back,machine row
+wide-grip cable row,back;compound;lats;pull;traps;upper;upper back,
+close-grip cable row,back;compound;lats;pull;traps;upper;upper back,
+lat pulldown (cable),back;compound;lats;pull;upper,
+wide-grip lat pulldown,back;compound;lats;pull;upper,
+close-grip lat pulldown,back;compound;lats;pull;upper,
+reverse-grip lat pulldown,back;compound;lats;pull;upper,
+behind-the-neck lat pulldown,back;compound;lats;pull;upper,
+machine lat pulldown,back;compound;lats;pull;upper,
+assisted pull-up,back;compound;lats;pull;upper,assisted pull-up machine;gravitron
+bodyweight pull-up,back;compound;lats;pull;upper,pull-up
+weighted pull-up,back;compound;lats;pull;upper,
+neutral grip pull-up,back;compound;lats;pull;upper,
+chin-up,back;biceps;compound;pull;upper,chin;bodyweight chin-up
+weighted chin-up,back;biceps;compound;pull;upper,
+single arm cable pulldown,back;isolation;lats;pull;upper,single arm lat pulldown
+straight arm lat pulldown,back;isolation;lats;pull;upper,straight arm pulldown;lat prayer
+cable lat pullover,back;isolation;lats;pull;upper,
+dumbbell pullover,back;isolation;lats;pull;upper;chest,pullover
+barbell back squat,compound;glutes;hamstrings;legs;lower;quads,squat
+high bar back squat,compound;glutes;hamstrings;legs;lower;quads,
+low bar back squat,compound;glutes;hamstrings;legs;lower;quads,
+front squat (barbell),compound;glutes;hamstrings;legs;lower;quads,
+smith machine squat,compound;glutes;hamstrings;legs;lower;quads,
+hack squat machine,compound;glutes;hamstrings;legs;lower;quads,
+v-squat machine,compound;glutes;hamstrings;legs;lower;quads,
+pendulum squat machine,compound;glutes;hamstrings;legs;lower;quads,
+leg press machine,compound;glutes;hamstrings;legs;lower;quads,seated leg press
+horizontal leg press,compound;glutes;hamstrings;legs;lower;quads,
+45-degree leg press,compound;glutes;hamstrings;legs;lower;quads,
+dumbbell goblet squat,compound;glutes;hamstrings;legs;lower;quads,
+dumbbell sumo squat,compound;glutes;hamstrings;legs;lower;quads,
+barbell sumo squat,compound;glutes;hamstrings;legs;lower;quads,
+walking lunges (dumbbell),compound;glutes;hamstrings;legs;lower;quads;unilateral,
+walking lunges (barbell),compound;glutes;hamstrings;legs;lower;quads;unilateral,
+bulgarian split squat (dumbbell),compound;glutes;hamstrings;legs;lower;quads;unilateral,
+bulgarian split squat (barbell),compound;glutes;hamstrings;legs;lower;quads;unilateral,
+step-ups (dumbbell),compound;glutes;hamstrings;legs;lower;quads;unilateral,
+step-ups (barbell),compound;glutes;hamstrings;legs;lower;quads;unilateral,
+romanian deadlift (barbell),compound;glutes;hamstrings;legs;lower;lower back;traps,romanian
+romanian deadlift (dumbbell),compound;glutes;hamstrings;legs;lower;lower back;traps,
+conventional deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps,
+sumo deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps,
+trap bar deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps,trap bar
+deficit deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps,
+snatch grip deadlift,compound;glutes;hamstrings;legs;lower;lower back;traps,
+rack pull,compound;glutes;hamstrings;legs;lower;lower back;traps,block pull
+single leg romanian deadlift (dumbbell),compound;glutes;hamstrings;legs;lower;unilateral,
+single leg romanian deadlift (barbell),compound;glutes;hamstrings;legs;lower;unilateral,
+good mornings (barbell),compound;glutes;hamstrings;legs;lower;lower back,
+seated leg curl (machine),isolation;hamstrings;legs;lower,
+lying leg curl (machine),isolation;hamstrings;legs;lower,leg curl
+standing single leg leg curl,isolation;hamstrings;legs;lower;unilateral,
+glute bridge (barbell),compound;glutes;hamstrings;legs;lower,
+glute bridge (bodyweight),compound;glutes;hamstrings;legs;lower,
+hip thrust (barbell),compound;glutes;hamstrings;legs;lower,
+hip thrust (machine),compound;glutes;hamstrings;legs;lower,glute drive
+single leg hip thrust,compound;glutes;hamstrings;legs;lower;unilateral,
+kickback (cable),isolation;glutes;hamstrings;legs;lower;unilateral,glute kickback;cable glute kickback
+reverse hyperextension,compound;glutes;hamstrings;lower back;legs;lower,reverse hyper
+barbell bicep curl,biceps;isolation;pull;upper,
+ez bar bicep curl,biceps;isolation;pull;upper,
+preacher curl (ez bar),biceps;isolation;pull;upper,
+preacher curl machine,biceps;isolation;pull;upper,
+dumbbell bicep curl,biceps;isolation;pull;upper,
+alternating dumbbell curl,biceps;isolation;pull;upper,
+dumbbell concentration curl,biceps;isolation;pull;upper,
+cable rope curl,biceps;isolation;pull;upper,
+cable straight-bar curl,biceps;isolation;pull;upper,
+reverse curl (barbell),biceps;forearms;isolation;pull;upper,
+hammer curl (dumbbell),biceps;brachialis;isolation;pull;upper,
+cable hammer curl,biceps;brachialis;isolation;pull;upper,rope hammer curl
+spider curl (dumbbell),biceps;isolation;pull;upper,
+spider curl (barbell),biceps;isolation;pull;upper,
+cable triceps pushdown (rope),triceps;isolation;push;upper,pushdown;rope pushdown
+cable triceps pushdown (straight bar),triceps;isolation;push;upper,
+v-bar triceps pushdown,triceps;isolation;push;upper,
+dumbbell triceps kickback,triceps;isolation;push;upper,
+skullcrushers (ez bar),triceps;isolation;push;upper,
+skullcrushers (barbell),triceps;isolation;push;upper,
+dumbbell skullcrushers,triceps;isolation;push;upper,
+overhead triceps extension (dumbbell),triceps;isolation;push;upper,triceps extension
+overhead triceps extension (barbell),triceps;isolation;push;upper,
+overhead triceps extension (ez bar),triceps;isolation;push;upper,
+overhead triceps extension (cable),triceps;isolation;push;upper,
+single-arm overhead triceps extension,triceps;isolation;push;upper;unilateral,
+dips (bodyweight),triceps;chest;shoulders;compound;push;upper,dip;parallel bar dip
+dips (weighted),triceps;chest;shoulders;compound;push;upper,
+assisted dips machine,triceps;chest;shoulders;compound;push;upper,assisted dip
+triceps dip machine,triceps;chest;shoulders;compound;push;upper,
+machine shoulder press,shoulders;triceps;front delt;compound;push;upper,
+dumbbell overhead press,shoulders;triceps;front delt;compound;push;upper,
+plate front raise,shoulders;front delt;isolation;push;upper,
+rear delt fly (dumbbell),shoulders;rear delt;isolation;pull;upper,
+reverse pec deck fly,shoulders;rear delt;isolation;pull;upper,
+bent-over rear delt raise (dumbbell),shoulders;rear delt;isolation;pull;upper,
+cable rear delt fly,shoulders;rear delt;isolation;pull;upper,
+barbell shrug,traps;isolation;upper;pull,
+dumbbell shrug,traps;isolation;upper;pull,
+smith machine shrug,traps;isolation;upper;pull,
+behind-the-back barbell shrug,traps;isolation;upper;pull,
+machine shrug,traps;isolation;upper;pull,
+cable shrug,traps;isolation;upper;pull,
+trap bar shrug,traps;isolation;upper;pull,
+neck curl (plate),neck;isolation;upper,
+neck extension (plate),neck;isolation;upper,
+neck harness extension,neck;isolation;upper,
+dumbbell neck raise,neck;isolation;upper,
+machine neck extension,neck;isolation;upper,
+machine neck flexion,neck;isolation;upper,
+standing calf raise (barbell),calves;isolation;lower,
+standing calf raise (machine),calves;isolation;lower,calf raise
+seated calf raise (machine),calves;isolation;lower,
+donkey calf raise,calves;isolation;lower,
+single-leg calf raise,calves;isolation;lower;unilateral,
+smith machine calf raise,calves;isolation;lower,
+leg press calf raise,calves;isolation;lower,calf press
+barbell standing calf raise,calves;isolation;lower,
+tibialis raise (dumbbell),tibialis;isolation;lower,
+tib bar raise,tibialis;isolation;lower,
+reverse calf raise,tibialis;isolation;lower,
+face pull (rope),traps;rear delt;upper back;pull;isolation;shoulders,cable face pull
+cable high row,lats;upper back;traps;compound;pull;upper,
+chest-supported row (machine),lats;upper back;compound;pull,
+incline prone row,back;lats;upper back;compound;pull;upper,
+underhand cable row,lats;upper back;compound;pull;isolation,
+cable side bend,obliques;core;isolation,
+dumbbell side bend,obliques;core;isolation,
+landmine twist,obliques;core;rotation;compound,landmine rotation;landmine 180
+landmine anti-rotation press,obliques;core;stabilization;compound,
+cable woodchopper,obliques;core;rotation;isolation,
+medicine ball rotational throw,obliques;core;rotation;power,medicine ball side throw
+barbell rollout,abs;core;compound;stabilization,barbell ab rollout
+stability ball rollout,abs;core;compound;stabilization,
+weighted plank,abs;core;stabilization,
+suitcase carry (dumbbell),core;grip;unilateral;stabilization,
+farmer’s carry (dumbbell),grip;core;traps;compound,
+zercher carry,core;compound;legs;upper back,
+overhead barbell carry,core;compound;shoulders;triceps;upper,
+sandbag carry,core;compound;legs;grip;upper back,
+barbell good morning,hamstrings;glutes;lower back;compound,
+hip abduction machine,glutes;isolation;legs;lower,abductor machine;outer thigh machine
+hip adduction machine,adductors;isolation;legs;lower,adductor machine;inner thigh machine
+cable hip abduction,glutes;isolation;legs;lower,
+cable hip adduction,adductors;isolation;legs;lower,
+sumo squat (dumbbell),glutes;quads;adductors;compound;lower;legs,
+curtsy lunge,glutes;quads;adductors;compound;legs;unilateral,
+jefferson squat,glutes;quads;hamstrings;compound;legs;core;lower,
+jefferson deadlift,glutes;quads;hamstrings;compound;legs;core;lower,
+z press,shoulders;core;front delt;triceps;compound;upper,
+band face pull,shoulders;rear delt;traps;isolation;upper,
+band pull-apart,shoulders;rear delt;traps;isolation;upper,
+incline rear delt raise,shoulders;rear delt;isolation;pull;upper,
+atlas stone lift,compound;full body;glutes;hamstrings;quads;core;grip,
+log press,compound;shoulders;triceps;chest;upper;core,
+axle bar deadlift,compound;glutes;hamstrings;quads;lower;grip,
+yoke carry,compound;core;legs;traps;glutes;balance,
+sandbag clean,compound;glutes;quads;hamstrings;grip;full body,
+sandbag squat,compound;glutes;quads;hamstrings;core,
+safety bar squat,compound;glutes;quads;hamstrings;lower;core,
+cambered bar squat,compound;quads;glutes;hamstrings;lower;core,
+duffalo bar bench press,compound;chest;triceps;front delt;upper,
+spoto press,compound;chest;triceps;front delt;upper,
+board press,compound;chest;triceps;front delt;upper,
+floor press,compound;chest;triceps;upper,
+pin press (overhead),compound;shoulders;triceps;upper,
+reverse grip bench press,chest;triceps;front delt;compound;upper,
+dead stop row,compound;lats;traps;back;pull;upper,
+meadows row,lats;traps;rear delt;compound;pull;upper,
+snatch grip rdl,hamstrings;glutes;traps;lower;compound,
+behind-the-back shrug,traps;isolation;upper,
+reverse pec deck,rear delt;shoulders;isolation;upper,rear delt machine
+seated calf raise,calves;isolation;lower,
+cable upright row,shoulders;traps;isolation;upper,
+barbell upright row,shoulders;traps;isolation;upper,upright row
+dumbbell upright row,shoulders;traps;isolation;upper,
+incline dumbbell curl,biceps;isolation;upper,
+zottman curl,biceps;forearms;isolation;upper,
+reverse curl,biceps;forearms;isolation;upper,
+spider curl,biceps;isolation;upper,
+drag curl,biceps;isolation;upper,
+incline smith machine bench press,chest;triceps;front delt;compound;push;upper,
+decline smith machine bench press,chest;triceps;front delt;compound;push;upper,
+wide-grip bench press,chest;triceps;front delt;compound;push;upper,
+single arm dumbbell bench press,chest;triceps;front delt;compound;push;upper;unilateral,
+alternating dumbbell bench press,chest;triceps;front delt;compound;push;upper,
+neutral grip dumbbell bench press,chest;triceps;front delt;compound;push;upper,
+incline neutral grip dumbbell bench press,chest;triceps;front delt;compound;push;upper,
+swiss bar bench press,chest;triceps;front delt;compound;push;upper,
+larsen press,chest;triceps;front delt;compound;push;upper,
+feet-up bench press,chest;triceps;front delt;compound;push;upper,
+guillotine press,chest;triceps;front delt;compound;push;upper,neck press
+pin bench press,chest;triceps;front delt;compound;push;upper,
+slingshot bench press,chest;triceps;front delt;compound;push;upper,
+dumbbell floor press,chest;triceps;front delt;compound;push;upper,
+kettlebell floor press,chest;triceps;front delt;compound;push;upper,
+dumbbell squeeze press,chest;triceps;front delt;compound;push;upper,hex press;crush press
+incline machine chest press,chest;triceps;front delt;compound;push;upper,
+decline machine chest press,chest;triceps;front delt;compound;push;upper,
+cable chest press,chest;triceps;front delt;compound;push;upper,
+single arm cable chest press,chest;triceps;front delt;compound;push;upper;unilateral,
+incline cable chest press,chest;triceps;front delt;compound;push;upper,
+band chest press,chest;triceps;front delt;compound;push;upper,
+single arm machine chest press,chest;triceps;front delt;compound;push;upper;unilateral,
+push-up,chest;triceps;front delt;compound;push;upper,bodyweight push-up
+weighted push-up,chest;triceps;front delt;compound;push;upper,
+incline push-up,chest;triceps;front delt;compound;push;upper,hands-elevated push-up
+decline push-up,chest;triceps;front delt;compound;push;upper,feet-elevated push-up
+knee push-up,chest;triceps;front delt;compound;push;upper,kneeling push-up;modified push-up
+wide push-up,chest;triceps;front delt;compound;push;upper,
+archer push-up,chest;triceps;front delt;compound;push;upper,
+deficit push-up,chest;triceps;front delt;compound;push;upper,
+ring push-up,chest;triceps;front delt;compound;push;upper,
+band push-up,chest;triceps;front delt;compound;push;upper,
+clap push-up,chest;triceps;front delt;compound;push;upper,plyo push-up;explosive push-up
+spiderman push-up,chest;triceps;front delt;compound;push;upper,
+hindu push-up,chest;triceps;front delt;compound;push;upper,dive bomber push-up
+pseudo planche push-up,chest;triceps;front delt;compound;push;upper,
+single arm push-up,chest;triceps;front delt;compound;push;upper;unilateral,
+hand release push-up,chest;triceps;front delt;compound;push;upper,
+t push-up,chest;triceps;front delt;compound;push;upper,
+staggered push-up,chest;triceps;front delt;compound;push;upper,
+medicine ball push-up,chest;triceps;front delt;compound;push;upper,
+typewriter push-up,chest;triceps;front delt;compound;push;upper,
+dumbbell chest fly,chest;isolation;push;upper,
+incline dumbbell chest fly,chest;isolation;push;upper,
+decline dumbbell chest fly,chest;isolation;push;upper,
+incline cable chest fly,chest;isolation;push;upper,
+seated cable chest fly,chest;isolation;push;upper,
+single arm cable chest fly,chest;isolation;push;upper;unilateral,
+lying cable chest fly,chest;isolation;push;upper,
+band chest fly,chest;isolation;push;upper,
+ring chest fly,chest;isolation;push;upper,
+trx chest fly,chest;isolation;push;upper,
+dumbbell floor fly,chest;isolation;push;upper,
+single arm pec deck,chest;isolation;push;upper;unilateral,
+svend press,chest;isolation;push;upper,plate squeeze press
+ring dips,triceps;chest;shoulders;compound;push;upper,
+bench dips,triceps;chest;shoulders;compound;push;upper,tricep bench dip;chair dip
+weighted bench dips,triceps;chest;shoulders;compound;push;upper,
+straight bar dips,triceps;chest;shoulders;compound;push;upper,
+barbell pullover,back;lats;chest;isolation;pull;upper,
+ez bar pullover,back;lats;chest;isolation;pull;upper,
+machine pullover,back;lats;chest;isolation;pull;upper,
+kettlebell pullover,back;lats;chest;isolation;pull;upper,
+seated dumbbell shoulder press,shoulders;front delt;triceps;compound;push;upper,
+standing dumbbell shoulder press,shoulders;front delt;triceps;compound;push;upper,
+single arm dumbbell shoulder press,shoulders;front delt;triceps;compound;push;upper;unilateral,
+alternating dumbbell shoulder press,shoulders;front delt;triceps;compound;push;upper,
+neutral grip dumbbell shoulder press,shoulders;front delt;triceps;compound;push;upper,
+seated arnold press,shoulders;front delt;triceps;compound;push;upper,
+kettlebell overhead press,shoulders;front delt;triceps;compound;push;upper,kettlebell press
+single arm kettlebell overhead press,shoulders;front delt;triceps;compound;push;upper;unilateral,
+bottoms-up kettlebell press,shoulders;front delt;triceps;compound;push;upper,
+seated smith machine overhead press,shoulders;front delt;triceps;compound;push;upper,
+behind-the-neck press,shoulders;front delt;triceps;compound;push;upper,btn press
+behind-the-neck smith machine press,shoulders;front delt;triceps;compound;push;upper,
+landmine press,shoulders;front delt;triceps;compound;push;upper,
+single arm landmine press,shoulders;front delt;triceps;compound;push;upper;unilateral,
+kneeling landmine press,shoulders;front delt;triceps;compound;push;upper,
+cable shoulder press,shoulders;front delt;triceps;compound;push;upper,
+band shoulder press,shoulders;front delt;triceps;compound;push;upper,
+single arm machine shoulder press,shoulders;front delt;triceps;compound;push;upper;unilateral,
+viking press,shoulders;front delt;triceps;compound;push;upper,
+bradford press,shoulders;front delt;triceps;compound;push;upper,
+cuban press,shoulders;front delt;triceps;compound;push;upper,
+pike push-up,shoulders;front delt;triceps;compound;push;upper,
+handstand push-up,shoulders;front delt;triceps;compound;push;upper,
+wall handstand push-up,shoulders;front delt;triceps;compound;push;upper,
+deficit handstand push-up,shoulders;front delt;triceps;compound;push;upper,
+wall walk,shoulders;front delt;triceps;compound;push;upper,
+seated dumbbell lateral raise,shoulders;side delt;isolation;push;upper,
+single arm dumbbell lateral raise,shoulders;side delt;isolation;push;upper;unilateral,
+single arm cable lateral raise,shoulders;side delt;isolation;push;upper;unilateral,
+behind-the-back cable lateral raise,shoulders;side delt;isolation;push;upper,
+leaning dumbbell lateral raise,shoulders;side delt;isolation;push;upper,
+lying dumbbell lateral raise,shoulders;side delt;isolation;push;upper,
+incline dumbbell lateral raise,shoulders;side delt;isolation;push;upper,
+band lateral raise,shoulders;side delt;isolation;push;upper,
+kettlebell lateral raise,shoulders;side delt;isolation;push;upper,
+plate lateral raise,shoulders;side delt;isolation;push;upper,
+lu raise,shoulders;side delt;isolation;push;upper,
+dumbbell y raise,shoulders;side delt;isolation;push;upper,
+cable y raise,shoulders;side delt;isolation;push;upper,
+incline dumbbell y raise,shoulders;side delt;isolation;push;upper,
+alternating dumbbell front raise,shoulders;front delt;isolation;push;upper,
+seated dumbbell front raise,shoulders;front delt;isolation;push;upper,
+incline dumbbell front raise,shoulders;front delt;isolation;push;upper,
+single arm cable front raise,shoulders;front delt;isolation;push;upper;unilateral,
+rope front raise,shoulders;front delt;isolation;push;upper,
+ez bar front raise,shoulders;front delt;isolation;push;upper,
+band front raise,shoulders;front delt;isolation;push;upper,
+kettlebell front raise,shoulders;front delt;isolation;push;upper,
+seated dumbbell rear delt fly,shoulders;rear delt;isolation;pull;upper,
+single arm cable rear delt fly,shoulders;rear delt;isolation;pull;upper;unilateral,
+band rear delt fly,shoulders;rear delt;isolation;pull;upper,
+dumbbell rear delt row,shoulders;rear delt;isolation;pull;upper,
+barbell rear delt row,shoulders;rear delt;isolation;pull;upper,
+cable rear delt row,shoulders;rear delt;isolation;pull;upper,
+kneeling face pull,shoulders;rear delt;isolation;pull;upper,
+seated face pull,shoulders;rear delt;isolation;pull;upper,
+prone y raise,shoulders;rear delt;isolation;pull;upper,
+prone t raise,shoulders;rear delt;isolation;pull;upper,
+prone w raise,shoulders;rear delt;isolation;pull;upper,
+ytw raise,shoulders;rear delt;isolation;pull;upper,ytw;y-t-w
+cable external rotation,rotator cuff;shoulders;isolation;upper,
+cable internal rotation,rotator cuff;shoulders;isolation;upper,
+dumbbell external rotation,rotator cuff;shoulders;isolation;upper,
+side-lying dumbbell external rotation,rotator cuff;shoulders;isolation;upper,
+band external rotation,rotator cuff;shoulders;isolation;upper,
+band internal rotation,rotator cuff;shoulders;isolation;upper,
+cuban rotation,rotator cuff;shoulders;isolation;upper,
+dumbbell scaption,rotator cuff;shoulders;isolation;upper,scaption raise
+wall slide,rotator cuff;shoulders;isolation;upper,
+scapular push-up,rotator cuff;shoulders;isolation;upper,scap push-up;push-up plus
+ez bar upright row,shoulders;traps;side delt;compound;pull;upper,
+smith machine upright row,shoulders;traps;side delt;compound;pull;upper,
+band upright row,shoulders;traps;side delt;compound;pull;upper,
+kettlebell upright row,shoulders;traps;side delt;compound;pull;upper,
+kettlebell shrug,traps;isolation;pull;upper,
+overhead shrug,traps;isolation;pull;upper,
+snatch grip shrug,traps;isolation;pull;upper,
+incline dumbbell shrug,traps;isolation;pull;upper,
+pendlay row,back;lats;upper back;traps;compound;pull;upper,
+yates row,back;lats;upper back;traps;compound;pull;upper,underhand barbell row
+kettlebell row,back;lats;upper back;traps;compound;pull;upper,
+single arm kettlebell row,back;lats;upper back;traps;compound;pull;upper;unilateral,
+smith machine row,back;lats;upper back;traps;compound;pull;upper,
+landmine row,back;lats;upper back;traps;compound;pull;upper,
+single arm landmine row,back;lats;upper back;traps;compound;pull;upper;unilateral,
+chest-supported t-bar row,back;lats;upper back;traps;compound;pull;upper,
+single arm cable row,back;lats;upper back;traps;compound;pull;upper;unilateral,
+standing cable row,back;lats;upper back;traps;compound;pull;upper,
+single arm machine row,back;lats;upper back;traps;compound;pull;upper;unilateral,
+machine high row,back;lats;upper back;traps;compound;pull;upper,
+machine low row,back;lats;upper back;traps;compound;pull;upper,
+inverted row,back;lats;upper back;traps;compound;pull;upper,australian pull-up;body row;bodyweight row
+weighted inverted row,back;lats;upper back;traps;compound;pull;upper,
+ring row,back;lats;upper back;traps;compound;pull;upper,
+trx row,back;lats;upper back;traps;compound;pull;upper,
+renegade row,back;lats;upper back;traps;compound;pull;upper,
+gorilla row,back;lats;upper back;traps;compound;pull;upper,
+kroc row,back;lats;upper back;traps;compound;pull;upper,
+helms row,back;lats;upper back;traps;compound;pull;upper,
+band row,back;lats;upper back;traps;compound;pull;upper,
+rope cable row,back;lats;upper back;traps;compound;pull;upper,
+neutral grip lat pulldown,back;lats;biceps;compound;pull;upper,
+v-bar lat pulldown,back;lats;biceps;compound;pull;upper,
+kneeling lat pulldown,back;lats;biceps;compound;pull;upper,
+band lat pulldown,back;lats;biceps;compound;pull;upper,
+wide-grip pull-up,back;lats;biceps;compound;pull;upper,
+close-grip pull-up,back;lats;biceps;compound;pull;upper,
+assisted chin-up,back;lats;biceps;compound;pull;upper,
+band-assisted pull-up,back;lats;biceps;compound;pull;upper,
+neutral grip chin-up,back;lats;biceps;compound;pull;upper,
+commando pull-up,back;lats;biceps;compound;pull;upper,
+archer pull-up,back;lats;biceps;compound;pull;upper,
+l-sit pull-up,back;lats;biceps;compound;pull;upper,
+chest-to-bar pull-up,back;lats;biceps;compound;pull;upper,
+kipping pull-up,back;lats;biceps;compound;pull;upper,
+butterfly pull-up,back;lats;biceps;compound;pull;upper,
+negative pull-up,back;lats;biceps;compound;pull;upper,eccentric pull-up
+towel pull-up,back;lats;biceps;compound;pull;upper,
+ring pull-up,back;lats;biceps;compound;pull;upper,
+mixed grip pull-up,back;lats;biceps;compound;pull;upper,
+muscle-up,back;lats;biceps;compound;pull;upper,bar muscle-up
+ring muscle-up,back;lats;biceps;compound;pull;upper,
+rope climb,back;lats;biceps;compound;pull;upper,legless rope climb
+rope straight arm pulldown,back;lats;isolation;pull;upper,
+band straight arm pulldown,back;lats;isolation;pull;upper,
+scapular pull-up,back;lats;isolation;pull;upper,scap pull-up
+back extension,lower back;glutes;hamstrings;isolation;lower,hyperextension;hyper;roman chair back extension
+weighted back extension,lower back;glutes;hamstrings;isolation;lower,
+45-degree back extension,lower back;glutes;hamstrings;isolation;lower,
+machine back extension,lower back;glutes;hamstrings;isolation;lower,
+ghd back extension,lower back;glutes;hamstrings;isolation;lower,
+ghd hip extension,lower back;glutes;hamstrings;isolation;lower,
+superman,lower back;glutes;hamstrings;isolation;lower,
+jefferson curl,lower back;glutes;hamstrings;isolation;lower,
+seated dumbbell curl,biceps;isolation;pull;upper,
+seated alternating dumbbell curl,biceps;isolation;pull;upper,
+dumbbell preacher curl,biceps;isolation;pull;upper,
+barbell preacher curl,biceps;isolation;pull;upper,
+machine bicep curl,biceps;isolation;pull;upper,
+cable bicep curl,biceps;isolation;pull;upper,
+single arm cable curl,biceps;isolation;pull;upper;unilateral,
+high cable curl,biceps;isolation;pull;upper,overhead cable curl
+bayesian curl,biceps;isolation;pull;upper,behind-the-body cable curl
+lying cable curl,biceps;isolation;pull;upper,
+wide-grip barbell curl,biceps;isolation;pull;upper,
+close-grip barbell curl,biceps;isolation;pull;upper,
+barbell drag curl,biceps;isolation;pull;upper,
+ez bar spider curl,biceps;isolation;pull;upper,
+band bicep curl,biceps;isolation;pull;upper,
+kettlebell bicep curl,biceps;isolation;pull;upper,
+21s,biceps;isolation;pull;upper,21s curl
+cheat curl,biceps;isolation;pull;upper,
+waiter curl,biceps;isolation;pull;upper,
+cable concentration curl,biceps;isolation;pull;upper,
+trx bicep curl,biceps;isolation;pull;upper,
+cross-body hammer curl,biceps;brachialis;forearms;isolation;pull;upper,pinwheel curl
+incline dumbbell hammer curl,biceps;brachialis;forearms;isolation;pull;upper,
+seated dumbbell hammer curl,biceps;brachialis;forearms;isolation;pull;upper,
+dumbbell preacher hammer curl,biceps;brachialis;forearms;isolation;pull;upper,
+ez bar reverse curl,biceps;brachialis;forearms;isolation;pull;upper,
+cable reverse curl,biceps;brachialis;forearms;isolation;pull;upper,
+dumbbell reverse curl,biceps;brachialis;forearms;isolation;pull;upper,
+single arm cable pushdown,triceps;isolation;push;upper;unilateral,
+reverse-grip triceps pushdown,triceps;isolation;push;upper,
+band triceps pushdown,triceps;isolation;push;upper,
+cable triceps kickback,triceps;isolation;push;upper,
+jm press,triceps;isolation;push;upper,
+tate press,triceps;isolation;push;upper,
+machine triceps extension,triceps;isolation;push;upper,
+cross-body cable triceps extension,triceps;isolation;push;upper,
+single arm cable overhead triceps extension,triceps;isolation;push;upper;unilateral,
+band overhead triceps extension,triceps;isolation;push;upper,
+kettlebell overhead triceps extension,triceps;isolation;push;upper,
+incline ez bar skullcrushers,triceps;isolation;push;upper,
+cable skullcrushers,triceps;isolation;push;upper,
+kettlebell skullcrushers,triceps;isolation;push;upper,
+rolling dumbbell triceps extension,triceps;isolation;push;upper,
+close-grip bench press,triceps;chest;front delt;compound;push;upper,
+smith machine close-grip bench press,triceps;chest;front delt;compound;push;upper,
+incline close-grip bench press,triceps;chest;front delt;compound;push;upper,
+diamond push-up,triceps;chest;front delt;compound;push;upper,triceps push-up;close-grip push-up
+barbell wrist curl,forearms;grip;isolation;upper,
+dumbbell wrist curl,forearms;grip;isolation;upper,
+cable wrist curl,forearms;grip;isolation;upper,
+barbell reverse wrist curl,forearms;grip;isolation;upper,wrist extension
+dumbbell reverse wrist curl,forearms;grip;isolation;upper,
+behind-the-back wrist curl,forearms;grip;isolation;upper,
+wrist roller,forearms;grip;isolation;upper,
+pinch grip hold,forearms;grip;isolation;upper,plate pinch
+hand gripper,forearms;grip;isolation;upper,gripper;captains of crush
+finger curl,forearms;grip;isolation;upper,
+dead hang,forearms;grip;isolation;upper,bar hang
+active hang,forearms;grip;isolation;upper,
+flexed arm hang,forearms;grip;isolation;upper,
+towel hang,forearms;grip;isolation;upper,
+hangboard hang,forearms;grip;isolation;upper,hangboard;fingerboard
+campus board,forearms;grip;isolation;upper,campus ladder
+lock-off,forearms;grip;isolation;upper,
+bodyweight squat,quads;glutes;hamstrings;legs;compound;lower,air squat
+box squat,quads;glutes;hamstrings;legs;compound;lower,
+pin squat,quads;glutes;hamstrings;legs;compound;lower,anderson squat
+zercher squat,quads;glutes;hamstrings;legs;compound;lower,
+overhead squat,quads;glutes;hamstrings;legs;compound;lower,
+kettlebell goblet squat,quads;glutes;hamstrings;legs;compound;lower,
+double kettlebell front squat,quads;glutes;hamstrings;legs;compound;lower,kettlebell front squat
+dumbbell front squat,quads;glutes;hamstrings;legs;compound;lower,
+dumbbell squat,quads;glutes;hamstrings;legs;compound;lower,
+landmine squat,quads;glutes;hamstrings;legs;compound;lower,
+hatfield squat,quads;glutes;hamstrings;legs;compound;lower,
+belt squat,quads;glutes;hamstrings;legs;compound;lower,
+smith machine front squat,quads;glutes;hamstrings;legs;compound;lower,
+barbell hack squat,quads;glutes;hamstrings;legs;compound;lower,
+reverse hack squat,quads;glutes;hamstrings;legs;compound;lower,
+vertical leg press,quads;glutes;hamstrings;legs;compound;lower,
+heel-elevated goblet squat,quads;glutes;hamstrings;legs;compound;lower,
+cyclist squat,quads;glutes;hamstrings;legs;compound;lower,
+kettlebell sumo squat,quads;glutes;hamstrings;legs;compound;lower,
+kang squat,quads;glutes;hamstrings;legs;compound;lower,
+frog squat,quads;glutes;hamstrings;legs;compound;lower,
+bosu squat,quads;glutes;hamstrings;legs;compound;lower,
+single leg leg press,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+pistol squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,single leg squat
+shrimp squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+skater squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+split squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+dumbbell split squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+barbell split squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+smith machine split squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+smith machine bulgarian split squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+kettlebell bulgarian split squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+front foot elevated split squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+atg split squat,quads;glutes;hamstrings;legs;compound;lower;unilateral,knees over toes split squat
+lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,forward lunge
+dumbbell lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+barbell lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+kettlebell lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+smith machine lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+reverse lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+dumbbell reverse lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+barbell reverse lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+smith machine reverse lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+deficit reverse lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+overhead lunge,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+lateral step-up,quads;glutes;hamstrings;legs;compound;lower;unilateral,
+step-down,quads;glutes;hamstrings;legs;compound;lower;unilateral,heel tap
+peterson step-up,quads;glutes;hamstrings;legs;compound;lower;unilateral,poliquin step-up
+lateral lunge,glutes;quads;adductors;legs;compound;lower;unilateral,side lunge
+cossack squat,glutes;quads;adductors;legs;compound;lower;unilateral,
+leg extension,quads;legs;isolation;lower,quad extension
+single leg leg extension,quads;legs;isolation;lower;unilateral,
+sissy squat,quads;legs;isolation;lower,
+reverse nordic,quads;legs;isolation;lower,
+spanish squat,quads;legs;isolation;lower,
+wall sit,quads;legs;isolation;lower,wall squat
+terminal knee extension,quads;legs;isolation;lower,tke
+stiff leg deadlift,hamstrings;glutes;lower back;legs;compound;lower,
+dumbbell stiff leg deadlift,hamstrings;glutes;lower back;legs;compound;lower,
+kettlebell romanian deadlift,hamstrings;glutes;lower back;legs;compound;lower,
+smith machine romanian deadlift,hamstrings;glutes;lower back;legs;compound;lower,
+cable romanian deadlift,hamstrings;glutes;lower back;legs;compound;lower,
+landmine romanian deadlift,hamstrings;glutes;lower back;legs;compound;lower,
+b-stance romanian deadlift,hamstrings;glutes;lower back;legs;compound;lower,staggered romanian deadlift;kickstand romanian deadlift
+seated good morning,hamstrings;glutes;lower back;legs;compound;lower,
+band good morning,hamstrings;glutes;lower back;legs;compound;lower,
+cable pull-through,hamstrings;glutes;lower back;legs;compound;lower,
+band pull-through,hamstrings;glutes;lower back;legs;compound;lower,
+kettlebell swing,hamstrings;glutes;lower back;legs;compound;lower,russian kettlebell swing
+american kettlebell swing,hamstrings;glutes;lower back;legs;compound;lower,
+single arm kettlebell swing,hamstrings;glutes;lower back;legs;compound;lower;unilateral,
+dumbbell swing,hamstrings;glutes;lower back;legs;compound;lower,
+kettlebell deadlift,glutes;hamstrings;lower back;traps;legs;compound;lower,
+dumbbell deadlift,glutes;hamstrings;lower back;traps;legs;compound;lower,
+smith machine deadlift,glutes;hamstrings;lower back;traps;legs;compound;lower,
+suitcase deadlift,glutes;hamstrings;lower back;traps;legs;compound;lower,
+zercher deadlift,glutes;hamstrings;lower back;traps;legs;compound;lower,
+single leg deadlift,glutes;hamstrings;lower back;traps;legs;compound;lower;unilateral,
+kettlebell single leg romanian deadlift,compound;glutes;hamstrings;legs;lower;unilateral,
+nordic hamstring curl,hamstrings;legs;isolation;lower,nordic curl;nordic
+glute ham raise,hamstrings;legs;isolation;lower,
+stability ball leg curl,hamstrings;legs;isolation;lower,
+slider leg curl,hamstrings;legs;isolation;lower,sliding leg curl
+cable leg curl,hamstrings;legs;isolation;lower,
+band leg curl,hamstrings;legs;isolation;lower,
+dumbbell leg curl,hamstrings;legs;isolation;lower,
+single leg lying leg curl,hamstrings;legs;isolation;lower;unilateral,
+dumbbell hip thrust,glutes;hamstrings;legs;compound;lower,
+smith machine hip thrust,glutes;hamstrings;legs;compound;lower,
+band hip thrust,glutes;hamstrings;legs;compound;lower,
+b-stance hip thrust,glutes;hamstrings;legs;compound;lower,
+dumbbell glute bridge,glutes;hamstrings;legs;compound;lower,
+single leg glute bridge,glutes;hamstrings;legs;compound;lower;unilateral,
+kettlebell glute bridge,glutes;hamstrings;legs;compound;lower,
+frog pump,glutes;hamstrings;legs;compound;lower,
+glute kickback machine,glutes;legs;isolation;lower,
+donkey kick,glutes;legs;isolation;lower,
+fire hydrant,glutes;legs;isolation;lower,
+clamshell,glutes;legs;isolation;lower,
+band lateral walk,glutes;legs;isolation;lower,monster walk;band side step
+band hip abduction,glutes;legs;isolation;lower,
+side-lying hip abduction,glutes;legs;isolation;lower,side-lying leg raise
+standing cable hip abduction,glutes;legs;isolation;lower,
+copenhagen plank,adductors;legs;isolation;lower,copenhagen adduction
+side-lying hip adduction,adductors;legs;isolation;lower,
+band hip adduction,adductors;legs;isolation;lower,
+dumbbell calf raise,calves;isolation;lower,
+bodyweight calf raise,calves;isolation;lower,
+seated dumbbell calf raise,calves;isolation;lower,
+hack squat calf raise,calves;isolation;lower,
+single leg dumbbell calf raise,calves;isolation;lower;unilateral,
+band tibialis raise,tibialis;isolation;lower,
+kettlebell tibialis raise,tibialis;isolation;lower,
+wall tibialis raise,tibialis;isolation;lower,
+psoas march,hip flexors;core;isolation,
+cable hip flexion,hip flexors;core;isolation,
+seated straight leg raise,hip flexors;core;isolation,
+crunch,abs;core;isolation,
+bicycle crunch,abs;core;isolation,
+reverse crunch,abs;core;isolation,
+cable crunch,abs;core;isolation,rope crunch
+machine crunch,abs;core;isolation,ab crunch machine
+decline crunch,abs;core;isolation,
+weighted crunch,abs;core;isolation,
+stability ball crunch,abs;core;isolation,
+toe touch crunch,abs;core;isolation,toe touches
+sit-up,abs;core;isolation,
+decline sit-up,abs;core;isolation,
+weighted sit-up,abs;core;isolation,
+ghd sit-up,abs;core;isolation,
+butterfly sit-up,abs;core;isolation,
+v-up,abs;core;isolation,jackknife;v-sit
+leg raise,abs;core;isolation,
+hanging leg raise,abs;core;isolation,
+hanging knee raise,abs;core;isolation,
+captain's chair leg raise,abs;core;isolation,vertical knee raise;roman chair leg raise
+toes-to-bar,abs;core;isolation,
+knees-to-elbows,abs;core;isolation,
+flutter kick,abs;core;isolation,
+scissor kick,abs;core;isolation,
+dragon flag,abs;core;isolation,
+ab wheel rollout,abs;core;isolation,ab wheel;ab roller
+trx pike,abs;core;isolation,
+mcgill curl-up,abs;core;isolation,
+plank,abs;core;stabilization,forearm plank
+high plank,abs;core;stabilization,
+long lever plank,abs;core;stabilization,
+plank shoulder tap,abs;core;stabilization,
+plank up-down,abs;core;stabilization,commando plank
+plank jack,abs;core;stabilization,
+body saw,abs;core;stabilization,
+stir the pot,abs;core;stabilization,
+hollow hold,abs;core;stabilization,hollow body hold
+hollow rock,abs;core;stabilization,
+dead bug,abs;core;stabilization,
+bird dog,abs;core;stabilization,
+l-sit,abs;core;stabilization,
+bear plank,abs;core;stabilization,
+mountain climber,abs;core;stabilization,
+russian twist,obliques;core;isolation,
+side crunch,obliques;core;isolation,oblique crunch
+heel touch,obliques;core;isolation,
+side plank,obliques;core;isolation,
+side plank hip dip,obliques;core;isolation,
+hanging windshield wiper,obliques;core;isolation,windshield wiper
+pallof press,obliques;core;isolation,cable pallof press;anti-rotation press
+dumbbell woodchopper,obliques;core;isolation,
+medicine ball woodchopper,obliques;core;isolation,
+torso rotation machine,obliques;core;isolation,rotary torso machine
+hanging oblique raise,obliques;core;isolation,
+kettlebell farmer's carry,grip;core;traps;compound,
+trap bar farmer's carry,grip;core;traps;compound,
+front rack carry,grip;core;traps;compound,
+overhead carry,grip;core;traps;compound,
+waiter carry,grip;core;traps;compound,
+bear hug carry,grip;core;traps;compound,
+keg carry,grip;core;traps;compound,
+snatch,full body;power;compound;legs;traps;shoulders,squat snatch
+power snatch,full body;power;compound;legs;traps;shoulders,
+hang snatch,full body;power;compound;legs;traps;shoulders,
+hang power snatch,full body;power;compound;legs;traps;shoulders,
+muscle snatch,full body;power;compound;legs;traps;shoulders,
+snatch balance,full body;power;compound;legs;traps;shoulders,
+snatch pull,full body;power;compound;legs;traps;shoulders,
+snatch high pull,full body;power;compound;legs;traps;shoulders,
+dumbbell snatch,full body;power;compound;legs;traps;shoulders,
+kettlebell snatch,full body;power;compound;legs;traps;shoulders,
+clean,full body;power;compound;legs;traps;shoulders,squat clean
+power clean,full body;power;compound;legs;traps;shoulders,
+hang clean,full body;power;compound;legs;traps;shoulders,
+hang power clean,full body;power;compound;legs;traps;shoulders,
+muscle clean,full body;power;compound;legs;traps;shoulders,
+clean pull,full body;power;compound;legs;traps;shoulders,
+clean high pull,full body;power;compound;legs;traps;shoulders,
+clean and jerk,full body;power;compound;legs;traps;shoulders,
+clean and press,full body;power;compound;legs;traps;shoulders,
+jerk,full body;power;compound;legs;traps;shoulders,
+split jerk,full body;power;compound;legs;traps;shoulders,
+push jerk,full body;power;compound;legs;traps;shoulders,
+power jerk,full body;power;compound;legs;traps;shoulders,
+dumbbell clean,full body;power;compound;legs;traps;shoulders,
+dumbbell clean and press,full body;power;compound;legs;traps;shoulders,
+kettlebell clean,full body;power;compound;legs;traps;shoulders,
+kettlebell clean and press,full body;power;compound;legs;traps;shoulders,
+kettlebell clean and jerk,full body;power;compound;legs;traps;shoulders,long cycle
+barbell high pull,full body;power;compound;legs;traps;shoulders,
+kettlebell high pull,full body;power;compound;legs;traps;shoulders,
+sumo deadlift high pull,full body;power;compound;legs;traps;shoulders,
+thruster,full body;power;compound;legs;traps;shoulders,
+dumbbell thruster,full body;power;compound;legs;traps;shoulders,
+kettlebell thruster,full body;power;compound;legs;traps;shoulders,
+cluster,full body;power;compound;legs;traps;shoulders,
+devil press,full body;power;compound;legs;traps;shoulders,
+man maker,full body;power;compound;legs;traps;shoulders,
+turkish get-up,full body;power;compound;legs;traps;shoulders,
+bear complex,full body;power;compound;legs;traps;shoulders,barbell complex
+push press,shoulders;triceps;legs;power;compound;push;upper,
+dumbbell push press,shoulders;triceps;legs;power;compound;push;upper,
+kettlebell push press,shoulders;triceps;legs;power;compound;push;upper,
+kettlebell windmill,shoulders;core;obliques;stabilization,windmill
+kettlebell halo,shoulders;core;obliques;stabilization,halo
+atlas stone to shoulder,compound;full body;glutes;hamstrings;quads;core;grip,
+sandbag to shoulder,compound;full body;glutes;hamstrings;quads;core;grip,sandbag shouldering
+sandbag over bar,compound;full body;glutes;hamstrings;quads;core;grip,
+tire flip,compound;full body;glutes;hamstrings;quads;core;grip,
+keg toss,compound;full body;glutes;hamstrings;quads;core;grip,
+axle clean and press,compound;shoulders;triceps;chest;upper;core,
+log clean and press,compound;shoulders;triceps;chest;upper;core,
+circus dumbbell press,compound;shoulders;triceps;chest;upper;core,
+sled push,full body;legs;cardio;compound,prowler push
+sled pull,full body;legs;cardio;compound,sled drag
+backward sled drag,full body;legs;cardio;compound,reverse sled drag
+sled sprint,full body;legs;cardio;compound,
+battle ropes,full body;legs;cardio;compound,battle rope waves
+sledgehammer slam,full body;legs;cardio;compound,tire slam
+box jump,quads;glutes;calves;legs;power;lower,
+seated box jump,quads;glutes;calves;legs;power;lower,
+depth jump,quads;glutes;calves;legs;power;lower,drop jump
+broad jump,quads;glutes;calves;legs;power;lower,standing long jump
+vertical jump,quads;glutes;calves;legs;power;lower,countermovement jump
+tuck jump,quads;glutes;calves;legs;power;lower,
+jump squat,quads;glutes;calves;legs;power;lower,
+jumping lunge,quads;glutes;calves;legs;power;lower,split jump
+single leg hop,quads;glutes;calves;legs;power;lower;unilateral,
+bounding,quads;glutes;calves;legs;power;lower,
+lateral bound,quads;glutes;calves;legs;power;lower,skater jump;skater
+pogo jump,quads;glutes;calves;legs;power;lower,pogo hop
+hurdle hop,quads;glutes;calves;legs;power;lower,hurdle jump
+star jump,quads;glutes;calves;legs;power;lower,
+box step-over,quads;glutes;calves;legs;power;lower,
+medicine ball slam,full body;power;compound,ball slam;slam ball
+medicine ball chest pass,full body;power;compound,
+medicine ball overhead throw,full body;power;compound,
+wall ball,full body;power;compound,wall ball shot
+burpee,full body;cardio;compound,
+burpee box jump-over,full body;cardio;compound,
+burpee pull-up,full body;cardio;compound,
+jumping jack,full body;cardio;compound,
+high knees,full body;cardio;compound,
+butt kicks,full body;cardio;compound,
+bear crawl,full body;cardio;compound,
+crab walk,full body;cardio;compound,
+inchworm,full body;cardio;compound,walkout
+double under,full body;cardio;compound,
+agility ladder,full body;cardio;compound,ladder drill
+handstand hold,shoulders;core;stabilization;upper,handstand
+handstand walk,shoulders;core;stabilization;upper,
+planche,shoulders;core;stabilization;upper,planche hold
+tuck planche,shoulders;core;stabilization;upper,
+planche lean,shoulders;core;stabilization;upper,
+frog stand,shoulders;core;stabilization;upper,crow pose
+ring support hold,shoulders;core;stabilization;upper,
+front lever,back;lats;core;stabilization;pull;upper,front lever hold
+tuck front lever,back;lats;core;stabilization;pull;upper,
+back lever,back;lats;core;stabilization;pull;upper,
+skin the cat,back;lats;core;stabilization;pull;upper,
+human flag,back;lats;core;stabilization;pull;upper,
+kip swing,back;lats;core;stabilization;pull;upper,kipping swing
+90/90 hip stretch,mobility;hips,90 90
+pigeon stretch,mobility;hips,pigeon pose
+couch stretch,mobility;hips,
+hip flexor stretch,mobility;hips,
+frog stretch,mobility;hips,
+butterfly stretch,mobility;hips,
+figure four stretch,mobility;hips,piriformis stretch
+hip cars,mobility;hips,hip circle
+deep squat hold,mobility;hips,asian squat
+world's greatest stretch,mobility;hips,
+leg swing,mobility;hips,
+hamstring stretch,mobility;hamstrings;calves,
+calf stretch,mobility;hamstrings;calves,
+quad stretch,mobility;hamstrings;calves,
+downward dog,mobility;hamstrings;calves,
+ankle mobility,mobility;hamstrings;calves,knee-to-wall;ankle dorsiflexion stretch
+cat-cow,mobility;back,
+child's pose,mobility;back,
+cobra stretch,mobility;back,cobra pose;upward dog
+thoracic rotation,mobility;back,t-spine rotation;open book
+thread the needle,mobility;back,
+scorpion stretch,mobility;back,
+lat stretch,mobility;back,
+pelvic tilt,mobility;back,
+foam rolling,mobility;back,foam roll
+shoulder dislocate,mobility;shoulders,band dislocate;pass through
+shoulder cars,mobility;shoulders,arm circle
+wall angel,mobility;shoulders,
+pec stretch,mobility;shoulders,doorway stretch
+wrist stretch,mobility;shoulders,
+neck bridge,neck;isolation;upper,wrestler's bridge
+band neck extension,neck;isolation;upper,
+band neck flexion,neck;isolation;upper,
+chin tuck,neck;isolation;upper,
+neck stretch,neck;isolation;upper,

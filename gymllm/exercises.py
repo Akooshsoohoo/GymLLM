@@ -199,8 +199,9 @@ def load_exercises(path: Path = DATA_PATH) -> list[tuple[str, str, list[str]]]:
 
 
 def load_activities(path: Path = ACTIVITY_PATH) -> list[str]:
+    """Cardio and sport names, as they are suggested when logging by hand."""
     with open(path, newline="", encoding="utf-8") as f:
-        return [_norm(row["activity"]) for row in csv.DictReader(f) if row.get("activity")]
+        return [row["activity"].strip() for row in csv.DictReader(f) if row.get("activity")]
 
 
 EXERCISES = load_exercises()
