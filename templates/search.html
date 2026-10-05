@@ -33,7 +33,7 @@
                 {{ visual(d.visual) }}
                 <ul class="tile-lines">
                     {% for l in d.lines[:tile_lines] %}
-                    <li><span class="tile-name"><span class="tile-ex">{{ l.name|cap_first }}</span>{% if l.pr %}<span class="badge badge-best">New best</span>{% endif %}</span>{% if l.detail %}<span class="tile-detail">{{ l.detail }}</span>{% endif %}</li>
+                    <li><span class="tile-name"><span class="tile-ex">{{ l.name|cap_first }}</span>{% if l.pr %}<span class="badge badge-best">New best</span>{% endif %}</span>{% if l.detail %}<span class="tile-detail">{{ l.detail }}</span>{% endif %}{% if l.parts %}<span class="tile-sub">{% for p in l.parts %}<span class="sub-part">{{ p }}{% if not loop.last %},{% endif %}</span> {% endfor %}</span>{% endif %}</li>
                     {% endfor %}
                     {% if d.lines|length > tile_lines %}<li class="tile-more">+{{ d.lines|length - tile_lines }} more</li>{% endif %}
                     {% if d.weight and not d.lines %}<li><span class="tile-name"><span class="tile-ex">Weighed in</span></span><span class="tile-detail">{{ d.weight.weight }}</span></li>{% endif %}

@@ -124,42 +124,59 @@ def compact_sets(sets_reps: str) -> str:
     return sets_reps or ""
 
 
-def _weight_span(weights: list[str]) -> str:
-    """The weights of one exercise's entries as one label: '30–50 lbs', or '30 lbs'
-    when they agree ('30' and '30 lbs' are the same weight). Weights without a
-    number ('bodyweight') are left out unless there is nothing else."""
-    amounts = [q for q in map(stats.quantity, weights) if q]
-    if not amounts:
-        return next((w for w in weights if w), "")
-    numbers = [n for n, _ in amounts]
-    unit = next((u for _, u in amounts if u), "")
-    low, high = stats.format_number(min(numbers)), stats.format_number(max(numbers))
-    span = low if low == high else f"{low}–{high}"
-    return f"{span} {unit}".strip()
+def _weight_parts(entries: list[dict]) -> list[str]:
+    """An exercise logged at several weights, one clause per weight in the order first
+    logged: ['30 lbs · 8, 8, 5', '40 lbs · 3×8']. Entries at the same weight are merged
+    ('30' and '30 lbs' are the same weight) and their reps run together. A weight with
+    no number ('bodyweight') is its own clause, keyed by its text."""
+    unit = next(
+        (q[1] for q in map(stats.quantity, (e["weight"] for e in entries)) if q and q[1]), ""
+    )
+    clauses: dict[object, list] = {}  # weight key -> [label, [reps...]]
+    for e in entries:
+        amount = stats.quantity(e["weight"])
+        if amount:
+            number, own_unit = amount
+            key = number
+            label = f"{stats.format_number(number)} {own_unit or unit}".strip()
+        else:
+            key = (e["weight"] or "").strip().lower()
+            label = (e["weight"] or "").strip()
+        clause = clauses.setdefault(key, [label, []])
+        clause[1] += stats.reps_list(e.get("sets_reps", ""))
+    parts = []
+    for label, reps in clauses.values():
+        reps_text = compact_sets(", ".join(str(n) for n in reps))
+        parts.append(" · ".join(p for p in (label, reps_text) if p))
+    return [p for p in parts if p]
 
 
 def exercise_lines(rows: list[dict]) -> list[dict]:
-    """A day's lifts (in log order) as one line per exercise, in first-appearance
-    order: [{"exercise", "detail", "pr"}]. An exercise logged once keeps its own
-    '185 lbs · 5×5'; one logged at several weights is summed up as '30–50 lbs · 9
-    sets'. `pr` is set when any of its entries is a new best."""
+    """A day's lifts (in log order) as one entry per exercise, in first-appearance
+    order: [{"exercise", "detail", "parts", "sub", "pr"}]. An exercise logged once keeps
+    its own one-liner in `detail` ('185 lbs · 5×5'). One logged at several weights has
+    no `detail`; its weights go on a second line: `parts` (one clause per weight) and
+    `sub` (the clauses joined: '30 lbs · 8, 8, 5, 40 lbs · 3×8'). `pr` is set when any
+    of its entries is a new best."""
     groups: dict[str, list[dict]] = {}
     for r in rows:
         groups.setdefault(r["exercise"].strip().lower(), []).append(r)
     lines = []
     for entries in groups.values():
+        first = entries[0]
         if len(entries) == 1:
-            parts = [entries[0]["weight"], compact_sets(entries[0].get("sets_reps", ""))]
+            detail = " · ".join(
+                p for p in (first["weight"], compact_sets(first.get("sets_reps", ""))) if p
+            )
+            parts = []
         else:
-            sets = sum(len(stats.reps_list(e.get("sets_reps", ""))) for e in entries)
-            parts = [
-                _weight_span([e["weight"] for e in entries]),
-                f"{sets} set{'' if sets == 1 else 's'}" if sets else "",
-            ]
+            detail, parts = "", _weight_parts(entries)
         lines.append(
             {
-                "exercise": entries[0]["exercise"],
-                "detail": " · ".join(p for p in parts if p),
+                "exercise": first["exercise"],
+                "detail": detail,
+                "parts": parts,
+                "sub": ", ".join(parts),
                 "pr": any(e.get("pr") for e in entries),
             }
         )

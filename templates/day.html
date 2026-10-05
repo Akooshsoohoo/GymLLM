@@ -62,7 +62,8 @@
                 {% for l in share.lifts %}
                 <li>
                     <a href="{{ url_for('main.exercise_history', name=l.exercise) }}">{{ l.exercise|cap_first }}{% if l.pr %} · new best{% endif %}</a>
-                    <span>{{ l.detail }}</span>
+                    {% if l.detail %}<span>{{ l.detail }}</span>{% endif %}
+                    {% if l.parts %}<span class="poster-sub">{% for p in l.parts %}<span class="sub-part">{{ p }}{% if not loop.last %},{% endif %}</span> {% endfor %}</span>{% endif %}
                 </li>
                 {% endfor %}
                 {% for c in cardio %}

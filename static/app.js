@@ -1188,9 +1188,10 @@
     // then one row per lift or activity. Never the weigh-in.
     var renderShareCard = function (data, icon) {
       var W = 1080, H = 1350, P = 80;
-      // The server already made one line per exercise ("30–50 lbs · 9 sets").
+      // The server already made one entry per exercise: a one-liner ("185 lbs \u00b7 5\u00d75"), or,
+      // for several weights, a name with its weights as `parts` on a second line.
       var lines = (data.lifts || []).map(function (l) {
-        return { name: l.exercise.charAt(0).toUpperCase() + l.exercise.slice(1), detail: l.detail || "", pr: !!l.pr };
+        return { name: l.exercise.charAt(0).toUpperCase() + l.exercise.slice(1), detail: l.detail || "", parts: l.parts || [], pr: !!l.pr };
       });
       (data.cardio || []).forEach(function (c) {
         lines.push({ name: c.activity.charAt(0).toUpperCase() + c.activity.slice(1), detail: c.distance || c.duration || "" });
@@ -1211,25 +1212,60 @@
       while (top.length > 1 && ctx.measureText(top).width + top.length * 3 > maxTop) top = top.slice(0, -1);
       trackedText(ctx, top, P, P + 30, 3, false);
 
-      // Rows from the bottom up, so the focus name sits right above them.
-      var rowH = 76, maxRows = 7;
-      var shown = lines.length > maxRows ? lines.slice(0, maxRows - 1) : lines;
+      // Rows from the bottom up, so the focus name sits right above them. A name with
+      // its weights on a second line (at most two lines of them) is taller than a plain
+      // row; together the rows get the room seven plain ones would take.
+      var rowH = 76, maxRows = 7, SUB_LH = 40, SUB_MAX = 2;
+      var subFont = "500 30px " + FONT;
+      var rowWidth = W - 2 * P - 32;
+      lines.forEach(function (ln) {
+        ln.sub = [];
+        if (!ln.parts.length) return;
+        ctx.font = subFont;
+        // Wrap between weights, never inside one: "30 lbs \u00b7 8, 8, 5," then "40 lbs \u00b7 3\u00d78".
+        var cur = "";
+        ln.parts.forEach(function (p, k) {
+          var piece = p + (k < ln.parts.length - 1 ? "," : "");
+          var test = cur ? cur + " " + piece : "\u21b3 " + piece;
+          if (cur && ctx.measureText(test).width > rowWidth) { ln.sub.push(cur); cur = "    " + piece; } else cur = test;
+        });
+        ln.sub.push(cur);
+        if (ln.sub.length > SUB_MAX) {
+          ln.sub = ln.sub.slice(0, SUB_MAX);
+          ln.sub[SUB_MAX - 1] = ellipsis(ctx, ln.sub[SUB_MAX - 1] + " \u2026", rowWidth);
+        }
+        ln.h = rowH + ln.sub.length * SUB_LH - 10;
+      });
+      var heightOf = function (ln) { return ln.h || rowH; };
+      var budget = maxRows * rowH, used = 0, count = 0;
+      while (count < lines.length) {
+        var restH = lines.slice(count + 1).reduce(function (t, l) { return t + heightOf(l); }, 0);
+        var fitsAll = used + heightOf(lines[count]) + restH <= budget;
+        // Unless everything fits, keep one plain row's room free for "+ N more".
+        if (!fitsAll && used + heightOf(lines[count]) + rowH > budget) break;
+        used += heightOf(lines[count]); count++;
+      }
+      var shown = lines.slice(0, Math.max(count, 1));
+      if (!count) used = heightOf(lines[0]);
       var more = lines.length - shown.length;
-      var rowsTop = H - P - (shown.length + (more ? 1 : 0)) * rowH;
-      ctx.font = "600 36px " + FONT;
-      shown.forEach(function (ln, i) {
-        var y = rowsTop + i * rowH;
+      var rowsTop = H - P - used - (more ? rowH : 0);
+      var y = rowsTop;
+      shown.forEach(function (ln) {
+        ctx.font = "600 36px " + FONT;
         ctx.fillStyle = C.rule; ctx.fillRect(P, y, W - 2 * P, 3);
         ctx.fillStyle = C.ink;
-        var detailW = ctx.measureText(ln.detail).width;
-        ctx.textAlign = "right"; ctx.fillText(ln.detail, W - P, y + 52); ctx.textAlign = "left";
-        var name = ln.name + (ln.pr ? " · new best" : "");
+        var detailW = ln.detail ? ctx.measureText(ln.detail).width : -32;
+        if (ln.detail) { ctx.textAlign = "right"; ctx.fillText(ln.detail, W - P, y + 52); ctx.textAlign = "left"; }
+        var name = ln.name + (ln.pr ? " \u00b7 new best" : "");
         ctx.fillText(ellipsis(ctx, name, W - 2 * P - detailW - 32), P, y + 52);
+        ctx.font = subFont;
+        ln.sub.forEach(function (text, k) { ctx.fillText(text, P, y + 52 + (k + 1) * SUB_LH); });
+        y += heightOf(ln);
       });
       if (more) {
-        var my = rowsTop + shown.length * rowH;
-        ctx.fillStyle = C.rule; ctx.fillRect(P, my, W - 2 * P, 3);
-        ctx.fillStyle = C.ink; ctx.fillText("+ " + more + " more", P, my + 52);
+        ctx.font = "600 36px " + FONT;
+        ctx.fillStyle = C.rule; ctx.fillRect(P, y, W - 2 * P, 3);
+        ctx.fillStyle = C.ink; ctx.fillText("+ " + more + " more", P, y + 52);
       }
 
       // The stat line ("8 sets · 3 mi") right above the rows, the focus name above that,

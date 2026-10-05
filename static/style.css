@@ -807,6 +807,11 @@ th.sort-desc::after { content: " \2193"; }
 .session-exercise .badge { flex: none; }
 a.session-exercise:hover { color: var(--you-ink); }
 .session-detail { color: var(--ink-2); white-space: nowrap; }
+/* An exercise at several weights: its weights on their own indented line. */
+.sub-part { white-space: nowrap; }
+.sub-part:not(:last-child) { margin-right: 0.2em; } /* tells "30 lbs · 8, 5" from "30 lbs · 8, 40 lbs · 5" */
+.session-sub, .tile-sub { flex-basis: 100%; width: 100%; color: var(--ink-2); font-size: 14px; font-weight: 500; padding-left: 4px; }
+.session-sub::before, .tile-sub::before { content: "\21B3\00a0"; color: var(--muted); }
 .session-weight .session-exercise { color: var(--muted); }
 
 /* --- Range filter pills ----------------------------------------------- */
@@ -875,7 +880,7 @@ a.session-exercise:hover { color: var(--you-ink); }
 .tile-date { color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; }
 .tile-body { display: flex; gap: 16px; align-items: center; min-width: 0; }
 .tile-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; flex: 1; min-width: 0; }
-.tile-lines li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 500; min-width: 0; }
+.tile-lines li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; font-size: 15px; font-weight: 500; min-width: 0; }
 .tile-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .tile-ex { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tile-name .badge { flex: none; }
@@ -1488,6 +1493,8 @@ a.day-step:hover { background: var(--line-2); color: var(--ink); }
 .poster-rows a { color: var(--on-you); text-decoration: none; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .poster-rows a:hover { text-decoration: underline; color: var(--on-you); }
 .poster-rows li > span:last-child { white-space: nowrap; }
+.poster-rows li > .poster-sub:last-child { flex-basis: 100%; white-space: normal; font-size: 14px; font-weight: 500; opacity: 0.85; }
+.poster-sub::before { content: "\21B3\00a0"; }
 .poster-caption { color: var(--muted); font-size: 13px; text-align: center; margin: 0; }
 .day-table { display: none; }
 .day-buttons { display: flex; gap: 10px; }
@@ -2030,7 +2037,7 @@ a.feed-when:hover { color: var(--you-ink); }
     .tile-body .session-visual { --visual-size: 60px !important; border-radius: 16px; }
     .tile-body muscle-icon svg { width: 48px; height: 48px; }
     .tile-lines { gap: 10px; }
-    .tile-lines li { flex-direction: column; gap: 1px; }
+    .tile-lines li { flex-direction: column; flex-wrap: nowrap; gap: 1px; }
     .tile-detail { font-size: 14px; }
 
     .table th, .table td { padding: 10px 12px; }
