@@ -13,7 +13,7 @@
         {% if d.logged %}
         <a href="{{ url_for('main.day', when=d.date) }}" class="week-bar logged" title="{{ d.date|nice_date }}: open this day"><span></span><span class="week-bar-letter">{{ d.letter }}</span></a>
         {% else %}
-        <div class="week-bar" title="{{ d.date|nice_date }}"><span></span><span class="week-bar-letter">{{ d.letter }}</span></div>
+        <div class="week-bar{{ ' rest' if d.rest }}" title="{{ d.date|nice_date }}{{ ': rest day' if d.rest }}"><span></span><span class="week-bar-letter">{{ d.letter }}</span></div>
         {% endif %}
         {% endfor %}
     </div>

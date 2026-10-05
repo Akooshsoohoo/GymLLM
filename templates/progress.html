@@ -130,7 +130,42 @@
             {%- if not is_this_week %} · <a href="{{ period_url(week=None) }}" class="week-jump">This week</a>{% endif %}
         </span>
     </div>
-    {% set week, link_days = data.week, True %}{% include "_week_strip.html" %}
+    {% set week, link_days, rest_toggle = data.week, True, True %}{% include "_week_strip.html" %}
+    <details class="rest-editor">
+        <summary>Rest days{% if rest_rules %} <span class="rest-count">{{ rest_rules|length }}</span>{% endif %}</summary>
+        <p class="rest-hint">Tap an empty day above to mark it as rest, or set a schedule. Rest days show in blue and don't change your counts or streak.</p>
+        {% if rest_rules %}
+        <ul class="rest-rules">
+            {% for r in rest_rules %}
+            <li>
+                <span>{% if r.kind == 'weekdays' %}Every {% for w in r.weekdays %}{{ ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][w] }}{{ ', ' if not loop.last }}{% endfor %}{% else %}Every {{ r.interval_days }} days, from {{ r.anchor_date|nice_date }}{% endif %}</span>
+                <form method="post" action="{{ url_for('main.rest_rule_delete', rule_id=r.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}">
+                    <button type="submit" class="link-quiet" aria-label="Remove this rest rule">Remove</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <form method="post" action="{{ url_for('main.rest_rule_add') }}" class="rest-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}">
+            <input type="hidden" name="kind" value="weekdays">
+            <fieldset class="rest-days">
+                <legend>Repeat on</legend>
+                {% for label in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                <label class="rest-day-pick"><input type="checkbox" name="weekdays" value="{{ loop.index0 }}"><span>{{ label }}</span></label>
+                {% endfor %}
+            </fieldset>
+            <button type="submit" class="btn btn-secondary">Add weekly rest days</button>
+        </form>
+        <form method="post" action="{{ url_for('main.rest_rule_add') }}" class="rest-form rest-interval">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}">
+            <input type="hidden" name="kind" value="interval">
+            <label>Every <input type="number" name="interval_days" min="2" max="60" value="3" required> days</label>
+            <label>starting <input type="date" name="anchor_date"></label>
+            <button type="submit" class="btn btn-secondary">Add</button>
+        </form>
+    </details>
 </section>
 
 <div class="section-head-row">

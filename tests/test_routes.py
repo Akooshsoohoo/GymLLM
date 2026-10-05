@@ -6,7 +6,7 @@ from gymllm import create_app, session_meta, social
 from gymllm.exercises import TAG_SYSTEM
 from gymllm.extensions import db
 from gymllm.llm.client import AuthError
-from gymllm.models import BodyWeight, Cardio, Workout
+from gymllm.models import BodyWeight, Cardio, RestOverride, RestRule, Workout
 from tests.conftest import OTHER, USER, base_test_config
 
 OLLAMA_SESSION = {"provider": "ollama", "model": "llama3.2", "api_key": "", "base_url": ""}
@@ -46,6 +46,9 @@ def test_healthz(client):
         ("post", "/confirm"),
         ("get", "/day/2026-01-10/edit"),
         ("post", "/day/2026-01-10/edit"),
+        ("post", "/rest/rules"),
+        ("post", "/rest/rules/1/delete"),
+        ("post", "/rest/day/2026-01-10"),
     ],
 )
 def test_anonymous_is_redirected_to_welcome(client, method, path):
@@ -559,7 +562,7 @@ def test_progress_today_from_tz_cookie(logged_in, add_workout, monkeypatch):
     add_workout(date="2026-09-22", exercise="barbell bench press", weight="185 lbs")
     logged_in.set_cookie("tz_offset", "300")
     body = logged_in.get("/progress").data.decode()
-    assert 'title="Wed 23 Sep 2026"' in body.split("week-day today")[1][:60]
+    assert 'title="Wed 23 Sep 2026' in body.split("week-day today")[1][:60]
 
 
 def test_404_page(logged_in):
@@ -1409,3 +1412,71 @@ def test_confirm_with_routine_name_titles_the_day(logged_in, app):
         assert session_meta.get(USER, "2026-09-13").title == "Push day"
         assert session_meta.get(USER, "2026-09-14") is None
         assert session_meta.get(USER, "2026-09-15") is None
+
+
+# --- Rest days -----------------------------------------------------------------
+
+
+def _count(app, model):
+    with app.app_context():
+        return model.query.count()
+
+
+def _one(app, model):
+    with app.app_context():
+        return model.query.one()
+
+
+def _rest_tiles(body):
+    return body.count('class="week-day rest')
+
+
+def test_weekly_rest_rule_shows_on_progress_strip(logged_in, add_workout):
+    add_workout(date="2026-03-10")  # a Tuesday: logged, so never shown as rest
+    r = logged_in.post("/rest/rules", data={"kind": "weekdays", "weekdays": ["1", "6"]})
+    assert r.status_code == 302
+    body = logged_in.get("/progress?today=2026-03-12").data.decode()
+    assert _rest_tiles(body) == 1  # Sunday only; Tuesday is logged
+    assert "<strong>1</strong> of 7 days" in body  # counts unchanged
+
+
+def test_interval_rule_and_validation(app, logged_in, add_workout):
+    add_workout(date="2026-03-01")  # the week card only shows once something is logged
+    logged_in.post("/rest/rules", data={"kind": "interval", "interval_days": "3", "anchor_date": "2026-03-09"})
+    assert _count(app, RestRule) == 1
+    logged_in.post("/rest/rules", data={"kind": "interval", "interval_days": "1"})
+    logged_in.post("/rest/rules", data={"kind": "weekdays"})
+    logged_in.post("/rest/rules", data={"kind": "weekdays", "weekdays": ["9"]})
+    assert _count(app, RestRule) == 1
+    body = logged_in.get("/progress?today=2026-03-12").data.decode()
+    assert _rest_tiles(body) == 3  # Mar 9, 12, 15
+
+
+def test_rest_rule_delete_is_owner_only(app, logged_in, other_client):
+    logged_in.post("/rest/rules", data={"kind": "weekdays", "weekdays": ["0"]})
+    rule_id = _one(app, RestRule).id
+    assert other_client.post(f"/rest/rules/{rule_id}/delete").status_code == 404
+    assert logged_in.post(f"/rest/rules/{rule_id}/delete").status_code == 302
+    assert _count(app, RestRule) == 0
+
+
+def test_rest_day_toggle_overrides_schedule(app, logged_in):
+    path = "/rest/day/2026-03-10?today=2026-03-12"
+    assert logged_in.post(path).status_code == 302  # one-off rest
+    assert _one(app, RestOverride).is_rest is True
+    logged_in.post(path)  # back to normal: row removed
+    assert _count(app, RestOverride) == 0
+    logged_in.post("/rest/rules", data={"kind": "weekdays", "weekdays": ["1"]})
+    logged_in.post(path)  # cancel a scheduled rest
+    assert _one(app, RestOverride).is_rest is False
+    body = logged_in.get("/progress?today=2026-03-12&week=2026-03-09").data.decode()
+    # the page needs something logged to show the week card
+    assert _rest_tiles(body) == 0
+
+
+def test_rest_day_toggle_refuses_future_logged_and_bad_dates(app, logged_in, add_workout):
+    add_workout(date="2026-03-10")
+    assert logged_in.post("/rest/day/2026-03-10?today=2026-03-12").status_code == 400
+    assert logged_in.post("/rest/day/2026-03-20?today=2026-03-12").status_code == 400
+    assert logged_in.post("/rest/day/nope").status_code == 404
+    assert _count(app, RestOverride) == 0
