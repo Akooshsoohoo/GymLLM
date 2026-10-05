@@ -51,12 +51,10 @@
                 {% if share.stat_line %}<p class="poster-stats">{{ share.stat_line }}</p>{% endif %}
             </div>
             <ul class="poster-rows">
-                {% for g in grouped_rows %}
-                {% set best = g.entries|selectattr('pr')|first %}
-                {% set top = best or g.entries[0] %}
+                {% for l in share.lifts %}
                 <li>
-                    <a href="{{ url_for('main.exercise_history', name=g.exercise) }}">{{ g.exercise|cap_first }}{% if best %} · new best{% endif %}</a>
-                    <span>{{ [top.weight|replace(' lbs', '')|replace(' kg', ''), top.sets_reps|compact_sets]|select|join(' × ') }}</span>
+                    <a href="{{ url_for('main.exercise_history', name=l.exercise) }}">{{ l.exercise|cap_first }}{% if l.pr %} · new best{% endif %}</a>
+                    <span>{{ l.detail }}</span>
                 </li>
                 {% endfor %}
                 {% for c in cardio %}

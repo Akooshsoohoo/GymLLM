@@ -18,32 +18,5 @@
 {%- endmacro %}
 {% set lift_fields = [("weight", "weight", "", ""), ("sets", "sets", "sets", 'inputmode="numeric"'), ("reps", "reps", "reps", ""), ("notes", "note", "", "")] %}
 {% set cardio_fields = [("distance", "distance", "", ""), ("duration", "time", "", ""), ("notes", "note", "", "")] %}
-{#- Lifts, stacked: one card per exercise, one line per weight. Each line is still its own
-    entry with its own "<prefix>-<i>-*" fields; the name lives in the header and is copied
-    into each line's hidden exercise field by app.js. `items` is [(i, entry), ...]. -#}
-{% macro set_line(prefix, i, name, e) -%}
-<div class="set-line" data-row>
-    <input type="hidden" name="{{ prefix }}-{{ i }}-exercise" value="{{ name or '' }}" data-line-name>
-    <input type="checkbox" name="{{ prefix }}-{{ i }}-delete" value="1" class="delete-box" hidden tabindex="-1" aria-hidden="true">
-    <div class="vpills">
-        {% for f, placeholder, unit, attrs in lift_fields if f != "exercise" %}
-        <label class="vpill"><input type="text" name="{{ prefix }}-{{ i }}-{{ f }}" value="{{ e[f] or '' }}" placeholder="+ {{ placeholder }}" aria-label="{{ f|capitalize }}" {{ attrs|safe }}>{% if unit %}<span class="vpill-unit">{{ unit }}</span>{% endif %}</label>
-        {% endfor %}
-    </div>
-    <button type="button" class="row-remove set-remove" data-icon aria-label="Remove this line">&times;</button>
-</div>
-{%- endmacro %}
-{% macro lift_group(name, items, prefix="entry") -%}
-<div class="lift-group" data-group>
-    <div class="row-head">
-        <input type="text" class="row-name" data-group-name value="{{ name or '' }}" list="exercise-names" placeholder="Exercise" aria-label="Exercise">
-        <button type="button" class="row-remove group-remove">Remove</button>
-    </div>
-    <div class="set-lines">
-        {% for i, e in items %}{{ set_line(prefix, i, name, e) }}{% endfor %}
-    </div>
-    <button type="button" class="add-link add-set">+ set</button>
-</div>
-{%- endmacro %}
 {% macro lift_row(i, e, prefix="entry") %}{{ row(prefix, i, "exercise", e.exercise, 'list="exercise-names" placeholder="Exercise"', lift_fields, e) }}{% endmacro %}
 {% macro cardio_row(i, c, prefix="cardio") %}{{ row(prefix, i, "activity", c.activity, 'placeholder="Activity"', cardio_fields, c) }}{% endmacro %}

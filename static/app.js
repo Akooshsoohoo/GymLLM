@@ -96,7 +96,8 @@
 
   function setBusy(form, busy, statusText) {
     form.dataset.busy = busy ? "1" : "";
-    $$("button[type=submit]", form).forEach(function (b) { b.disabled = busy; });
+    if (busy) form.setAttribute("aria-busy", "true"); else form.removeAttribute("aria-busy");
+    $$("button[type=submit]", form).forEach(function (b) { b.disabled = busy; b.classList.toggle("is-busy", !!busy); });
     var status = $("[data-llm-status]", form);
     if (status) {
       if (busy) { status.dataset.idle = status.dataset.idle || status.textContent; status.textContent = statusText; }
@@ -140,6 +141,16 @@
           showLLMError(browserLLM.describe(cfg, err));
         });
     });
+  });
+
+  // A server-side parse is a plain post: show the same busy state while it loads.
+  $$("#log-form, #words").forEach(function (form) {
+    form.addEventListener("submit", function (ev) {
+      if (ev.defaultPrevented || form.dataset.busy) return;
+      if (!(($("textarea[name=workout]", form) || {}).value || "").trim()) return;
+      setBusy(form, true, "Reading your workout…");
+    });
+    window.addEventListener("pageshow", function (ev) { if (ev.persisted) setBusy(form, false); });
   });
 
   // ---------------------------------------------------------------- Default weight unit
@@ -328,50 +339,12 @@
     entryForm.addEventListener("click", function (ev) {
       var btn = ev.target.closest(".row-remove");
       if (!btn) return;
-      var mark = function (row, removing) {
-        var box = $(".delete-box", row);
-        row.classList.toggle("row-deleted", removing);
-        if (box) box.checked = removing;
-      };
-      var group = btn.classList.contains("group-remove") ? btn.closest("[data-group]") : null;
-      if (group) {
-        // Removing an exercise marks every line under it.
-        var removingGroup = !group.classList.contains("row-deleted");
-        group.classList.toggle("row-deleted", removingGroup);
-        $$("[data-row]", group).forEach(function (line) { mark(line, removingGroup); });
-        btn.textContent = removingGroup ? "Undo" : "Remove";
-        return;
-      }
       var row = btn.closest("[data-row]");
+      var box = $(".delete-box", row);
       var removing = !row.classList.contains("row-deleted");
-      mark(row, removing);
-      btn.textContent = removing ? "Undo" : (btn.hasAttribute("data-icon") ? "×" : "Remove");
-    });
-
-    // The header's name is copied into each line's hidden exercise field.
-    entryForm.addEventListener("input", function (ev) {
-      var nameInput = ev.target.closest && ev.target.closest("[data-group-name]");
-      if (!nameInput) return;
-      $$("[data-line-name]", nameInput.closest("[data-group]")).forEach(function (hidden) { hidden.value = nameInput.value; });
-    });
-
-    // "+ set": another line under the same exercise.
-    var setTemplate = $("#set-template");
-    entryForm.addEventListener("click", function (ev) {
-      var btn = ev.target.closest(".add-set");
-      var counter = $("#num_entries");
-      if (!btn || !setTemplate || !counter) return;
-      var group = btn.closest("[data-group]");
-      var i = parseInt(counter.value, 10) || 0;
-      var holder = document.createElement("div");
-      holder.innerHTML = setTemplate.innerHTML.replace(/__i__/g, String(i)).trim();
-      var line = holder.firstElementChild;
-      $("[data-line-name]", line).value = $("[data-group-name]", group).value;
-      $(".set-lines", group).appendChild(line);
-      counter.value = i + 1;
-      if (saveBtn) saveBtn.disabled = false;
-      sizePills(line);
-      $("input[type=text]", line).focus();
+      row.classList.toggle("row-deleted", removing);
+      if (box) box.checked = removing;
+      btn.textContent = removing ? "Undo" : "Remove";
     });
 
     // "+ Add": copy the group's <template>, numbered the way the server expects.
@@ -1215,16 +1188,9 @@
     // then one row per lift or activity. Never the weigh-in.
     var renderShareCard = function (data, icon) {
       var W = 1080, H = 1350, P = 80;
-      var lines = [];
-      var seen = {};
-      (data.lifts || []).forEach(function (l) {
-        var key = l.exercise.toLowerCase();
-        var weight = (l.weight || "").replace(/\s*(lbs?|kg)$/i, "");
-        var sets = compact(l.sets_reps || "");
-        var detail = [weight, sets].filter(Boolean).join(" × ");
-        if (seen[key]) { if (l.pr) { seen[key].pr = true; seen[key].detail = detail; } return; }
-        seen[key] = { name: l.exercise.charAt(0).toUpperCase() + l.exercise.slice(1), detail: detail, pr: !!l.pr };
-        lines.push(seen[key]);
+      // The server already made one line per exercise ("30–50 lbs · 9 sets").
+      var lines = (data.lifts || []).map(function (l) {
+        return { name: l.exercise.charAt(0).toUpperCase() + l.exercise.slice(1), detail: l.detail || "", pr: !!l.pr };
       });
       (data.cardio || []).forEach(function (c) {
         lines.push({ name: c.activity.charAt(0).toUpperCase() + c.activity.slice(1), detail: c.distance || c.duration || "" });
@@ -1284,12 +1250,6 @@
       ctx.fillText(ellipsis(ctx, focus, W - 2 * P), P - 4, y);
       return canvas;
     };
-    function compact(sr) {
-      var parts = sr.split(",").map(function (p) { return p.trim(); });
-      if (parts.length > 1 && /^\d+$/.test(parts[0]) && parts.every(function (p) { return p === parts[0]; })) return parts.length + "×" + parts[0];
-      return sr;
-    }
-
     var toBlob = function (canvas) {
       return new Promise(function (resolve, reject) {
         canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error("Could not create the image.")); }, "image/png");

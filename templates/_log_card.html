@@ -28,6 +28,6 @@
             <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
         </div>
         <button type="submit" class="btn btn-you">Log it</button>
-        <span class="log-status" data-llm-status></span>
+        <span class="log-status" role="status" data-llm-status></span>
     </div>
 </form>

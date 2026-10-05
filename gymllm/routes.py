@@ -377,18 +377,6 @@ def _group_by_exercise(rows: list[dict]) -> list[dict]:
     return [groups[k] for k in order]
 
 
-def _lift_groups(items) -> list[dict]:
-    """(form key, entry) pairs -> [{"name", "items": [(key, entry), ...]}], stacking every
-    entry that shares an exercise name (ignoring case) under the first spelling seen.
-    Keys ride along so each line keeps its own form field names."""
-    groups: dict[str, dict] = {}
-    for key, entry in items:
-        name = (entry.get("exercise") or "").strip()
-        group = groups.setdefault(name.lower(), {"name": name, "items": []})
-        group["items"].append((key, entry))
-    return list(groups.values())
-
-
 def _stat_line(summary: dict) -> str:
     """The numbers under the share poster's focus name: '8 sets · 3 mi' (or exercises /
     minutes when there are no sets or distance)."""
@@ -443,15 +431,8 @@ def _day_detail(when: str, all_rows: list[dict], all_cardio: list[dict], profile
             "cardio": summary["cardio"]["distance_text"],
             "minutes": summary["cardio"]["minutes_text"],
         },
-        "lifts": [
-            {
-                "exercise": r["exercise"],
-                "weight": r["weight"],
-                "sets_reps": r["sets_reps"],
-                "pr": r["pr"],
-            }
-            for r in rows
-        ],
+        # One line per exercise, the same ones the session cards show.
+        "lifts": sessions.exercise_lines(rows),
         "cardio": [
             {"activity": c["activity"], "distance": c["distance"], "duration": c["duration"]}
             for c in cardio
@@ -684,7 +665,6 @@ def review():
         "review.html",
         error=None,
         entries=parsed.entries,
-        lift_groups=_lift_groups(enumerate(parsed.entries)),
         cardio=parsed.cardio,
         bodyweight=parsed.bodyweight,
         workout_date=parsed.date or today.isoformat(),
@@ -818,13 +798,12 @@ def confirm():
 
 
 def _tile_lines(rows: list[dict], cardio: list[dict]) -> list[dict]:
-    """A day's lines for its Sessions card: one per exercise (its new best, or the
-    first set logged) and one per cardio activity, in the order they were logged."""
-    lines = []
-    for g in _group_by_exercise(rows):
-        top = next((e for e in g["entries"] if e["pr"]), g["entries"][0])
-        detail = " · ".join(filter(None, [top["weight"], sessions.compact_sets(top["sets_reps"])]))
-        lines.append({"name": g["exercise"], "detail": detail, "pr": top["pr"]})
+    """A day's lines for its Sessions card: one per exercise and one per cardio
+    activity, in the order they were logged."""
+    lines = [
+        {"name": ln["exercise"], "detail": ln["detail"], "pr": ln["pr"]}
+        for ln in sessions.exercise_lines(rows)
+    ]
     for c in cardio:
         detail = " · ".join(filter(None, [c["distance"], c["duration"]]))
         lines.append({"name": c["activity"], "detail": detail, "pr": False})
@@ -917,7 +896,6 @@ def day_edit(when: str):
         "day_edit.html",
         when=when,
         lifts=lift_dicts,
-        lift_groups=_lift_groups((e["id"], e) for e in lift_dicts),
         cardio=cardio_dicts,
         bodyweight=weight.weight if weight else "",
         title=meta.title if meta and meta.title else "",

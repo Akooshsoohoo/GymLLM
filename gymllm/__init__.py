@@ -132,6 +132,12 @@ def _register_context(app: Flask) -> None:
 
         return compact(value)
 
+    @app.template_filter("exercise_lines")
+    def exercise_lines(rows: list[dict]) -> list[dict]:
+        from .sessions import exercise_lines as lines
+
+        return lines(rows)
+
     @app.template_filter("activity_count")
     def activity_count(session: dict) -> str:
         from .sessions import activity_count as count

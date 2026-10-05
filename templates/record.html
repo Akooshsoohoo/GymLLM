@@ -83,7 +83,7 @@
                 <button type="button" class="btn btn-xl rec-keep" data-dialog-close>Keep going</button>
             </div>
             <p class="rec-sheet-note">
-                <span data-llm-status>You'll check it over before it's saved.{% if config.is_site %} {{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today.{% endif %}</span>
+                <span role="status" data-llm-status>You'll check it over before it's saved.{% if config.is_site %} {{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today.{% endif %}</span>
             </p>
         </dialog>
     </form>

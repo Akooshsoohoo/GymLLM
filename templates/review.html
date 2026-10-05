@@ -3,7 +3,7 @@
 {% block body_class %}flow{% endblock %}
 {% block tabbar %}{% endblock %}
 
-{% from "_entry_rows.html" import lift_group, set_line, cardio_row %}
+{% from "_entry_rows.html" import lift_row, cardio_row %}
 
 {% block content %}
 {% set browser_llm = config.browser_config()|tojson if config and config.runs_in_browser else none %}
@@ -45,7 +45,7 @@
                     <button type="button" class="unit-btn{{ ' is-active' if weight_unit != 'kg' else '' }}" data-unit="lbs" aria-pressed="{{ 'true' if weight_unit != 'kg' else 'false' }}">lbs</button>
                     <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
                 </div>
-                <span class="muted small" data-llm-status></span>
+                <span class="muted small" role="status" data-llm-status></span>
             </div>
         </form>
     </div>
@@ -65,11 +65,10 @@
                 <button type="button" class="add-link" id="add-row">+ Add<span class="desktop-only"> lift</span></button>
             </div>
             <div class="group-card" id="entries-table">
-                {% for g in lift_groups %}{{ lift_group(g.name, g["items"]) }}{% endfor %}
+                {% for e in entries %}{{ lift_row(loop.index0, e) }}{% endfor %}
             </div>
             {% if not entries %}<p class="muted small table-empty" data-empty-for="entries-table">No lifts in this text.</p>{% endif %}
-            <template id="entry-template">{{ lift_group("", [("__i__", {})]) }}</template>
-            <template id="set-template">{{ set_line("entry", "__i__", "", {}) }}</template>
+            <template id="entry-template">{{ lift_row("__i__", {}) }}</template>
             <input type="hidden" name="num_entries" id="num_entries" value="{{ entries|length }}">
         </section>
 
@@ -99,7 +98,7 @@
         {% include "_visibility.html" %}
 
         <div class="review-save">
-            <span class="muted small" data-llm-status></span>
+            <span class="muted small" role="status" data-llm-status></span>
             <a href="{{ cancel_url }}" class="btn btn-text review-cancel">{{ 'Back to workout' if from_record else 'Cancel' }}</a>
             <button type="submit" class="btn btn-primary btn-xl save-btn" {% if not entries and not cardio and not bodyweight %}disabled{% endif %}>Save workout</button>
         </div>
