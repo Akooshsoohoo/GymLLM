@@ -938,12 +938,7 @@ def test_day_page_share_payload_excludes_body_weight(
     share = json.loads(body[start : body.index("'", start)].replace("&#39;", "'"))
     assert share["date"] == "2026-03-10" and share["label"] == "Tuesday 10 March 2026"
     assert share["lifts"] == [
-        {
-            "exercise": "barbell bench press",
-            "weight": "185 lbs",
-            "sets_reps": "5, 5, 5, 5, 5",
-            "pr": False,
-        }
+        {"exercise": "barbell bench press", "detail": "185 lbs · 5×5", "pr": False}
     ]
     assert share["cardio"] == [{"activity": "walking", "distance": "3 miles", "duration": "45 min"}]
     assert share["stats"]["sets"] == 5 and share["stats"]["cardio"] == "3 mi"
@@ -984,7 +979,56 @@ def test_day_page_stacks_same_exercise_rows(logged_in, add_workout):
     body = logged_in.get("/day/2026-03-10").data.decode()
     assert body.count(">barbell bench press<") == 1  # one exercise cell, not one per weight
     assert 'rowspan="2"' in body
-    assert "135 lbs" in body and "185 lbs" in body and "3, 3, 3" in body
+    assert "135 lbs" in body and "185 lbs" in body and "3×3" in body
+    # The share card sums the two weights up on one line.
+    assert "<span>135–185 lbs · 8 sets</span>" in body
+
+
+def test_home_card_shows_one_row_per_exercise(logged_in, add_workout):
+    for weight, reps in (("30", "8, 8"), ("40", "8, 8, 8"), ("50 lbs", "5")):
+        add_workout(
+            date="2026-03-10", exercise="dumbbell shoulder press", weight=weight, sets="", reps=reps
+        )
+    add_workout(date="2026-03-10", exercise="squat", weight="225 lbs")
+    body = logged_in.get("/?today=2026-03-10").data.decode()
+    start = body.index('class="session-rows"')
+    rows = body[start : body.index("</ul>", start)]
+    assert rows.count("<li>") == 2 and rows.count("Dumbbell shoulder press") == 1
+    assert "30–50 lbs · 6 sets" in rows and "225 lbs · 5×5" in rows
+    assert rows.count("badge-best") == 1  # 40 and 50 both beat the last weight: one badge
+
+
+@pytest.mark.parametrize(
+    "entries, detail",
+    [
+        ([("185 lbs", "5, 5, 5, 5, 5")], "185 lbs · 5×5"),  # logged once: as it was
+        ([("30", "8, 8"), ("50 lbs", "5"), ("40", "8")], "30–50 lbs · 4 sets"),
+        ([("30", "8"), ("30 lbs", "5")], "30 lbs · 2 sets"),  # the same weight
+        ([("bodyweight", "10"), ("bodyweight", "8")], "bodyweight · 2 sets"),
+        ([("bodyweight", "10"), ("25 lbs", "8")], "25 lbs · 2 sets"),
+        ([("62.5 kg", "5"), ("60 kg", "")], "60–62.5 kg · 1 set"),
+        ([("", ""), ("", "")], ""),
+    ],
+)
+def test_exercise_lines_sum_up_several_weights(entries, detail):
+    from gymllm.sessions import exercise_lines
+
+    rows = [{"exercise": "press", "weight": w, "sets_reps": sr} for w, sr in entries]
+    assert exercise_lines(rows) == [{"exercise": "press", "detail": detail, "pr": False}]
+
+
+def test_exercise_lines_group_by_name_in_first_seen_order():
+    from gymllm.sessions import exercise_lines
+
+    rows = [
+        {"exercise": "Squat", "weight": "225 lbs", "sets_reps": "5", "pr": False},
+        {"exercise": "bench", "weight": "135 lbs", "sets_reps": "5", "pr": False},
+        {"exercise": "squat", "weight": "245 lbs", "sets_reps": "3", "pr": True},
+    ]
+    assert exercise_lines(rows) == [
+        {"exercise": "Squat", "detail": "225–245 lbs · 2 sets", "pr": True},
+        {"exercise": "bench", "detail": "135 lbs · 5", "pr": False},
+    ]
 
 
 def test_day_page_empty_states(logged_in, add_workout):

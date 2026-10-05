@@ -1188,16 +1188,9 @@
     // then one row per lift or activity. Never the weigh-in.
     var renderShareCard = function (data, icon) {
       var W = 1080, H = 1350, P = 80;
-      var lines = [];
-      var seen = {};
-      (data.lifts || []).forEach(function (l) {
-        var key = l.exercise.toLowerCase();
-        var weight = (l.weight || "").replace(/\s*(lbs?|kg)$/i, "");
-        var sets = compact(l.sets_reps || "");
-        var detail = [weight, sets].filter(Boolean).join(" × ");
-        if (seen[key]) { if (l.pr) { seen[key].pr = true; seen[key].detail = detail; } return; }
-        seen[key] = { name: l.exercise.charAt(0).toUpperCase() + l.exercise.slice(1), detail: detail, pr: !!l.pr };
-        lines.push(seen[key]);
+      // The server already made one line per exercise ("30–50 lbs · 9 sets").
+      var lines = (data.lifts || []).map(function (l) {
+        return { name: l.exercise.charAt(0).toUpperCase() + l.exercise.slice(1), detail: l.detail || "", pr: !!l.pr };
       });
       (data.cardio || []).forEach(function (c) {
         lines.push({ name: c.activity.charAt(0).toUpperCase() + c.activity.slice(1), detail: c.distance || c.duration || "" });
@@ -1257,12 +1250,6 @@
       ctx.fillText(ellipsis(ctx, focus, W - 2 * P), P - 4, y);
       return canvas;
     };
-    function compact(sr) {
-      var parts = sr.split(",").map(function (p) { return p.trim(); });
-      if (parts.length > 1 && /^\d+$/.test(parts[0]) && parts.every(function (p) { return p === parts[0]; })) return parts.length + "×" + parts[0];
-      return sr;
-    }
-
     var toBlob = function (canvas) {
       return new Promise(function (resolve, reject) {
         canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error("Could not create the image.")); }, "image/png");

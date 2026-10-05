@@ -793,14 +793,18 @@ th.sort-desc::after { content: " \2193"; }
 .session-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .session-rows li {
     display: flex;
+    flex-wrap: wrap; /* a long name keeps its line; the numbers drop under it */
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    gap: 2px 12px;
     font-size: 15px;
     font-weight: 500;
     min-width: 0;
 }
-.session-exercise { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.session-exercise { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+/* A long name gives way before its NEW BEST badge does. */
+.session-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.session-exercise .badge { flex: none; }
 a.session-exercise:hover { color: var(--you-ink); }
 .session-detail { color: var(--ink-2); white-space: nowrap; }
 .session-weight .session-exercise { color: var(--muted); }
@@ -1474,9 +1478,9 @@ a.day-step:hover { background: var(--line-2); color: var(--ink); }
 .poster-head { margin-top: auto; display: grid; gap: 8px; }
 .poster-focus { font-family: var(--font-head); font-size: 46px; font-weight: 800; line-height: 0.92; letter-spacing: -0.03em; margin: 0; overflow-wrap: anywhere; }
 .poster-stats { font-size: 16px; font-weight: 600; margin: 0; }
-.poster-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 15px; font-weight: 600; }
-.poster-rows li { display: flex; justify-content: space-between; gap: 12px; border-top: 1.5px solid var(--you-rule); padding-top: 8px; }
-.poster-rows a { color: var(--on-you); text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poster-rows { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; font-size: 15px; font-weight: 600; }
+.poster-rows li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; border-top: 1.5px solid var(--you-rule); padding-top: 8px; }
+.poster-rows a { color: var(--on-you); text-decoration: none; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .poster-rows a:hover { text-decoration: underline; color: var(--on-you); }
 .poster-rows li > span:last-child { white-space: nowrap; }
 .poster-caption { color: var(--muted); font-size: 13px; text-align: center; margin: 0; }

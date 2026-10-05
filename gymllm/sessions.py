@@ -91,6 +91,48 @@ def compact_sets(sets_reps: str) -> str:
     return sets_reps or ""
 
 
+def _weight_span(weights: list[str]) -> str:
+    """The weights of one exercise's entries as one label: '30–50 lbs', or '30 lbs'
+    when they agree ('30' and '30 lbs' are the same weight). Weights without a
+    number ('bodyweight') are left out unless there is nothing else."""
+    amounts = [q for q in map(stats.quantity, weights) if q]
+    if not amounts:
+        return next((w for w in weights if w), "")
+    numbers = [n for n, _ in amounts]
+    unit = next((u for _, u in amounts if u), "")
+    low, high = stats.format_number(min(numbers)), stats.format_number(max(numbers))
+    span = low if low == high else f"{low}–{high}"
+    return f"{span} {unit}".strip()
+
+
+def exercise_lines(rows: list[dict]) -> list[dict]:
+    """A day's lifts (in log order) as one line per exercise, in first-appearance
+    order: [{"exercise", "detail", "pr"}]. An exercise logged once keeps its own
+    '185 lbs · 5×5'; one logged at several weights is summed up as '30–50 lbs · 9
+    sets'. `pr` is set when any of its entries is a new best."""
+    groups: dict[str, list[dict]] = {}
+    for r in rows:
+        groups.setdefault(r["exercise"].strip().lower(), []).append(r)
+    lines = []
+    for entries in groups.values():
+        if len(entries) == 1:
+            parts = [entries[0]["weight"], compact_sets(entries[0].get("sets_reps", ""))]
+        else:
+            sets = sum(len(stats.reps_list(e.get("sets_reps", ""))) for e in entries)
+            parts = [
+                _weight_span([e["weight"] for e in entries]),
+                f"{sets} set{'' if sets == 1 else 's'}" if sets else "",
+            ]
+        lines.append(
+            {
+                "exercise": entries[0]["exercise"],
+                "detail": " · ".join(p for p in parts if p),
+                "pr": any(e.get("pr") for e in entries),
+            }
+        )
+    return lines
+
+
 def activity_count(session: dict) -> str:
     """'3 exercises' when there are lifts (cardio counts too), else '2 activities'."""
     n = len({r["exercise"] for r in session.get("rows", [])}) + len(session.get("cardio", []))
