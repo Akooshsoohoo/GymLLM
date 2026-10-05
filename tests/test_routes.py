@@ -257,6 +257,46 @@ def test_review_renders_editable_table(logged_in, fake_llm):
     assert "2026-09-14" in fake_llm.calls[0][0]  # browser date reaches the prompt
 
 
+def test_review_stacks_one_exercise_at_several_weights_under_one_name(logged_in, fake_llm):
+    def lift(weight, reps, name="barbell bench press"):
+        return {"exercise": name, "weight": weight, "sets": 3, "reps": reps, "notes": ""}
+
+    fake_llm.queue(
+        {
+            "date": "2026-09-13",
+            "exercises": [
+                lift("135 lbs", [5, 5, 5]),
+                lift("225 lbs", [5], name="barbell squat"),
+                lift("155 lbs", [5, 5, 5], name="Barbell Bench Press"),
+                lift("185 lbs", [3, 3, 3]),
+            ],
+        }
+    )
+    body = logged_in.post("/review", data={"workout": "bench and squat"}).get_data(as_text=True)
+    # Bench stacked and squat alone, plus the "+ Add lift" template's empty group.
+    assert body.count('class="lift-group"') == 2 + 1
+    assert body.count("data-group-name") == 2 + 1
+    # Four lines, plus one in each of the "+ Add lift" and "+ set" templates.
+    assert body.count('class="set-line"') == 4 + 2
+    # Every line keeps its own index, so the form posts the same fields as before.
+    for i in range(4):
+        assert f'name="entry-{i}-exercise"' in body and f'name="entry-{i}-weight"' in body
+    assert 'name="num_entries" id="num_entries" value="4"' in body
+
+
+def test_lift_groups_merge_case_insensitively_in_first_seen_order():
+    from gymllm.routes import _lift_groups
+
+    entries = [
+        {"exercise": "Squat"},
+        {"exercise": "bench"},
+        {"exercise": "squat "},
+    ]
+    groups = _lift_groups(enumerate(entries))
+    assert [g["name"] for g in groups] == ["Squat", "bench"]
+    assert [[key for key, _ in g["items"]] for g in groups] == [[0, 2], [1]]
+
+
 def test_review_uses_and_persists_weight_unit(logged_in, fake_llm):
     fake_llm.queue(PARSED)
     r = logged_in.post(
@@ -1086,6 +1126,7 @@ def test_day_edit_page_shows_pills_for_the_day(logged_in, add_workout, add_cardi
     assert 'name="date" value="2026-03-10"' in body
     assert "other day" not in body
     assert 'id="entry-template"' in body and 'id="cardio-template"' in body
+    assert 'id="set-template"' in body and f'name="lift-{a}-exercise"' in body
 
 
 def test_day_edit_on_an_empty_day_goes_back_to_the_day(logged_in):

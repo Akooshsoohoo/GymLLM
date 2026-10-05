@@ -1285,9 +1285,18 @@ body.flow .page { padding-bottom: 140px; }
 .add-link { height: auto; padding: 0; gap: 0; background: none; border: 0; color: var(--you-ink); font-size: 14px; font-weight: 600; }
 .add-link:hover { background: none; color: var(--you-ink); text-decoration: underline; }
 .group-card { background: var(--surface); border-radius: 20px; overflow: hidden; }
-.group-card:not(:has(.review-row)) { display: none; }
-.review-row { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-.review-row + .review-row { border-top: 1px solid var(--line-2); }
+.group-card:not(:has(.review-row, .lift-group)) { display: none; }
+.review-row, .lift-group { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.review-row + .review-row, .lift-group + .lift-group, .review-row + .lift-group, .lift-group + .review-row { border-top: 1px solid var(--line-2); }
+.set-lines { display: flex; flex-direction: column; }
+.set-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; }
+.set-line + .set-line { border-top: 1px dashed var(--line-2); }
+.set-remove { font-size: 20px; line-height: 1; padding: 0 4px; flex: none; }
+.add-set { align-self: flex-start; }
+.lift-group.row-deleted, .set-line.row-deleted { background: var(--danger-tint); }
+.lift-group.row-deleted .row-name { opacity: 0.45; text-decoration: line-through; }
+.set-line.row-deleted .vpills { opacity: 0.45; text-decoration: line-through; }
+.set-line.row-deleted .set-remove { color: var(--ink); font-size: 13px; font-weight: 600; }
 .row-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 input.row-name {
     flex: 1;
@@ -1878,6 +1887,9 @@ a.feed-when:hover { color: var(--you-ink); }
     .row-head { display: contents; }
     .row-head .row-remove { order: 3; }
     .vpills { order: 2; flex-wrap: nowrap; }
+    .lift-group { padding: 12px 0; gap: 6px; }
+    .lift-group .row-head { display: flex; }
+    .set-line .vpills { flex-wrap: wrap; }
     .review-pair { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; }
     .review-pair .review-group { background: var(--surface); border-radius: 22px; padding: 18px 20px; gap: 4px; }
     .review-pair .group-card { padding: 0; }
