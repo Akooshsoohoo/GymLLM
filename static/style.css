@@ -590,6 +590,20 @@ main.is-loading > :not(.page-head):not(.tabs):not(.filters):not(.progress-head) 
 .btn-log.is-recording { font-variant-numeric: tabular-nums; }
 .btn-log.is-recording .rec-link-dot { animation: rec-blink 1.4s ease-in-out infinite; }
 .btn:disabled, button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+/* Busy: a spinner ahead of the label while a parse or save is in flight. */
+.btn.is-busy::before {
+    content: "";
+    flex: none;
+    width: 1em;
+    height: 1em;
+    margin-right: 8px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+.btn.is-busy:disabled { opacity: 0.7; cursor: progress; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .toolbar {
     display: flex;
@@ -2021,6 +2035,6 @@ a.feed-when:hover { color: var(--you-ink); }
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; }
-    .tab-log-btn, .rec-live-dot, .rec-link-dot { animation: none !important; }
+    .tab-log-btn, .rec-live-dot, .rec-link-dot, .btn.is-busy::before { animation: none !important; }
     .latest-card.is-new { animation-duration: 0.01s !important; }
 }

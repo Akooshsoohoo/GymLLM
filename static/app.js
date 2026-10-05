@@ -96,7 +96,8 @@
 
   function setBusy(form, busy, statusText) {
     form.dataset.busy = busy ? "1" : "";
-    $$("button[type=submit]", form).forEach(function (b) { b.disabled = busy; });
+    if (busy) form.setAttribute("aria-busy", "true"); else form.removeAttribute("aria-busy");
+    $$("button[type=submit]", form).forEach(function (b) { b.disabled = busy; b.classList.toggle("is-busy", !!busy); });
     var status = $("[data-llm-status]", form);
     if (status) {
       if (busy) { status.dataset.idle = status.dataset.idle || status.textContent; status.textContent = statusText; }
@@ -140,6 +141,16 @@
           showLLMError(browserLLM.describe(cfg, err));
         });
     });
+  });
+
+  // A server-side parse is a plain post: show the same busy state while it loads.
+  $$("#log-form, #words").forEach(function (form) {
+    form.addEventListener("submit", function (ev) {
+      if (ev.defaultPrevented || form.dataset.busy) return;
+      if (!(($("textarea[name=workout]", form) || {}).value || "").trim()) return;
+      setBusy(form, true, "Reading your workout…");
+    });
+    window.addEventListener("pageshow", function (ev) { if (ev.persisted) setBusy(form, false); });
   });
 
   // ---------------------------------------------------------------- Default weight unit
