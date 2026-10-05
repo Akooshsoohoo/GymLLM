@@ -58,7 +58,7 @@
 {% if own %}
 <span class="kudos-btn is-static{{ ' is-on' if card.kudos }}" title="High fives from friends">High five · <span class="kudos-count num">{{ card.kudos }}</span></span>
 {% else %}
-<form method="post" action="{{ url_for('social.kudos', handle=card.owner.handle, when=card.date) }}" class="kudos-form">
+<form method="post" action="{{ url_for('social.kudos', handle=card.owner.handle, when=card.date, n=card.session|default(0)) }}" class="kudos-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ next }}">
     <button type="submit" class="kudos-btn{{ ' is-on' if card.kudoed }}" aria-pressed="{{ 'true' if card.kudoed else 'false' }}" title="Give a high five">High five · <span class="kudos-count num">{{ card.kudos }}</span></button>
 </form>
@@ -92,10 +92,10 @@
 
 {% macro comment_form(card, next) -%}
 {% set own = my_profile and card.owner.user_email == my_profile.user_email %}
-<form method="post" action="{{ url_for('social.comment', handle=card.owner.handle, when=card.date) }}" class="comment-form">
+<form method="post" action="{{ url_for('social.comment', handle=card.owner.handle, when=card.date, n=card.session|default(0)) }}" class="comment-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ next }}">
-    <label class="sr-only" for="c-{{ card.owner.handle }}-{{ card.date }}">Add a comment</label>
-    <input type="text" id="c-{{ card.owner.handle }}-{{ card.date }}" name="body" class="input" maxlength="500" required placeholder="{{ 'Reply…' if own else 'Say something nice…' }}" autocomplete="off">
+    <label class="sr-only" for="c-{{ card.owner.handle }}-{{ card.date }}-{{ card.session|default(0) }}">Add a comment</label>
+    <input type="text" id="c-{{ card.owner.handle }}-{{ card.date }}-{{ card.session|default(0) }}" name="body" class="input" maxlength="500" required placeholder="{{ 'Reply…' if own else 'Say something nice…' }}" autocomplete="off">
     <button type="submit" class="btn btn-primary btn-sm">Post</button>
 </form>
 {%- endmacro %}
@@ -155,18 +155,18 @@
 {#- One session as a card with its owner, lifts, cardio, bests, high fives and comments. -#}
 {% macro session_card(card, next, compact=False, show_owner=True) -%}
 {% set own = my_profile and card.owner.user_email == my_profile.user_email %}
-<article class="session-card feed-card" id="s-{{ card.owner.handle }}-{{ card.date }}">
+<article class="session-card feed-card" id="s-{{ card.owner.handle }}-{{ card.date }}-{{ card.session|default(0) }}">
     <header class="feed-head">
         {% if show_owner %}
         <a href="{{ url_for('social.profile', handle=card.owner.handle) }}" class="person">
             {{ avatar(card.owner, "md") }}
             <span class="person-text">
                 <span class="person-name">{{ card.owner.display_name }}</span>
-                <span class="person-handle"><time datetime="{{ card.date }}">{{ card.date|day_label }}</time> · {{ card|activity_count }}</span>
+                <span class="person-handle">{% if card.title %}{{ card.title }} · {% endif %}<time datetime="{{ card.date }}">{{ card.date|day_label }}</time> · {{ card|activity_count }}</span>
             </span>
         </a>
         {% elif own %}
-        <a href="{{ url_for('main.day', when=card.date) }}" class="feed-when"><time datetime="{{ card.date }}">{{ card.date|day_label }}</time></a>
+        <a href="{{ url_for('main.day', when=card.date, s=card.session or None) }}" class="feed-when">{% if card.title %}{{ card.title }} · {% endif %}<time datetime="{{ card.date }}">{{ card.date|day_label }}</time></a>
         {% else %}
         <time class="feed-when" datetime="{{ card.date }}">{{ card.date|day_label }}</time>
         {% endif %}

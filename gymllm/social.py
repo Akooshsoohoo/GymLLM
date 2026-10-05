@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import and_, or_
 
-from . import sessions, stats
+from . import session_meta, sessions, stats
 from .extensions import db
 from .models import Comment, Friendship, Kudos, Profile, SessionVisibility
 
@@ -267,10 +267,13 @@ def visible_data(viewer: str, owner: str) -> tuple[list[dict], list[dict], list[
     return rows, cardio, []
 
 
-def has_session(viewer: str, owner: str, when: str) -> bool:
-    """Whether `owner` logged lifts or cardio on `when` and `viewer` may see it."""
+def has_session(viewer: str, owner: str, when: str, n: int = 0) -> bool:
+    """Whether `owner` logged lifts or cardio as session `n` of `when` and `viewer`
+    may see it."""
     data = visible_data(viewer, owner)
-    return bool(data) and any(x["date"] == when for x in data[0] + data[1])
+    return bool(data) and any(
+        x["date"] == when and x.get("session", 0) == n for x in data[0] + data[1]
+    )
 
 
 def mark_prs(session: dict, all_rows: list[dict]) -> dict:
@@ -284,21 +287,24 @@ def mark_prs(session: dict, all_rows: list[dict]) -> dict:
 # --- Kudos and comments ---------------------------------------------------------
 
 
-def toggle_kudos(giver: str, owner: str, when: str) -> tuple[int, bool]:
-    k = Kudos.query.filter_by(owner_email=owner, date=when, giver_email=giver).first()
+def toggle_kudos(giver: str, owner: str, when: str, n: int = 0) -> tuple[int, bool]:
+    where = {"owner_email": owner, "date": when, "session": n}
+    k = Kudos.query.filter_by(giver_email=giver, **where).first()
     if k:
         db.session.delete(k)
     else:
-        db.session.add(Kudos(owner_email=owner, date=when, giver_email=giver))
+        db.session.add(Kudos(giver_email=giver, **where))
     db.session.commit()
-    return Kudos.query.filter_by(owner_email=owner, date=when).count(), k is None
+    return Kudos.query.filter_by(**where).count(), k is None
 
 
-def add_comment(author: str, owner: str, when: str, body: str) -> Comment | None:
+def add_comment(author: str, owner: str, when: str, body: str, n: int = 0) -> Comment | None:
     body = (body or "").strip()
     if not body:
         return None
-    c = Comment(owner_email=owner, date=when, author_email=author, body=body[:COMMENT_MAX])
+    c = Comment(
+        owner_email=owner, date=when, session=n, author_email=author, body=body[:COMMENT_MAX]
+    )
     db.session.add(c)
     db.session.commit()
     return c
@@ -316,7 +322,7 @@ def delete_comment(viewer: str, comment_id: int) -> Comment | None:
 
 def attach_social(cards: list[dict], viewer: str) -> list[dict]:
     """Add kudos (count, whether the viewer gave one) and comments to session
-    cards, which carry "owner" (a Profile) and "date"."""
+    cards, which carry "owner" (a Profile), "date" and "session"."""
     if not cards:
         return cards
     owners = {c["owner"].user_email for c in cards}
@@ -329,15 +335,15 @@ def attach_social(cards: list[dict], viewer: str) -> list[dict]:
     )
     authors = profiles_for(c.author_email for c in comments)
     for card in cards:
-        key = (card["owner"].user_email, card["date"])
-        givers = [k.giver_email for k in kudos if (k.owner_email, k.date) == key]
+        key = (card["owner"].user_email, card["date"], card.get("session", 0))
+        givers = [k.giver_email for k in kudos if (k.owner_email, k.date, k.session) == key]
         card["kudos"] = len(givers)
         card["kudoed"] = viewer in givers
         card["comments"] = [
             {"id": c.id, "body": c.body, "at": c.created_at, "author": authors.get(c.author_email),
              "can_delete": viewer in (c.author_email, c.owner_email)}
             for c in comments
-            if (c.owner_email, c.date) == key
+            if (c.owner_email, c.date, c.session) == key
         ]  # fmt: skip
     return cards
 
@@ -356,7 +362,17 @@ def session_cards(
         for s in sessions.group_sessions(rows, cardio, weights, before=before)
         if s["rows"] or s["cardio"]
     ][:limit]
-    return [dict(mark_prs(s, rows), owner=owner) for s in days]
+    metas = session_meta.for_days(owner.user_email, {s["date"] for s in days})
+    return [
+        dict(
+            mark_prs(s, rows),
+            owner=owner,
+            title=session_meta.title_for(
+                s["date"], metas.get((s["date"], s["session"])), s["session"]
+            ),
+        )
+        for s in days
+    ]
 
 
 def feed(
@@ -366,7 +382,9 @@ def feed(
     (None on the last page). A page never splits a date across two pages."""
     owners = profiles_for(friend_emails(viewer)).values()
     cards = [c for p in owners for c in session_cards(viewer, p, limit=limit + 1, before=before)]
-    cards.sort(key=lambda c: (c["date"], c["owner"].display_name.lower()), reverse=True)
+    cards.sort(
+        key=lambda c: (c["date"], c["owner"].display_name.lower(), c["session"]), reverse=True
+    )
     if len(cards) <= limit:
         return attach_social(cards, viewer), None
     cut = cards[limit - 1]["date"]
@@ -397,12 +415,13 @@ def activity_on_mine(email: str, limit: int = 20) -> list[dict]:
             "kind": "kudos",
             "who": who.get(k.giver_email),
             "date": k.date,
+            "session": k.session,
             "at": k.created_at,
             "body": "",
         }
         for k in kudos
     ]
-    events += [{"kind": "comment", "who": who.get(c.author_email), "date": c.date, "at": c.created_at, "body": c.body} for c in comments]  # fmt: skip
+    events += [{"kind": "comment", "who": who.get(c.author_email), "date": c.date, "session": c.session, "at": c.created_at, "body": c.body} for c in comments]  # fmt: skip
     events = [e for e in events if e["who"]]
     events.sort(key=lambda e: e["at"], reverse=True)
     return events[:limit]

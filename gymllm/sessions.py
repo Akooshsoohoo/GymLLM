@@ -1,9 +1,11 @@
-"""Loading a user's log and grouping it into sessions (one session = one day with
-anything logged). Shared by the Log page, the day page and the social views."""
+"""Loading a user's log and grouping it into sessions (one session = one workout you
+logged; a day can hold several, numbered 0, 1, 2... in the order they were saved).
+Shared by the Log page, the day page and the social views."""
 
 from __future__ import annotations
 
 from . import stats
+from .extensions import db
 from .models import BodyWeight, Cardio, RestOverride, RestRule, Workout
 
 RECENT_SESSIONS = 5
@@ -37,9 +39,7 @@ def rest_rules(user_email: str) -> list[dict]:
 
 
 def rest_overrides(user_email: str) -> dict[str, bool]:
-    return {
-        o.date: o.is_rest for o in RestOverride.query.filter_by(owner_email=user_email).all()
-    }
+    return {o.date: o.is_rest for o in RestOverride.query.filter_by(owner_email=user_email).all()}
 
 
 def sets_summary(sets: str, reps: str) -> str:
@@ -54,6 +54,28 @@ def sets_summary(sets: str, reps: str) -> str:
     return sets or reps
 
 
+def session_numbers(rows: list[dict], cardio: list[dict]) -> dict[str, list[int]]:
+    """{date: [session numbers, ascending]} for every day with lifts or cardio."""
+    found: dict[str, set[int]] = {}
+    for x in rows + cardio:
+        found.setdefault(x["date"], set()).add(x.get("session", 0))
+    return {d: sorted(n) for d, n in found.items()}
+
+
+def next_session(user_email: str, when: str) -> int:
+    """The number a workout saved on `when` now gets: one past the day's last."""
+    best = -1
+    for model in (Workout, Cardio):
+        top = (
+            db.session.query(db.func.max(model.session))
+            .filter(model.user_email == user_email, model.date == when)
+            .scalar()
+        )
+        if top is not None:
+            best = max(best, top)
+    return best + 1
+
+
 def group_sessions(
     rows: list[dict],
     cardio: list[dict],
@@ -61,23 +83,34 @@ def group_sessions(
     limit: int | None = None,
     before: str | None = None,
 ) -> list[dict]:
-    """The days with anything logged (strictly before `before`, if given), newest
-    first, each with its strength entries, cardio, and weigh-in. Rows are expected
-    newest first, as all_of() returns them."""
-    dates = {r["date"] for r in rows} | {c["date"] for c in cardio} | {w["date"] for w in weights}
+    """The logged workouts (on days strictly before `before`, if given), newest day
+    first and, within a day, the last saved first. Each has its strength entries and
+    cardio; the day's weigh-in rides on the day's first session (or stands alone on
+    a day with nothing else). Rows are expected newest first, as all_of() returns them."""
+    numbers = session_numbers(rows, cardio)
+    for w in weights:
+        numbers.setdefault(w["date"], [0])
     if before:
-        dates = {d for d in dates if d < before}
+        numbers = {d: n for d, n in numbers.items() if d < before}
+    keys = [(d, n) for d in sorted(numbers, reverse=True) for n in reversed(numbers[d])]
     sessions = []
-    for day in sorted(dates, reverse=True)[:limit]:
+    for day, n in keys[:limit]:
         strength = [
-            dict(r, sets_reps=sets_summary(r["sets"], r["reps"])) for r in rows if r["date"] == day
+            dict(r, sets_reps=sets_summary(r["sets"], r["reps"]))
+            for r in rows
+            if r["date"] == day and r.get("session", 0) == n
         ]
         sessions.append(
             {
                 "date": day,
+                "session": n,
                 "rows": strength,
-                "cardio": [c for c in cardio if c["date"] == day],
-                "weight": next((w for w in weights if w["date"] == day), None),
+                "cardio": [c for c in cardio if c["date"] == day and c.get("session", 0) == n],
+                "weight": (
+                    next((w for w in weights if w["date"] == day), None)
+                    if n == numbers[day][0]
+                    else None
+                ),
             }
         )
     return sessions

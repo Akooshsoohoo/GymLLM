@@ -19,11 +19,11 @@
                  {% if recorded %}data-recording-saved{% endif %}>
             <div class="section-head">
                 <h2 id="latest-title">{{ 'Today' if latest.date == today else 'Just logged' }}</h2>
-                <a href="{{ url_for('main.day', when=latest.date) }}" class="link-quiet">Details</a>
+                <a href="{{ latest.url }}" class="link-quiet">Details</a>
             </div>
             <article class="session-card latest-card{{ ' is-new' if just_saved }}">
                 <header class="feed-head">
-                    <a href="{{ url_for('main.day', when=latest.date) }}" class="feed-when"><time datetime="{{ latest.date }}">{{ latest.date|day_label }}</time>{% if shareable %} · {{ latest|activity_count }}{% endif %}</a>
+                    <a href="{{ latest.url }}" class="feed-when"><span class="latest-name">{{ latest.title }}</span> · <time datetime="{{ latest.date }}">{{ latest.date|day_label }}</time>{% if shareable %} · {{ latest|activity_count }}{% endif %}</a>
                     {% if just_saved %}<span class="latest-badge">Saved</span>{% endif %}
                 </header>
                 {{ social.session_rows(latest, links=True) }}
@@ -31,7 +31,7 @@
                     {% if shareable %}<button type="button" class="btn btn-you" data-share='{{ latest.share|tojson }}'>Share</button>{% endif %}
                     <a href="{{ latest.edit_url }}" class="btn btn-white">Edit</a>
                 </div>
-                {% if latest.owner %}{{ social.social_bar(latest, url_for('main.home') ~ '#my-latest') }}{% endif %}
+                {% if latest.owner %}{{ social.social_bar(latest, url_for('main.home', saved=latest.date, session=latest.session) ~ '#my-latest') }}{% endif %}
             </article>
             <div class="alert error" data-share-error hidden></div>
             <figure class="share-preview" data-share-preview hidden>
@@ -85,7 +85,7 @@
             {% if recent %}
             <ul class="recent-list">
                 {% for s in recent %}
-                <li><a href="{{ url_for('main.day', when=s.date) }}"><span><time datetime="{{ s.date }}">{{ s.date|day_label }}</time></span><span>{{ s.summary }}</span></a></li>
+                <li><a href="{{ url_for('main.day', when=s.date, s=s.session or None) }}"><span><time datetime="{{ s.date }}">{{ s.date|day_label }}</time></span><span>{{ s.title }} · {{ s.summary }}</span></a></li>
                 {% endfor %}
             </ul>
             {% else %}
