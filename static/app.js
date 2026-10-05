@@ -328,50 +328,12 @@
     entryForm.addEventListener("click", function (ev) {
       var btn = ev.target.closest(".row-remove");
       if (!btn) return;
-      var mark = function (row, removing) {
-        var box = $(".delete-box", row);
-        row.classList.toggle("row-deleted", removing);
-        if (box) box.checked = removing;
-      };
-      var group = btn.classList.contains("group-remove") ? btn.closest("[data-group]") : null;
-      if (group) {
-        // Removing an exercise marks every line under it.
-        var removingGroup = !group.classList.contains("row-deleted");
-        group.classList.toggle("row-deleted", removingGroup);
-        $$("[data-row]", group).forEach(function (line) { mark(line, removingGroup); });
-        btn.textContent = removingGroup ? "Undo" : "Remove";
-        return;
-      }
       var row = btn.closest("[data-row]");
+      var box = $(".delete-box", row);
       var removing = !row.classList.contains("row-deleted");
-      mark(row, removing);
-      btn.textContent = removing ? "Undo" : (btn.hasAttribute("data-icon") ? "×" : "Remove");
-    });
-
-    // The header's name is copied into each line's hidden exercise field.
-    entryForm.addEventListener("input", function (ev) {
-      var nameInput = ev.target.closest && ev.target.closest("[data-group-name]");
-      if (!nameInput) return;
-      $$("[data-line-name]", nameInput.closest("[data-group]")).forEach(function (hidden) { hidden.value = nameInput.value; });
-    });
-
-    // "+ set": another line under the same exercise.
-    var setTemplate = $("#set-template");
-    entryForm.addEventListener("click", function (ev) {
-      var btn = ev.target.closest(".add-set");
-      var counter = $("#num_entries");
-      if (!btn || !setTemplate || !counter) return;
-      var group = btn.closest("[data-group]");
-      var i = parseInt(counter.value, 10) || 0;
-      var holder = document.createElement("div");
-      holder.innerHTML = setTemplate.innerHTML.replace(/__i__/g, String(i)).trim();
-      var line = holder.firstElementChild;
-      $("[data-line-name]", line).value = $("[data-group-name]", group).value;
-      $(".set-lines", group).appendChild(line);
-      counter.value = i + 1;
-      if (saveBtn) saveBtn.disabled = false;
-      sizePills(line);
-      $("input[type=text]", line).focus();
+      row.classList.toggle("row-deleted", removing);
+      if (box) box.checked = removing;
+      btn.textContent = removing ? "Undo" : "Remove";
     });
 
     // "+ Add": copy the group's <template>, numbered the way the server expects.
