@@ -4,7 +4,7 @@ anything logged). Shared by the Log page, the day page and the social views."""
 from __future__ import annotations
 
 from . import stats
-from .models import BodyWeight, Cardio, Workout
+from .models import BodyWeight, Cardio, RestOverride, RestRule, Workout
 
 RECENT_SESSIONS = 5
 
@@ -29,6 +29,17 @@ def all_cardio(user_email: str) -> list[dict]:
 
 def all_weights(user_email: str) -> list[dict]:
     return all_of(BodyWeight, user_email)
+
+
+def rest_rules(user_email: str) -> list[dict]:
+    rules = RestRule.query.filter_by(owner_email=user_email).order_by(RestRule.id).all()
+    return [r.as_dict() for r in rules]
+
+
+def rest_overrides(user_email: str) -> dict[str, bool]:
+    return {
+        o.date: o.is_rest for o in RestOverride.query.filter_by(owner_email=user_email).all()
+    }
 
 
 def sets_summary(sets: str, reps: str) -> str:

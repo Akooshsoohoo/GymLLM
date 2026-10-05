@@ -351,16 +351,34 @@ def personal_records(all_rows: list[dict], start: date | None) -> list[dict]:
     return prs
 
 
+def is_rest(d: date, rules: list[dict] = (), overrides: dict[str, bool] | None = None) -> bool:
+    """Whether `d` is a rest day: a hand-set override wins, else any rule matching."""
+    if overrides and d.isoformat() in overrides:
+        return overrides[d.isoformat()]
+    for rule in rules:
+        if rule["kind"] == "weekdays":
+            if d.weekday() in rule["weekdays"]:
+                return True
+        elif rule["kind"] == "interval":
+            anchor, n = parse_date(rule["anchor_date"]), rule["interval_days"]
+            if anchor and n and (d - anchor).days % n == 0:
+                return True
+    return False
+
+
 def week_strip(
     today: date,
     rows: list[dict],
     cardio: list[dict] = (),
     weights: list[dict] = (),
     week: date | None = None,
+    rest_rules: list[dict] = (),
+    rest_overrides: dict[str, bool] | None = None,
 ) -> list[dict]:
     """Monday to Sunday of the week holding `week` (default: today): whether anything
     was logged each day, plus that day's exercise count, sets, cardio and weigh-in
-    for the labels under it."""
+    for the labels under it. `rest` marks unlogged rest days (from the rules and
+    overrides); it never changes `logged`."""
     monday = date.fromisoformat(period_key(week or today, "week"))
     lo, hi = monday.isoformat(), (monday + timedelta(days=6)).isoformat()
     per_day: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
@@ -381,6 +399,7 @@ def week_strip(
                 "letter": "MTWTFSS"[i],
                 "day": d.day,
                 "logged": bool(logged),
+                "rest": not logged and is_rest(d, rest_rules, rest_overrides),
                 "today": d == today,
                 "future": d > today,
                 "exercises": len({r["exercise"] for r in lifts}),
@@ -599,6 +618,8 @@ def overview(
     cardio: list[dict] = (),
     weights: list[dict] = (),
     week: date | None = None,
+    rest_rules: list[dict] = (),
+    rest_overrides: dict[str, bool] | None = None,
 ) -> dict:
     rows = filter_range(all_rows, today, range_key)
     activities = filter_range(list(cardio), today, range_key)
@@ -614,7 +635,9 @@ def overview(
         ),
         "bodyweight": bodyweight_summary(list(weights), start, today, by),
         "streak": week_streak({r["date"] for r in all_rows}, today),
-        "week": week_strip(today, all_rows, list(cardio), list(weights), week),
+        "week": week_strip(
+            today, all_rows, list(cardio), list(weights), week, rest_rules, rest_overrides
+        ),
         "lifts": lift_progress(rows),
         "tags": tag_counts(rows),
         "top_exercises": top_exercises(rows),

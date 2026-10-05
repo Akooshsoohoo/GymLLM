@@ -69,6 +69,6 @@
     {%- for n in exercise_names %}<option value="{{ n }}">{% endfor -%}
 </datalist>
 <datalist id="cardio-names">
-    {%- for n in ("Walking", "Running", "Jogging", "Cycling", "Swimming", "Rowing", "Hiking", "Elliptical", "Stair climber", "Jump rope") %}<option value="{{ n }}">{% endfor -%}
+    {%- for n in cardio_names %}<option value="{{ n }}">{% endfor -%}
 </datalist>
 {% endblock %}

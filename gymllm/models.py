@@ -178,6 +178,38 @@ class SessionMeta(db.Model):
     photo_key = db.Column(db.String, nullable=True)
 
 
+class RestRule(db.Model):
+    """A recurring rest schedule: fixed weekdays, or every N days from an anchor."""
+
+    __tablename__ = "rest_rule"
+
+    id = db.Column(db.Integer, primary_key=True)
+    owner_email = db.Column(db.String, nullable=False, index=True)
+    kind = db.Column(db.String(10), nullable=False)  # weekdays | interval
+    weekdays = db.Column(db.String(20), nullable=True)  # "0,6" (Mon=0), weekdays rules
+    interval_days = db.Column(db.Integer, nullable=True)  # interval rules
+    anchor_date = db.Column(db.String, nullable=True)  # interval rules: a rest day
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "weekdays": [int(x) for x in (self.weekdays or "").split(",") if x],
+            "interval_days": self.interval_days,
+            "anchor_date": self.anchor_date,
+        }
+
+
+class RestOverride(db.Model):
+    """One day's rest, set by hand: True forces rest, False cancels a scheduled one."""
+
+    __tablename__ = "rest_override"
+
+    owner_email = db.Column(db.String, primary_key=True)
+    date = db.Column(db.String, primary_key=True)
+    is_rest = db.Column(db.Boolean, nullable=False)
+
+
 class Kudos(db.Model):
     __tablename__ = "kudos"
     __table_args__ = (

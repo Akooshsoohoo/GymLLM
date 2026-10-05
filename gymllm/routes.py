@@ -19,7 +19,14 @@ from sqlalchemy import func
 
 from . import activity, preferences, quota, routines, session_meta, sessions, social, stats
 from .auth import current_user_email, login_required
-from .exercises import EXERCISE_NAMES, TAG_SYSTEM, clean_tags, llm_tags, match_exercise
+from .exercises import (
+    ACTIVITY_NAMES,
+    EXERCISE_NAMES,
+    TAG_SYSTEM,
+    clean_tags,
+    llm_tags,
+    match_exercise,
+)
 from .extensions import db
 from .llm.client import (
     BadOutputError,
@@ -29,7 +36,7 @@ from .llm.client import (
     test_connection,
 )
 from .llm.providers import PROVIDERS, LLMConfig
-from .models import BodyWeight, Cardio, Workout
+from .models import BodyWeight, Cardio, RestOverride, RestRule, Workout
 from .parsing import (
     build_system_prompt,
     is_iso_date,
@@ -154,7 +161,14 @@ def _log_context(user_email: str, config: LLMConfig) -> dict:
         "quota_limit": quota_limit,
         "weight_unit": preferences.get_weight_unit(user_email),
         "today": today.isoformat(),
-        "week": stats.week_strip(today, rows, cardio, weights),
+        "week": stats.week_strip(
+            today,
+            rows,
+            cardio,
+            weights,
+            rest_rules=sessions.rest_rules(user_email),
+            rest_overrides=sessions.rest_overrides(user_email),
+        ),
         "streak": stats.week_streak({x["date"] for x in rows + cardio}, today),
         "all_data": (rows, cardio, weights),
     }
@@ -323,7 +337,11 @@ def routine_duplicate(routine_id: int):
 @login_required
 def log_manual():
     """Add lifts, cardio and a weigh-in by hand, with no model involved."""
-    return render_template("log_manual.html", exercise_names=[n.title() for n in EXERCISE_NAMES])
+    return render_template(
+        "log_manual.html",
+        exercise_names=[n.title() for n in EXERCISE_NAMES],
+        cardio_names=ACTIVITY_NAMES,
+    )
 
 
 @bp.route("/weight-unit", methods=["POST"])
@@ -357,6 +375,18 @@ def _group_by_exercise(rows: list[dict]) -> list[dict]:
             {"weight": r["weight"], "sets_reps": r["sets_reps"], "notes": r["notes"], "pr": r["pr"]}
         )
     return [groups[k] for k in order]
+
+
+def _lift_groups(items) -> list[dict]:
+    """(form key, entry) pairs -> [{"name", "items": [(key, entry), ...]}], stacking every
+    entry that shares an exercise name (ignoring case) under the first spelling seen.
+    Keys ride along so each line keeps its own form field names."""
+    groups: dict[str, dict] = {}
+    for key, entry in items:
+        name = (entry.get("exercise") or "").strip()
+        group = groups.setdefault(name.lower(), {"name": name, "items": []})
+        group["items"].append((key, entry))
+    return list(groups.values())
 
 
 def _stat_line(summary: dict) -> str:
@@ -654,6 +684,7 @@ def review():
         "review.html",
         error=None,
         entries=parsed.entries,
+        lift_groups=_lift_groups(enumerate(parsed.entries)),
         cardio=parsed.cardio,
         bodyweight=parsed.bodyweight,
         workout_date=parsed.date or today.isoformat(),
@@ -886,6 +917,7 @@ def day_edit(when: str):
         "day_edit.html",
         when=when,
         lifts=lift_dicts,
+        lift_groups=_lift_groups((e["id"], e) for e in lift_dicts),
         cardio=cardio_dicts,
         bodyweight=weight.weight if weight else "",
         title=meta.title if meta and meta.title else "",
@@ -988,12 +1020,23 @@ def progress():
     all_rows = sessions.all_rows(user_email)
     cardio = sessions.all_cardio(user_email)
     weights = sessions.all_weights(user_email)
+    rules = sessions.rest_rules(user_email)
     data = stats.overview(
-        all_rows, today, range_key, by, cardio=cardio, weights=weights, week=monday
+        all_rows,
+        today,
+        range_key,
+        by,
+        cardio=cardio,
+        weights=weights,
+        week=monday,
+        rest_rules=rules,
+        rest_overrides=sessions.rest_overrides(user_email),
     )
     return render_template(
         "progress.html",
         data=data,
+        rest_rules=rules,
+        week_param=monday.isoformat(),
         week_start=monday,
         week_end=monday + timedelta(days=6),
         prev_week=(monday - timedelta(days=7)).isoformat(),
@@ -1005,6 +1048,82 @@ def progress():
         by=by,
         weight_unit=preferences.get_weight_unit(user_email),
     )
+
+
+MAX_REST_RULES = 10
+REST_INTERVAL_RANGE = (2, 60)
+
+
+def _back_to_progress():
+    week = stats.parse_date(request.form.get("week"))
+    return redirect(url_for("main.progress", week=week.isoformat() if week else None))
+
+
+@bp.route("/rest/rules", methods=["POST"])
+@login_required
+def rest_rule_add():
+    user_email = current_user_email()
+    if RestRule.query.filter_by(owner_email=user_email).count() >= MAX_REST_RULES:
+        flash(f"You can have up to {MAX_REST_RULES} rest rules.", "error")
+        return _back_to_progress()
+    if request.form.get("kind") == "interval":
+        try:
+            n = int(request.form.get("interval_days", ""))
+        except ValueError:
+            n = 0
+        anchor = stats.parse_date(request.form.get("anchor_date")) or _client_today()
+        if not REST_INTERVAL_RANGE[0] <= n <= REST_INTERVAL_RANGE[1]:
+            flash("Pick a rest interval between 2 and 60 days.", "error")
+            return _back_to_progress()
+        rule = RestRule(
+            owner_email=user_email, kind="interval", interval_days=n, anchor_date=anchor.isoformat()
+        )
+    else:
+        days = sorted(set(request.form.getlist("weekdays")) & set("0123456"))
+        if not days:
+            flash("Pick at least one weekday.", "error")
+            return _back_to_progress()
+        rule = RestRule(owner_email=user_email, kind="weekdays", weekdays=",".join(days))
+    db.session.add(rule)
+    db.session.commit()
+    return _back_to_progress()
+
+
+@bp.route("/rest/rules/<int:rule_id>/delete", methods=["POST"])
+@login_required
+def rest_rule_delete(rule_id: int):
+    rule = RestRule.query.filter_by(id=rule_id, owner_email=current_user_email()).first_or_404()
+    db.session.delete(rule)
+    db.session.commit()
+    return _back_to_progress()
+
+
+@bp.route("/rest/day/<when>", methods=["POST"])
+@login_required
+def rest_day_toggle(when: str):
+    """Flip one day's rest on or off by hand, on top of the schedule."""
+    day_date = stats.parse_date(when)
+    if day_date is None:
+        abort(404)
+    user_email = current_user_email()
+    if day_date > _client_today():
+        abort(400)
+    rows = sessions.all_rows(user_email) + sessions.all_cardio(user_email)
+    if any(r["date"] == when for r in rows + sessions.all_weights(user_email)):
+        abort(400)  # a logged day is never shown as rest
+    rules = sessions.rest_rules(user_email)
+    overrides = sessions.rest_overrides(user_email)
+    wanted = not stats.is_rest(day_date, rules, overrides)
+    row = db.session.get(RestOverride, (user_email, when))
+    if wanted == stats.is_rest(day_date, rules, {}):
+        if row:  # back to what the schedule says
+            db.session.delete(row)
+    elif row:
+        row.is_rest = wanted
+    else:
+        db.session.add(RestOverride(owner_email=user_email, date=when, is_rest=wanted))
+    db.session.commit()
+    return _back_to_progress()
 
 
 @bp.route("/exercises")

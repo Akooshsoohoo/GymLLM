@@ -445,3 +445,23 @@ def test_day_summary():
     assert s["cardio"]["lead"] == "3 mi" and s["cardio"]["minutes_text"] == "45 min"
     empty = stats.day_summary([], [])
     assert empty["sets"] == 0 and empty["volume"] == 0 and empty["cardio"]["count"] == 0
+
+
+def test_is_rest_rules_and_overrides():
+    weekly = {"kind": "weekdays", "weekdays": [6], "interval_days": None, "anchor_date": None}
+    every3 = {"kind": "interval", "weekdays": [], "interval_days": 3, "anchor_date": "2026-03-09"}
+    assert stats.is_rest(date(2026, 3, 15), [weekly])  # Sunday
+    assert not stats.is_rest(date(2026, 3, 14), [weekly])
+    assert stats.is_rest(date(2026, 3, 12), [every3])
+    assert stats.is_rest(date(2026, 3, 6), [every3])  # before the anchor too
+    assert not stats.is_rest(date(2026, 3, 11), [every3])
+    assert not stats.is_rest(date(2026, 3, 15), [weekly], {"2026-03-15": False})
+    assert stats.is_rest(date(2026, 3, 11), [every3], {"2026-03-11": True})
+
+
+def test_week_strip_rest_never_marks_logged_days():
+    rows = [row(id=1, date="2026-03-15")]
+    weekly = {"kind": "weekdays", "weekdays": [5, 6], "interval_days": None, "anchor_date": None}
+    strip = stats.week_strip(TODAY, rows, rest_rules=[weekly])
+    assert [d["rest"] for d in strip] == [False] * 5 + [True, False]
+    assert [d["logged"] for d in strip] == [False] * 6 + [True]

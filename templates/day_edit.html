@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_entry_rows.html" import lift_row, cardio_row %}
+{% from "_entry_rows.html" import lift_group, set_line, cardio_row %}
 {% from "_session_visual.html" import visual as session_visual %}
 {% block title %}Levra | Edit {{ when|short_date }}{% endblock %}
 {% block body_class %}flow{% endblock %}
@@ -39,10 +39,11 @@
                 <button type="button" class="add-link" id="add-row">+ Add<span class="desktop-only"> lift</span></button>
             </div>
             <div class="group-card" id="entries-table">
-                {% for e in lifts %}{{ lift_row(e.id, e, prefix="lift") }}{% endfor %}
+                {% for g in lift_groups %}{{ lift_group(g.name, g["items"], prefix="lift") }}{% endfor %}
             </div>
             {% if not lifts %}<p class="muted small table-empty" data-empty-for="entries-table">No lifts on this day.</p>{% endif %}
-            <template id="entry-template">{{ lift_row("__i__", {}) }}</template>
+            <template id="entry-template">{{ lift_group("", [("__i__", {})]) }}</template>
+            <template id="set-template">{{ set_line("entry", "__i__", "", {}) }}</template>
             <input type="hidden" name="num_entries" id="num_entries" value="0">
         </section>
 

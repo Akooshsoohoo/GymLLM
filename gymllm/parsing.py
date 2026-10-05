@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 
-from .exercises import exercise_list_text
+from .exercises import equipment_text, exercise_list_text, setup_text
 from .llm.client import BadOutputError
 
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -58,7 +58,10 @@ ASSUMPTIONS - always assume rather than ask:
   Unclear equipment -> pick the most common variant (usually barbell for compounds, dumbbell for isolation).
   Unclear weight -> leave blank. Unclear reps -> use the most reasonable default for that exercise.
 
-EXERCISE NAMES - use a name from this list when one fits; only invent a name if nothing fits:
+EXERCISE NAMES - write each as "[setup] [equipment] [movement]", lowercase: "incline dumbbell bench press", "seated cable row", "single arm cable lateral raise".
+  Setup words, only when the person says so: {setups}.
+  Equipment words: {equipment}.
+  Movements - use one from this list when one fits; only invent a name if nothing fits:
 {exercise_list}
 
 Each "exercises" entry must have exactly these keys: exercise, weight, sets, reps, notes.
@@ -84,6 +87,8 @@ def build_system_prompt(today: date, default_unit: str = "lbs") -> str:
         today=today.isoformat(),
         weekday=today.strftime("%A"),
         exercise_list=exercise_list_text(),
+        setups=setup_text(),
+        equipment=equipment_text(),
         default_unit=default_unit,
     )
 

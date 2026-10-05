@@ -1,11 +1,17 @@
-{#- Monday to Sunday tiles. week: stats.week_strip(); link_days: link logged days to the day page (your own log only). -#}
+{#- Monday to Sunday tiles. week: stats.week_strip(); link_days: link logged days to the day page (your own log only);
+    rest_toggle: unlogged past/current days are buttons that flip rest on or off (Progress only). -#}
 <div class="week-strip">
     {% for d in week %}
-    {% set cls = 'week-day' ~ (' logged' if d.logged else '') ~ (' today' if d.today else '') ~ (' future' if d.future else '') %}
+    {% set cls = 'week-day' ~ (' logged' if d.logged else '') ~ (' rest' if d.rest else '') ~ (' today' if d.today else '') ~ (' future' if d.future else '') %}
+    {% set can_toggle = rest_toggle and not d.logged and not d.future %}
     {% if d.logged and link_days %}
     <a href="{{ url_for('main.day', when=d.date) }}" class="{{ cls }}" title="{{ d.date|nice_date }}: open this day">
+    {% elif can_toggle %}
+    <form method="post" action="{{ url_for('main.rest_day_toggle', when=d.date) }}" class="week-day-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}">
+        <button type="submit" class="{{ cls }}" title="{{ d.date|nice_date }}: {{ 'rest day, tap to clear' if d.rest else 'tap to mark as a rest day' }}" aria-pressed="{{ 'true' if d.rest else 'false' }}">
     {% else %}
-    <div class="{{ cls }}" title="{{ d.date|nice_date }}">
+    <div class="{{ cls }}" title="{{ d.date|nice_date }}{{ ': rest day' if d.rest }}">
     {% endif %}
         <span class="week-letter">{{ d.letter }}</span>
         <span class="week-num">{{ d.day }}</span>
@@ -15,7 +21,9 @@
             {%- if d.cardio_text %}<span>{{ d.cardio_text }}</span>{% endif -%}
             {%- if d.weight and not (d.exercises and d.cardio_text) %}<span>{{ d.weight }}</span>{% endif -%}
         </span>
+        {% elif d.rest %}
+        <span class="week-stats"><span>Rest</span></span>
         {% endif %}
-    {% if d.logged and link_days %}</a>{% else %}</div>{% endif %}
+    {% if d.logged and link_days %}</a>{% elif can_toggle %}</button></form>{% else %}</div>{% endif %}
     {% endfor %}
 </div>

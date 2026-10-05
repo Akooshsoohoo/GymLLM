@@ -54,6 +54,8 @@
     --danger-tint: #FBE1DC;
     --danger-ink: #6E1D14;
     --ok: #1D6B40;
+    --rest: #D6E8F7;            /* rest days: light blue */
+    --rest-ink: #1F5A85;
     --warn: #9A6410;
     --scrim: rgba(28, 25, 21, 0.35);
     --bg-clear: rgba(245, 241, 234, 0);
@@ -82,7 +84,7 @@
         --bar-past: #2B4535; --bar-hover: #37573F;
         --neutral-tint: #3A2E22; --neutral-ink: #E0B98F;
         --danger: #E5705F; --on-danger: #16130F; --danger-hover: #EE8676; --danger-tint: #3D1F1A; --danger-ink: #F4B3A8;
-        --ok: #9BE6B9; --warn: #E0B062;
+        --ok: #9BE6B9; --warn: #E0B062; --rest: #1F3345; --rest-ink: #9CC7EA;
         --scrim: rgba(0, 0, 0, 0.55); --bg-clear: rgba(22, 19, 15, 0);
         --shadow-card: none; --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.5); --shadow-toggle: 0 1px 3px rgba(0, 0, 0, 0.4);
     }
@@ -102,7 +104,7 @@
     --bar-past: #2B4535; --bar-hover: #37573F;
     --neutral-tint: #3A2E22; --neutral-ink: #E0B98F;
     --danger: #E5705F; --on-danger: #16130F; --danger-hover: #EE8676; --danger-tint: #3D1F1A; --danger-ink: #F4B3A8;
-    --ok: #9BE6B9; --warn: #E0B062;
+    --ok: #9BE6B9; --warn: #E0B062; --rest: #1F3345; --rest-ink: #9CC7EA;
     --scrim: rgba(0, 0, 0, 0.55); --bg-clear: rgba(22, 19, 15, 0);
     --shadow-card: none; --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.5); --shadow-toggle: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
@@ -994,6 +996,30 @@ a.week-day.logged:hover { background: var(--you-hover); color: var(--on-you); }
 .week-day.today { box-shadow: inset 0 0 0 2px var(--ink); }
 .week-day.today:not(.logged) { background: transparent; box-shadow: none; outline: 2px dashed var(--you); outline-offset: -2px; }
 .week-day.future { opacity: 0.45; }
+.week-day.rest { background: var(--rest); color: var(--rest-ink); }
+.week-day.rest.today { background: var(--rest); outline: 2px dashed var(--rest-ink); outline-offset: -2px; }
+.week-day-form { display: contents; }
+button.week-day { border: 0; font: inherit; cursor: pointer; width: 100%; }
+button.week-day:hover { background: var(--line); }
+button.week-day.rest:hover { background: var(--rest); filter: brightness(0.95); }
+.week-dot.rest .dot { background: var(--rest); }
+.week-dot.rest.today .dot { border: 2px dashed var(--rest-ink); }
+.week-bar.rest > span:first-child { background: var(--rest); }
+.rest-editor { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.rest-editor summary { cursor: pointer; font-weight: 600; color: var(--rest-ink); }
+.rest-count { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 99px; background: var(--rest); font-size: 12px; text-align: center; }
+.rest-hint { color: var(--muted); font-size: 13px; margin: 8px 0; }
+.rest-rules { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rest-rules li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 12px; background: var(--rest); color: var(--rest-ink); font-weight: 600; font-size: 14px; }
+.rest-rules button { background: none; border: 0; cursor: pointer; font: inherit; }
+.rest-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+.rest-days { display: flex; flex-wrap: wrap; gap: 6px; border: 0; padding: 0; margin: 0; }
+.rest-days legend { font-size: 13px; color: var(--muted); padding: 0; margin-bottom: 6px; }
+.rest-day-pick input { position: absolute; opacity: 0; }
+.rest-day-pick span { display: inline-block; padding: 7px 11px; border-radius: 99px; background: var(--track); font-size: 13px; font-weight: 600; cursor: pointer; }
+.rest-day-pick input:checked + span { background: var(--rest); color: var(--rest-ink); box-shadow: inset 0 0 0 2px var(--rest-ink); }
+.rest-day-pick input:focus-visible + span { outline: 2px solid var(--ink); }
+.rest-interval input[type="number"] { width: 64px; }
 .week-stats {
     display: flex;
     flex-direction: column;
@@ -1285,9 +1311,18 @@ body.flow .page { padding-bottom: 140px; }
 .add-link { height: auto; padding: 0; gap: 0; background: none; border: 0; color: var(--you-ink); font-size: 14px; font-weight: 600; }
 .add-link:hover { background: none; color: var(--you-ink); text-decoration: underline; }
 .group-card { background: var(--surface); border-radius: 20px; overflow: hidden; }
-.group-card:not(:has(.review-row)) { display: none; }
-.review-row { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-.review-row + .review-row { border-top: 1px solid var(--line-2); }
+.group-card:not(:has(.review-row, .lift-group)) { display: none; }
+.review-row, .lift-group { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.review-row + .review-row, .lift-group + .lift-group, .review-row + .lift-group, .lift-group + .review-row { border-top: 1px solid var(--line-2); }
+.set-lines { display: flex; flex-direction: column; }
+.set-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; }
+.set-line + .set-line { border-top: 1px dashed var(--line-2); }
+.set-remove { font-size: 20px; line-height: 1; padding: 0 4px; flex: none; }
+.add-set { align-self: flex-start; }
+.lift-group.row-deleted, .set-line.row-deleted { background: var(--danger-tint); }
+.lift-group.row-deleted .row-name { opacity: 0.45; text-decoration: line-through; }
+.set-line.row-deleted .vpills { opacity: 0.45; text-decoration: line-through; }
+.set-line.row-deleted .set-remove { color: var(--ink); font-size: 13px; font-weight: 600; }
 .row-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 input.row-name {
     flex: 1;
@@ -1878,6 +1913,9 @@ a.feed-when:hover { color: var(--you-ink); }
     .row-head { display: contents; }
     .row-head .row-remove { order: 3; }
     .vpills { order: 2; flex-wrap: nowrap; }
+    .lift-group { padding: 12px 0; gap: 6px; }
+    .lift-group .row-head { display: flex; }
+    .set-line .vpills { flex-wrap: wrap; }
     .review-pair { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; }
     .review-pair .review-group { background: var(--surface); border-radius: 22px; padding: 18px 20px; gap: 4px; }
     .review-pair .group-card { padding: 0; }
