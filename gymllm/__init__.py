@@ -60,6 +60,9 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     with app.app_context():
         db.create_all()
+        from . import migrate
+
+        migrate.run()
 
     return app
 

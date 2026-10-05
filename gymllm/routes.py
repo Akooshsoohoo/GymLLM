@@ -187,16 +187,27 @@ def home():
     all_data = ctx.pop("all_data")
     rows, cardio, weights = all_data
     recent = sessions.group_sessions(rows, cardio, weights, HOME_RECENT)
+    recent_metas = session_meta.for_days(user_email, {s["date"] for s in recent})
     for s in recent:
         s["summary"] = sessions.session_summary(s)
+        s["title"] = session_meta.title_for(
+            s["date"], recent_metas.get((s["date"], s["session"])), s["session"]
+        )
     profile = social.get_profile(user_email)
     friend_cards = social.feed(user_email, limit=HOME_FEED)[0][:HOME_FEED] if profile else []
 
-    # The day you just saved (?saved= after a log), otherwise today once anything is in.
+    # The workout you just saved (?saved= the day, ?session= which one, after a log),
+    # otherwise today's latest once anything is in.
+    numbers = sessions.session_numbers(rows, cardio)
     dates = {x["date"] for x in rows + cardio + weights}
     saved = request.args.get("saved", "")
     latest_date = saved if saved in dates else ctx["today"] if ctx["today"] in dates else None
-    latest = _my_day_card(user_email, latest_date, all_data, profile) if latest_date else None
+    latest_n = request.args.get("session", type=int) if latest_date == saved else None
+    if latest_n not in numbers.get(latest_date, []):
+        latest_n = numbers[latest_date][-1] if latest_date in numbers else 0
+    latest = (
+        _my_day_card(user_email, latest_date, latest_n, all_data, profile) if latest_date else None
+    )
     hour = _client_hour()
     return render_template(
         "home.html",
@@ -392,13 +403,17 @@ def _stat_line(summary: dict) -> str:
     return " · ".join(parts)
 
 
-def _edit_url(when: str) -> str:
-    return url_for("main.day_edit", when=when)
+def _edit_url(when: str, n: int = 0) -> str:
+    return url_for("main.day_edit", when=when, s=n or None)
 
 
-def _day_detail(when: str, all_rows: list[dict], all_cardio: list[dict], profile) -> dict:
-    """One day's lifts in the order they were logged (with sets_reps and new-best
-    flags), its cardio, the day's summary, and what the share poster may show."""
+def _day_url(when: str, n: int = 0) -> str:
+    return url_for("main.day", when=when, s=n or None)
+
+
+def _day_detail(when: str, n: int, all_rows: list[dict], all_cardio: list[dict], profile) -> dict:
+    """One session's lifts in the order they were logged (with sets_reps and new-best
+    flags), its cardio, its summary, and what the share poster may show."""
     prs = {
         r["id"]
         for r in stats.personal_records(all_rows, date.fromisoformat(when))
@@ -407,16 +422,17 @@ def _day_detail(when: str, all_rows: list[dict], all_cardio: list[dict], profile
     rows = [
         dict(r, sets_reps=sessions.sets_summary(r["sets"], r["reps"]), pr=r["id"] in prs)
         for r in all_rows
-        if r["date"] == when
+        if r["date"] == when and r["session"] == n
     ]
     rows.reverse()  # in the order they were logged
-    cardio = [c for c in reversed(all_cardio) if c["date"] == when]
+    cardio = [c for c in reversed(all_cardio) if c["date"] == when and c["session"] == n]
     summary = stats.day_summary(rows, cardio)
     d = date.fromisoformat(when)
 
     # Everything the share card may show. The weigh-in is deliberately not here.
     share = {
         "date": when,
+        "session": n,
         "label": f"{d:%A %d %B %Y}".replace(" 0", " "),
         "short": f"{d:%a} {d.day} {d:%b}".upper(),
         "name": (profile.display_name.split()[0] if profile else "").upper(),
@@ -441,18 +457,23 @@ def _day_detail(when: str, all_rows: list[dict], all_cardio: list[dict], profile
     return {"rows": rows, "cardio": cardio, "summary": summary, "share": share}
 
 
-def _my_day_card(user_email: str, when: str, all_data: tuple, profile) -> dict:
-    """Your own day as a session card for Home, with the share-poster payload and,
-    once you have a profile, its high fives and comments."""
+def _my_day_card(user_email: str, when: str, n: int, all_data: tuple, profile) -> dict:
+    """One of your workouts as a session card for Home, with the share-poster payload
+    and, once you have a profile, its high fives and comments."""
     all_rows, all_cardio, all_weights = all_data
-    detail = _day_detail(when, all_rows, all_cardio, profile)
+    detail = _day_detail(when, n, all_rows, all_cardio, profile)
+    first = sessions.session_numbers(all_rows, all_cardio).get(when, [0])[0]
     card = {
         "date": when,
+        "session": n,
+        "title": session_meta.title_for(when, session_meta.get(user_email, when, n), n),
         "rows": detail["rows"],
         "cardio": detail["cardio"],
-        "weight": next((w for w in all_weights if w["date"] == when), None),
+        # The day's weigh-in rides on its first workout.
+        "weight": next((w for w in all_weights if w["date"] == when), None) if n == first else None,
         "share": detail["share"],
-        "edit_url": _edit_url(when),
+        "edit_url": _edit_url(when, n),
+        "url": _day_url(when, n),
     }
     if profile and (card["rows"] or card["cardio"]):
         card["owner"] = profile
@@ -463,6 +484,8 @@ def _my_day_card(user_email: str, when: str, all_data: tuple, profile) -> dict:
 @bp.route("/day/<when>")
 @login_required
 def day(when: str):
+    """One logged workout of a day (?s= picks it, the first by default), with a
+    switcher when the day has more than one."""
     if not is_iso_date(when):
         abort(404)
     user_email = current_user_email()
@@ -474,17 +497,38 @@ def day(when: str):
     dates = {x["date"] for x in all_rows + all_cardio + all_weights}
     prev, nxt = _neighbours(dates, when)
     profile = social.get_profile(user_email)
-    detail = _day_detail(when, all_rows, all_cardio, profile)
+    numbers = sessions.session_numbers(all_rows, all_cardio).get(when, [0])
+    n = request.args.get("s", type=int)
+    if n not in numbers:
+        n = numbers[0]
+    detail = _day_detail(when, n, all_rows, all_cardio, profile)
     rows, cardio, summary = detail["rows"], detail["cardio"], detail["summary"]
-    weight = next((w for w in all_weights if w["date"] == when), None)
+    weight = next((w for w in all_weights if w["date"] == when), None) if n == numbers[0] else None
     thread = None
     if profile and (rows or cardio):
-        thread = social.attach_social([{"owner": profile, "date": when}], user_email)[0]
-    meta = session_meta.get(user_email, when)
+        thread = social.attach_social([{"owner": profile, "date": when, "session": n}], user_email)[
+            0
+        ]
+    metas = session_meta.for_days(user_email, [when])
+    meta = metas.get((when, n))
+    switcher = (
+        [
+            {
+                "n": k,
+                "title": session_meta.title_for(when, metas.get((when, k)), k),
+                "url": _day_url(when, k),
+            }
+            for k in numbers
+        ]
+        if len(numbers) > 1
+        else []
+    )
     return render_template(
         "day.html",
         when=when,
-        title=session_meta.title_for(when, meta),
+        n=n,
+        switcher=switcher,
+        title=session_meta.title_for(when, meta, n),
         visual=session_meta.visual({"rows": rows, "cardio": cardio}, meta),
         thread=thread,
         rows=rows,
@@ -496,7 +540,7 @@ def day(when: str):
         prev=prev,
         nxt=nxt,
         total=len(all_rows) + len(all_cardio) + len(all_weights),
-        edit_url=_edit_url(when),
+        edit_url=_edit_url(when, n),
         weight_unit=preferences.get_weight_unit(user_email),
     )
 
@@ -668,6 +712,7 @@ def review():
         cardio=parsed.cardio,
         bodyweight=parsed.bodyweight,
         workout_date=parsed.date or today.isoformat(),
+        default_title=session_meta.default_title(parsed.date or today.isoformat()),
         date_from_text=parsed.date is not None,
         **context,
     )
@@ -748,6 +793,8 @@ def confirm():
         return redirect(url_for("main.log"))
 
     client = _llm_client(config) if config else None
+    # Every save is its own workout: a second log on the same day is a second card.
+    n = sessions.next_session(user_email, when)
     tag_calls_left = MAX_SITE_TAG_CALLS if config is not None and config.is_site else MAX_ENTRIES
     for entry in entries:
         match = match_exercise(entry["exercise"])
@@ -766,6 +813,7 @@ def confirm():
             Workout(
                 user_email=user_email,
                 date=when,
+                session=n,
                 exercise=name,
                 weight=entry["weight"],
                 sets=entry["sets"],
@@ -774,7 +822,7 @@ def confirm():
                 tags=tags,
             )
         )
-    db.session.add_all(Cardio(user_email=user_email, date=when, **c) for c in cardio)
+    db.session.add_all(Cardio(user_email=user_email, date=when, session=n, **c) for c in cardio)
     if entries or cardio:
         # Covers the whole day, so a later save that day can change it.
         social.set_visibility(
@@ -782,13 +830,15 @@ def confirm():
         )
     if bodyweight:
         _save_bodyweight(user_email, when, bodyweight)  # always private
-    routine_name = routines.clean_title(request.form.get("routine_name"))
-    if routine_name:
-        session_meta.set_title(user_email, when, routine_name)  # started from a routine
+    if entries or cardio:
+        # The name typed on the review screen; from a routine it starts out as the
+        # routine's name.
+        title = request.form.get("title") or routines.clean_title(request.form.get("routine_name"))
+        session_meta.set_title(user_email, when, n, title)
     db.session.commit()
-    # Straight to Home, where the day you just saved is on top and ready to share.
+    # Straight to Home, where the workout you just saved is on top and ready to share.
     # `recorded` tells the page to clear the finished recording from the browser.
-    args = {"saved": when}
+    args = {"saved": when, "session": n}
     if request.form.get("from_record") == "1":
         args["recorded"] = "1"
     return redirect(url_for("main.home", **args) + "#my-latest")
@@ -840,13 +890,14 @@ def search():
         stats.filter_range(all_weights, today, range_key),
     )
     prs = {r["id"] for r in stats.personal_records(all_rows, None)}
-    metas = session_meta.for_days(user_email, [d["date"] for d in days])
+    metas = session_meta.for_days(user_email, {d["date"] for d in days})
     months: list[dict] = []
     for d in days:
         d["rows"] = [dict(r, pr=r["id"] in prs) for r in reversed(d["rows"])]  # log order
         d["cardio"] = list(reversed(d["cardio"]))
-        meta = metas.get(d["date"])
-        d["title"] = session_meta.title_for(d["date"], meta)
+        meta = metas.get((d["date"], d["session"]))
+        d["title"] = session_meta.title_for(d["date"], meta, d["session"])
+        d["url"] = _day_url(d["date"], d["session"])
         d["visual"] = session_meta.visual(d, meta)
         d["lines"] = _tile_lines(d["rows"], d["cardio"])
         d["search"] = _search_text(d)
@@ -868,58 +919,87 @@ def search():
 # --- Editing one day ------------------------------------------------------------
 
 
-def _day_records(user_email: str, when: str):
-    """The day's lifts and cardio (in log order) and its weigh-in, as models."""
-    lifts = Workout.query.filter_by(user_email=user_email, date=when).order_by(Workout.id).all()
-    cardio = Cardio.query.filter_by(user_email=user_email, date=when).order_by(Cardio.id).all()
+def _day_records(user_email: str, when: str, n: int):
+    """One session's lifts and cardio (in log order) and the day's weigh-in, as models."""
+    lifts = (
+        Workout.query.filter_by(user_email=user_email, date=when, session=n)
+        .order_by(Workout.id)
+        .all()
+    )
+    cardio = (
+        Cardio.query.filter_by(user_email=user_email, date=when, session=n)
+        .order_by(Cardio.id)
+        .all()
+    )
     weight = BodyWeight.query.filter_by(user_email=user_email, date=when).first()
     return lifts, cardio, weight
+
+
+def _other_sessions(user_email: str, when: str, n: int) -> list[int]:
+    """The day's other sessions' numbers."""
+    rows, cardio = sessions.all_rows(user_email), sessions.all_cardio(user_email)
+    return [k for k in sessions.session_numbers(rows, cardio).get(when, []) if k != n]
 
 
 @bp.route("/day/<when>/edit", methods=["GET", "POST"])
 @login_required
 def day_edit(when: str):
-    """Change, remove or add a day's lifts, cardio and weigh-in, rename it, or move
-    the whole day to another date."""
+    """Change, remove or add one workout's lifts and cardio, rename it, or move it to
+    another date. The day's weigh-in is edited along with the day's first workout."""
     if not is_iso_date(when):
         abort(404)
     user_email = current_user_email()
-    lifts, cardio, weight = _day_records(user_email, when)
+    n = request.values.get("s", 0, type=int)
+    lifts, cardio, weight = _day_records(user_email, when, n)
+    others = _other_sessions(user_email, when, n)
+    is_first = not others or n < min(others)
     if request.method == "POST":
-        return _save_day_edit(user_email, when, lifts, cardio, weight)
-    if not (lifts or cardio or weight):
+        return _save_day_edit(user_email, when, n, lifts, cardio, weight, others, is_first)
+    if not (lifts or cardio or (weight and is_first)):
         flash("Nothing is logged on that day.", "info")
         return redirect(url_for("main.day", when=when))
-    meta = session_meta.get(user_email, when)
+    meta = session_meta.get(user_email, when, n)
     lift_dicts, cardio_dicts = [w.as_dict() for w in lifts], [c.as_dict() for c in cardio]
     return render_template(
         "day_edit.html",
         when=when,
+        n=n,
         lifts=lift_dicts,
         cardio=cardio_dicts,
-        bodyweight=weight.weight if weight else "",
+        has_weight=is_first,
+        bodyweight=weight.weight if weight and is_first else "",
         title=meta.title if meta and meta.title else "",
-        default_title=session_meta.default_title(when),
+        default_title=session_meta.default_title(when, n),
         visual=session_meta.visual({"rows": lift_dicts, "cardio": cardio_dicts}, meta),
         visibility=social.visibilities(user_email).get(when, social.FRIENDS_ONLY),
     )
 
 
-def _save_day_edit(user_email: str, when: str, lifts, cardio, weight):
+def _save_day_edit(user_email: str, when: str, n: int, lifts, cardio, weight, others, is_first):
     form = request.form
     new_date = form.get("date", "").strip() or when
     if not is_iso_date(new_date):
         flash("Pick a valid date. No changes were saved.", "error")
-        return redirect(_edit_url(when))
+        return redirect(_edit_url(when, n))
     moving = new_date != when
-    bodyweight = form.get("bodyweight", "").strip()
-    if moving and bodyweight and _day_records(user_email, new_date)[2] is not None:
+    # The weigh-in is the day's, not a workout's: it travels with this workout only
+    # when nothing else is left on the old day.
+    handles_weight = is_first
+    weight_moves = moving and not others
+    bodyweight = form.get("bodyweight", "").strip() if handles_weight else ""
+    if (
+        moving
+        and weight_moves
+        and bodyweight
+        and BodyWeight.query.filter_by(user_email=user_email, date=new_date).first() is not None
+    ):
         flash(
             "You already weighed in on that day. Clear one of the two readings first. "
             "No changes were saved.",
             "error",
         )
-        return redirect(_edit_url(when))
+        return redirect(_edit_url(when, n))
+    new_n = sessions.next_session(user_email, new_date) if moving else n
 
     kept = 0
     for records, (prefix, fields, required) in zip((lifts, cardio), DAY_EDIT_ROWS, strict=True):
@@ -940,7 +1020,7 @@ def _save_day_edit(user_email: str, when: str, lifts, cardio, weight):
                     if field == "exercise":  # a renamed lift gets its new muscle groups
                         match = match_exercise(value)
                         row.tags = match[1] if match else ""
-            row.date = new_date
+            row.date, row.session = new_date, new_n
 
     for entry in _entries_from_form(form):
         match = match_exercise(entry["exercise"])
@@ -948,36 +1028,51 @@ def _save_day_edit(user_email: str, when: str, lifts, cardio, weight):
             entry["exercise"], tags = match
         else:
             tags = ""
-        db.session.add(Workout(user_email=user_email, date=new_date, tags=tags, **entry))
+        db.session.add(
+            Workout(user_email=user_email, date=new_date, session=new_n, tags=tags, **entry)
+        )
         kept += 1
     for c in _cardio_from_form(form):
-        db.session.add(Cardio(user_email=user_email, date=new_date, **c))
+        db.session.add(Cardio(user_email=user_email, date=new_date, session=new_n, **c))
         kept += 1
 
-    if weight is not None and not bodyweight:
-        db.session.delete(weight)
-        weight = None
-    elif weight is not None:
-        weight.weight, weight.date = bodyweight, new_date
-    elif bodyweight:
-        weight = _save_bodyweight(user_email, new_date, bodyweight)
+    if handles_weight:
+        if weight is not None and not bodyweight:
+            db.session.delete(weight)
+            weight = None
+        elif weight is not None:
+            weight.weight = bodyweight
+            if weight_moves:
+                weight.date = new_date
+        elif bodyweight:
+            weight = _save_bodyweight(
+                user_email, when if not weight_moves else new_date, bodyweight
+            )
 
-    if not kept and weight is None:
-        session_meta.clear_day(user_email, when)
+    if not kept:
+        session_meta.clear_session(user_email, when, n)
+        if weight is None or not handles_weight:  # nothing of this workout is left
+            if not others:
+                session_meta.clear_day_visibility(user_email, when)
+            db.session.commit()
+            flash("Removed that workout.", "ok")
+            return redirect(url_for("main.search"))
         db.session.commit()
-        flash("Removed everything from that day.", "ok")
-        return redirect(url_for("main.search"))
+        flash("Saved.", "ok")
+        return redirect(url_for("main.day", when=new_date))
 
-    title = form.get("title", "")
     if moving:
-        session_meta.move_day(user_email, when, new_date)
-    if title.strip() or not moving:  # a blank title doesn't wipe the other day's name
-        session_meta.set_title(user_email, new_date, title)
-    if kept and "visibility" in form:
+        session_meta.move_session(user_email, when, n, new_date, new_n)
+        session_meta.move_reactions(user_email, when, n, new_date, new_n)
+        if not others:
+            session_meta.clear_day_visibility(user_email, when)
+    if form.get("title", "").strip() or not moving:  # a blank title doesn't wipe the moved name
+        session_meta.set_title(user_email, new_date, new_n, form.get("title", ""))
+    if "visibility" in form:
         social.set_visibility(user_email, new_date, social.clean_visibility(form["visibility"]))
     db.session.commit()
     flash("Saved.", "ok")
-    return redirect(url_for("main.day", when=new_date))
+    return redirect(_day_url(new_date, new_n))
 
 
 # --- Progress -----------------------------------------------------------------

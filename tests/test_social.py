@@ -328,7 +328,7 @@ def test_kudos_toggle(app, pair, make_friends, add_workout, logged_in):
         "mine": False,
     }
     r = logged_in.post("/kudos/sam/2026-01-10")
-    assert r.headers["Location"].endswith("#s-sam-2026-01-10")
+    assert r.headers["Location"].endswith("#s-sam-2026-01-10-0")
     with app.app_context():
         assert Kudos.query.count() == 1
 

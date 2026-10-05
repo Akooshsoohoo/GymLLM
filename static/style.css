@@ -1303,6 +1303,11 @@ body.flow .page { padding-bottom: 140px; }
 .review-grid { display: grid; gap: 16px; }
 .review-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .review-date { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.review-title { margin-top: 12px; }
+.review-title .input { width: 100%; }
+.day-sessions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.day-sessions .chip.is-active { background: var(--you); border-color: var(--you); color: #fff; }
+.latest-name { font-weight: 700; }
 .date-pill {
     height: auto;
     width: auto;

@@ -282,44 +282,47 @@ def feed():
     )
 
 
-def _session_or_404(handle: str, when: str):
+def _session_or_404(handle: str, when: str, n: int):
     """The owner of a session the viewer may react to, or 404."""
     owner = _other(handle)
     if not is_iso_date(when) or not social.has_session(
-        current_user_email(), owner.user_email, when
+        current_user_email(), owner.user_email, when, n
     ):
         abort(404)
     return owner
 
 
-def card_anchor(owner_handle: str, when: str) -> str:
-    return f"#s-{owner_handle}-{when}"
+def card_anchor(owner_handle: str, when: str, n: int = 0) -> str:
+    return f"#s-{owner_handle}-{when}-{n}"
 
 
-@bp.route("/kudos/<handle>/<when>", methods=["POST"])
+# A day's first workout keeps the old two-part URLs; later ones add the number.
+@bp.route("/kudos/<handle>/<when>", methods=["POST"], defaults={"n": 0})
+@bp.route("/kudos/<handle>/<when>/<int:n>", methods=["POST"])
 @profile_required
-def kudos(handle: str, when: str):
-    owner = _session_or_404(handle, when)
+def kudos(handle: str, when: str, n: int):
+    owner = _session_or_404(handle, when, n)
     if owner.user_email == current_user_email():
         abort(404)  # kudos are for friends' sessions
-    count, mine = social.toggle_kudos(current_user_email(), owner.user_email, when)
+    count, mine = social.toggle_kudos(current_user_email(), owner.user_email, when, n)
     if _wants_json():
         return jsonify(count=count, mine=mine)
-    return redirect(_back(url_for("social.feed"), card_anchor(owner.handle, when)))
+    return redirect(_back(url_for("social.feed"), card_anchor(owner.handle, when, n)))
 
 
-@bp.route("/comments/<handle>/<when>", methods=["POST"])
+@bp.route("/comments/<handle>/<when>", methods=["POST"], defaults={"n": 0})
+@bp.route("/comments/<handle>/<when>/<int:n>", methods=["POST"])
 @profile_required
-def comment(handle: str, when: str):
-    owner = _session_or_404(handle, when)
+def comment(handle: str, when: str, n: int):
+    owner = _session_or_404(handle, when, n)
     if (
         social.add_comment(
-            current_user_email(), owner.user_email, when, request.form.get("body", "")
+            current_user_email(), owner.user_email, when, request.form.get("body", ""), n
         )
         is None
     ):
         flash("Write something first.", "info")
-    return redirect(_back(url_for("social.feed"), card_anchor(owner.handle, when)))
+    return redirect(_back(url_for("social.feed"), card_anchor(owner.handle, when, n)))
 
 
 @bp.route("/comments/<int:comment_id>/delete", methods=["POST"])
@@ -329,5 +332,5 @@ def comment_delete(comment_id: int):
     if c is None:
         abort(404)
     owner = social.get_profile(c.owner_email)
-    anchor = card_anchor(owner.handle, c.date) if owner else ""
+    anchor = card_anchor(owner.handle, c.date, c.session) if owner else ""
     return redirect(_back(url_for("social.feed"), anchor))

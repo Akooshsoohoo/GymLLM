@@ -32,6 +32,14 @@
     </div>
 </nav>
 
+{% if switcher %}
+<nav class="day-sessions" aria-label="Workouts on this day">
+    {% for k in switcher %}
+    <a href="{{ k.url }}" class="chip{{ ' is-active' if k.n == n else '' }}"{% if k.n == n %} aria-current="page"{% endif %}>{{ k.title }}</a>
+    {% endfor %}
+</nav>
+{% endif %}
+
 {% if not rows and not cardio and not weight %}
 <div class="empty">
     <p>Nothing logged on {{ when|nice_date }}.</p>
@@ -131,7 +139,7 @@
 
         {% if thread %}
         {% import "_social.html" as social with context %}
-        <section class="card" id="social">{{ social.thread(thread, request.path) }}</section>
+        <section class="card" id="social">{{ social.thread(thread, request.full_path.rstrip('?')) }}</section>
         {% endif %}
 
         <div class="day-buttons">

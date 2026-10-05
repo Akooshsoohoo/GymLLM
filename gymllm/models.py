@@ -23,9 +23,16 @@ class Workout(db.Model):
     reps = db.Column(db.String, nullable=True)
     notes = db.Column(db.String, nullable=True)
     tags = db.Column(db.String, nullable=True)
+    # Which of the day's logged workouts this belongs to (0 = the first). Added after
+    # launch: db.create_all() can't add it to an existing table, see migrate.py.
+    session = db.Column(db.Integer, nullable=False, default=0, server_default="0")
 
     def as_dict(self) -> dict:
-        return {"id": self.id, **{f: getattr(self, f) or "" for f in FIELDS}}
+        return {
+            "id": self.id,
+            **{f: getattr(self, f) or "" for f in FIELDS},
+            "session": self.session or 0,
+        }
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Workout {self.id} {self.date} {self.exercise}>"
@@ -47,9 +54,14 @@ class Cardio(db.Model):
     distance = db.Column(db.String, nullable=True)  # as written: "3 miles", "5 km"
     duration = db.Column(db.String, nullable=True)  # as written: "45 min", "1 h 10 min"
     notes = db.Column(db.String, nullable=True)
+    session = db.Column(db.Integer, nullable=False, default=0, server_default="0")
 
     def as_dict(self) -> dict:
-        return {"id": self.id, **{f: getattr(self, f) or "" for f in CARDIO_FIELDS}}
+        return {
+            "id": self.id,
+            **{f: getattr(self, f) or "" for f in CARDIO_FIELDS},
+            "session": self.session or 0,
+        }
 
 
 class BodyWeight(db.Model):
@@ -118,7 +130,8 @@ def _utcnow() -> datetime:
 
 
 # --- Social ---------------------------------------------------------------------
-# A "session" is one user's day: kudos and comments point at (owner_email, date).
+# A "session" is one logged workout: a user's day can hold several, and kudos and
+# comments point at (owner_email, date, session).
 
 
 class Profile(db.Model):
@@ -166,15 +179,28 @@ class SessionVisibility(db.Model):
 
 
 class SessionMeta(db.Model):
-    """A day's own details: the title you gave it and, later, its photo. A day with
-    no row uses the default title and its muscle icon."""
+    """Legacy: one title per day. Superseded by SessionInfo, which migrate.py copies it
+    into; nothing reads or writes this table any more."""
 
     __tablename__ = "session_meta"
 
     owner_email = db.Column(db.String, primary_key=True)
     date = db.Column(db.String, primary_key=True)
     title = db.Column(db.String(80), nullable=True)
-    # Where the day's photo is stored; nothing writes it yet (see session_meta.photo_url).
+    photo_key = db.Column(db.String, nullable=True)
+
+
+class SessionInfo(db.Model):
+    """One logged workout's own details: the title you gave it and, later, its photo.
+    A session with no row uses the default title and its muscle icon."""
+
+    __tablename__ = "session_info"
+
+    owner_email = db.Column(db.String, primary_key=True)
+    date = db.Column(db.String, primary_key=True)
+    session = db.Column(db.Integer, primary_key=True, default=0)
+    title = db.Column(db.String(80), nullable=True)
+    # Where the photo is stored; nothing writes it yet (see session_meta.photo_url).
     photo_key = db.Column(db.String, nullable=True)
 
 
@@ -211,15 +237,20 @@ class RestOverride(db.Model):
 
 
 class Kudos(db.Model):
-    __tablename__ = "kudos"
+    # Was "kudos", unique per (owner, date, giver); a new table so the uniqueness can
+    # include the session. migrate.py copies the old rows over.
+    __tablename__ = "session_kudos"
     __table_args__ = (
-        db.UniqueConstraint("owner_email", "date", "giver_email", name="uq_kudos_once"),
-        db.Index("ix_kudos_session", "owner_email", "date"),
+        db.UniqueConstraint(
+            "owner_email", "date", "session", "giver_email", name="uq_session_kudos_once"
+        ),
+        db.Index("ix_session_kudos_session", "owner_email", "date", "session"),
     )
 
     id = db.Column(db.Integer, primary_key=True)
     owner_email = db.Column(db.String, nullable=False)
     date = db.Column(db.String, nullable=False)
+    session = db.Column(db.Integer, nullable=False, default=0)
     giver_email = db.Column(db.String, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
 
@@ -231,6 +262,7 @@ class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     owner_email = db.Column(db.String, nullable=False)
     date = db.Column(db.String, nullable=False)
+    session = db.Column(db.Integer, nullable=False, default=0, server_default="0")
     author_email = db.Column(db.String, nullable=False)
     body = db.Column(db.String(500), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)

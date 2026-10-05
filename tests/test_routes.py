@@ -358,7 +358,7 @@ def test_confirm_saves_rows_with_tags_and_skips_deleted(logged_in, app, fake_llm
         "entry-2-notes": "",
     }
     r = logged_in.post("/confirm", data=data)
-    assert r.status_code == 302 and r.headers["Location"] == "/?saved=2026-09-13#my-latest"
+    assert r.status_code == 302 and r.headers["Location"] == "/?saved=2026-09-13&session=0#my-latest"
     with app.app_context():
         rows = Workout.query.order_by(Workout.id).all()
         assert [w.exercise for w in rows] == ["barbell bench press", "made-up movement"]
@@ -791,7 +791,7 @@ def test_confirm_lands_on_home_with_the_day_to_share(logged_in, add_profile):
         "bodyweight": "150 lbs",
     }
     r = logged_in.post("/confirm", data=data)
-    assert r.headers["Location"] == "/?saved=2026-09-13&recorded=1#my-latest"
+    assert r.headers["Location"] == "/?saved=2026-09-13&session=0&recorded=1#my-latest"
     body = logged_in.get("/?saved=2026-09-13&recorded=1").data.decode()
     assert 'id="my-latest"' in body and "data-recording-saved" in body
     assert "latest-card is-new" in body and "Just logged" in body
@@ -946,7 +946,7 @@ def test_day_page_share_payload_excludes_body_weight(
     assert share["stat_line"] == "5 sets · 3 mi" and share["short"] == "TUE 10 MAR"
     assert share["hint"].startswith("chest") and share["hint"].endswith("walking")
     assert set(share) == {
-        "date", "label", "short", "name", "stat_line", "hint", "stats", "lifts", "cardio"
+        "date", "session", "label", "short", "name", "stat_line", "hint", "stats", "lifts", "cardio"
     }
 
 
@@ -1054,7 +1054,7 @@ def test_dates_link_to_the_day_page(logged_in, add_workout):
     add_workout(date="2026-03-10")
     assert 'href="/day/2026-03-10"' in logged_in.get("/").data.decode()
     body = logged_in.get("/search?today=2026-03-15").data.decode()
-    assert 'href="/day/2026-03-10"' in body and 'id="day-2026-03-10"' in body
+    assert 'href="/day/2026-03-10"' in body and 'id="day-2026-03-10-0"' in body
     assert 'href="/day/2026-03-10"' in logged_in.get("/exercise/barbell bench press").data.decode()
     r = logged_in.post(
         "/confirm", data={"date": "2026-03-11", "bodyweight": "130 lbs"}, follow_redirects=True
@@ -1110,7 +1110,7 @@ def test_sessions_range_filter_and_empty_states(logged_in, add_workout):
 def test_sessions_show_a_custom_title(logged_in, app, add_workout):
     add_workout(date="2026-03-10")
     with app.app_context():
-        session_meta.set_title(USER, "2026-03-10", "Push day")
+        session_meta.set_title(USER, "2026-03-10", 0, "Push day")
         db.session.commit()
     body = logged_in.get("/search?today=2026-03-15").data.decode()
     assert "Push day" in body and "Tuesday workout" not in body
@@ -1183,7 +1183,7 @@ def test_day_edit_saves_changes_removals_and_new_rows(logged_in, app, add_workou
 def test_day_edit_title_back_to_default_clears_it(logged_in, app, add_workout):
     add_workout(date="2026-03-10")
     with app.app_context():
-        session_meta.set_title(USER, "2026-03-10", "Push day")
+        session_meta.set_title(USER, "2026-03-10", 0, "Push day")
         db.session.commit()
     logged_in.post("/day/2026-03-10/edit", data={"date": "2026-03-10", "title": " "})
     with app.app_context():
@@ -1255,7 +1255,7 @@ def test_day_edit_rejects_a_bad_date_and_other_users_rows(logged_in, app, add_wo
 def test_day_edit_removing_everything_clears_the_day(logged_in, app, add_workout):
     a = add_workout(date="2026-03-10")
     with app.app_context():
-        session_meta.set_title(USER, "2026-03-10", "Gone")
+        session_meta.set_title(USER, "2026-03-10", 0, "Gone")
         db.session.commit()
     r = logged_in.post("/day/2026-03-10/edit", data={"date": "2026-03-10", f"lift-{a}-delete": "1"})
     assert r.headers["Location"].endswith("/search")

@@ -24,7 +24,7 @@
     <h2 class="month-head" id="month-{{ m.key }}">{{ m.label }} <span>{{ m.days|length }} session{{ '' if m.days|length == 1 else 's' }}</span></h2>
     <div class="tile-grid">
         {% for d in m.days %}
-        <a class="session-tile" href="{{ url_for('main.day', when=d.date) }}" id="day-{{ d.date }}" data-search="{{ d.search }} {{ d.date|day_label|lower }}">
+        <a class="session-tile" href="{{ d.url }}" id="day-{{ d.date }}-{{ d.session }}" data-search="{{ d.search }} {{ d.date|day_label|lower }}">
             <div class="tile-head">
                 <span class="tile-title">{{ d.title }}</span>
                 <time class="tile-date" datetime="{{ d.date }}">{{ d.date|day_label }}</time>

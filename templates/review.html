@@ -27,6 +27,11 @@
             <input type="date" id="date" name="date" value="{{ workout_date }}" required class="date-pill" form="confirm-form" data-relative>
             {% if date_from_text %}<span class="muted small">taken from your text</span>{% endif %}
         </div>
+        <div class="review-title">
+            <label for="title" class="words-label">Name this workout</label>
+            <input type="text" id="title" name="title" value="{{ routine_name or '' }}" placeholder="{{ default_title }}"
+                   maxlength="80" autocomplete="off" class="input" form="confirm-form">
+        </div>
         {% endif %}
 
         <form method="post" action="{{ url_for('main.review') }}" class="card words-card reparse-form{{ ' is-open' if not has_form }}" id="words"
