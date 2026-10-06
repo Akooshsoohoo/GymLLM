@@ -23,3 +23,18 @@ def set_weight_unit(user_email: str, unit: str) -> str:
         row.weight_unit = unit
     db.session.commit()
     return unit
+
+
+def onboarding_dismissed(user_email: str) -> bool:
+    row = UserPreference.query.filter_by(user_email=user_email).first()
+    return bool(row and row.onboarding_dismissed)
+
+
+def dismiss_onboarding(user_email: str) -> None:
+    """Hide Home's getting-started checklist for good."""
+    row = UserPreference.query.filter_by(user_email=user_email).first()
+    if row is None:
+        db.session.add(UserPreference(user_email=user_email, onboarding_dismissed=True))
+    else:
+        row.onboarding_dismissed = True
+    db.session.commit()

@@ -6,8 +6,17 @@
 {% block flashes %}{% endblock %}
 {% block content %}
 {#- Swap the gradient for a real photo by setting a background-image on .welcome-photo
-    (friends mid-workout, candid, warm light). -#}
-<div class="welcome-photo" role="presentation"></div>
+    (friends mid-workout, candid, warm light). On it, what the app does in one picture:
+    a sentence in, a logged workout out. -#}
+<div class="welcome-photo">
+    <figure class="welcome-demo" aria-label="Example: a typed sentence becomes a logged workout">
+        <p class="welcome-said">benched 135 for 3 sets of 8, then ran 2 miles</p>
+        <ul class="session-rows">
+            <li><span class="session-exercise"><span class="session-name">Barbell bench press</span></span><span class="session-detail num">3 × 8 · 135 lbs</span></li>
+            <li><span class="session-exercise"><span class="session-name">Running</span></span><span class="session-detail num">2 miles</span></li>
+        </ul>
+    </figure>
+</div>
 <div class="welcome-body">
     <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Levra</div>
     {{ flashes() }}

@@ -321,7 +321,10 @@ pre {
 .tab-log.active .tab-log-btn { background: var(--you); color: var(--on-you); }
 /* A recording is running: green with a pulsing ring, and the time underneath. */
 .tab-log.is-recording .tab-log-btn { background: var(--you); color: var(--on-you); animation: rec-ring 1.6s ease-out infinite; }
-.tab-log-time { color: var(--you-ink); font-size: 11px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+/* Under the button: "Record", or the running time. */
+.tab-log-time { color: var(--muted-2); font-size: 12px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.tab-log.active .tab-log-time { color: var(--ink); }
+.tab-log.is-recording .tab-log-time { color: var(--you-ink); font-size: 11px; font-weight: 700; }
 @keyframes rec-ring {
     0% { box-shadow: 0 0 0 0 var(--you-pulse); }
     100% { box-shadow: 0 0 0 12px transparent; }
@@ -1094,6 +1097,7 @@ button.week-day.rest:hover { background: var(--rest); filter: brightness(0.95); 
 .log-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .log-bar .chips { display: none; }
 .log-bar .btn-you { height: 48px; padding: 0 24px; font-size: 16px; }
+.log-tips { margin-right: auto; color: var(--muted); font-size: 14px; }
 .log-status { flex-basis: 100%; order: 5; color: var(--muted); font-size: 13px; }
 .log-status:empty { display: none; }
 .log-head { margin-bottom: 18px; }
@@ -1128,6 +1132,27 @@ button.week-day.rest:hover { background: var(--rest); filter: brightness(0.95); 
 .feed-grid { display: grid; gap: 14px; }
 .home-note { padding: 18px; }
 .home-note p { color: var(--ink-2); font-size: 14px; line-height: 1.45; margin-bottom: 12px; }
+/* First visit: the log box leads on a phone too, until something is logged. */
+.home-log.is-first { display: grid; gap: 14px; }
+.first-lede { max-width: 52ch; margin: 8px 0 0; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+.first-next { margin: 0; color: var(--ink-2); font-size: 14px; }
+@media (max-width: 1023px) {
+    .home-log.is-first .page-sub { display: none; }
+    .home-log.is-first h1 { font-size: 22px; }
+}
+/* Getting started: three steps that tick off */
+.section-head .link-btn { color: var(--muted); font-size: 14px; text-decoration: none; }
+.section-head .link-btn:hover { color: var(--you-ink); }
+.start-list { list-style: none; margin: 0; padding: 6px 18px; }
+.start-step { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.start-step + .start-step { border-top: 1px solid var(--line-2); }
+.start-tick { position: relative; flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--dashed); }
+.start-step.is-done .start-tick { border-color: var(--you); background: var(--you); }
+.start-step.is-done .start-tick::after { content: ""; position: absolute; left: 6px; top: 2px; width: 6px; height: 11px; border: solid var(--on-you); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.start-label { display: grid; gap: 2px; color: var(--ink); font-size: 15px; font-weight: 600; text-decoration: none; }
+.start-label small { color: var(--muted); font-size: 13px; font-weight: 500; }
+a.start-label:hover { color: var(--you-ink); }
+.start-step.is-done .start-label { color: var(--muted); text-decoration: line-through; }
 .recent-list { list-style: none; margin: 0; padding: 0; }
 .recent-list li + li { border-top: 1px solid var(--line-2); }
 .recent-list a { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: 15px; font-weight: 500; text-decoration: none; }
@@ -1139,7 +1164,7 @@ button.week-day.rest:hover { background: var(--rest); filter: brightness(0.95); 
 .latest { scroll-margin-top: 16px; }
 .latest-card.is-new { box-shadow: 0 0 0 2px var(--you); animation: latest-settle 1.6s ease-out 2.4s forwards; }
 @keyframes latest-settle { to { box-shadow: 0 0 0 2px transparent; } }
-.latest-badge { padding: 4px 10px; border-radius: 99px; background: var(--you-tint); color: var(--you-ink); font-size: 12px; font-weight: 700; }
+.latest-badge { flex: none; white-space: nowrap; padding: 4px 10px; border-radius: 99px; background: var(--you-tint); color: var(--you-ink); font-size: 12px; font-weight: 700; }
 .latest-actions { display: flex; gap: 10px; }
 .latest-actions .btn { height: 48px; font-size: 16px; }
 .latest-actions .btn-you { flex: 1; }
@@ -1304,7 +1329,7 @@ dialog.sheet {
 }
 dialog.sheet::backdrop { background: var(--scrim); }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.sheet ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink-2); }
+.sheet ul, .tips-list { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink-2); }
 .sheet-close { width: 36px; height: 36px; padding: 0; border-radius: 50%; background: var(--field); font-size: 20px; }
 
 /* --- Review ------------------------------------------------------------ */
@@ -1340,6 +1365,8 @@ body.flow .page { padding-bottom: 140px; }
 .words-text { min-height: 0; padding: 0; border: 0; border-radius: 0; font-size: 17px; line-height: 1.45; resize: vertical; }
 .words-text:hover, .words-text:focus { border: 0; }
 .words-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.review-hint { margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+.review-tips { margin: 0; font-size: 14px; }
 .review-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .review-group { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .group-head { display: flex; justify-content: space-between; align-items: baseline; }
@@ -1640,7 +1667,15 @@ body.welcome { background: var(--bg); }
         linear-gradient(160deg, var(--friend-tint), var(--line-2) 55%, var(--line));
     background-size: cover;
     background-position: center;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 24px 28px;
 }
+/* The example on the photo: what you type, then what gets logged. */
+.welcome-demo { width: 100%; max-width: 400px; margin: 0; display: grid; gap: 10px; }
+.welcome-said { justify-self: end; max-width: 88%; margin: 0; padding: 10px 14px; border-radius: 18px 18px 4px 18px; background: var(--you); color: var(--on-you); font-size: 15px; font-weight: 500; line-height: 1.35; }
+.welcome-demo .session-rows { padding: 14px 16px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-card); font-size: 15px; }
 .welcome-body { flex: 1; padding: 28px 28px calc(40px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; max-width: 560px; width: 100%; margin: 0 auto; }
 .welcome-body .brand { font-size: 17px; }
 .welcome-title { font-size: 34px; line-height: 1.05; letter-spacing: -0.02em; text-wrap: pretty; }
@@ -1902,7 +1937,7 @@ a.feed-when:hover { color: var(--you-ink); }
 
     /* Welcome: words on the left, the photo on the right */
     .welcome-main { display: grid; grid-template-columns: 1fr 1fr; }
-    .welcome-photo { order: 2; height: auto; max-height: none; }
+    .welcome-photo { order: 2; height: auto; max-height: none; align-items: center; }
     .welcome-body { max-width: none; margin: 0; padding: 56px 72px; gap: 22px; }
     .welcome-body .brand { font-size: 19px; }
     .welcome-body .brand-mark { width: 16px; height: 16px; }

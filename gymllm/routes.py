@@ -212,20 +212,40 @@ def home():
         _my_day_card(user_email, latest_date, latest_n, all_data, profile) if latest_date else None
     )
     hour = _client_hour()
+    just_saved = bool(latest) and latest_date == saved
+    has_friends = bool(profile and social.friend_emails(user_email))
+    # Getting started: three steps in place of the Friends prompts, until all are done
+    # or the card is hidden.
+    steps = {"logged": bool(dates), "profile": bool(profile), "friends": has_friends}
+    checklist = (
+        steps
+        if not all(steps.values()) and not preferences.onboarding_dismissed(user_email)
+        else None
+    )
     return render_template(
         "home.html",
         **ctx,
         latest=latest,
-        just_saved=bool(latest) and latest_date == saved,
+        just_saved=just_saved,
+        has_logged=bool(dates),
+        first_save=just_saved and len(dates) == 1 and len(numbers.get(latest_date, [])) <= 1,
+        checklist=checklist,
         recorded=request.args.get("recorded") == "1",
         recent=recent,
         friend_cards=friend_cards,
-        has_friends=bool(profile and social.friend_emails(user_email)),
+        has_friends=has_friends,
         invite_url=(
             url_for("social.invite", code=profile.invite_code, _external=True) if profile else None
         ),
         greeting="Morning" if 4 <= hour < 12 else "Afternoon" if 12 <= hour < 17 else "Evening",
     )
+
+
+@bp.route("/onboarding/dismiss", methods=["POST"])
+@login_required
+def onboarding_dismiss():
+    preferences.dismiss_onboarding(current_user_email())
+    return redirect(url_for("main.home"))
 
 
 @bp.route("/log")
@@ -675,13 +695,20 @@ def review():
             return render_template(
                 "review.html",
                 error=(
-                    f"You have used today's {limit} free parses with the shared model. "
-                    "Come back tomorrow, or add your own key or a local model on the "
-                    "Settings page."
+                    f"You've used today's {limit} free logs. Come back tomorrow, add this "
+                    "one manually, or set up your own model in Settings for unlimited logging."
                 ),
+                limit_reached=True,
                 entries=None,
                 **context,
             )
+
+    def failed(message: str):
+        """The model gave nothing back, so the free log isn't spent."""
+        if config.is_site:
+            quota.refund(user_email)
+        return render_template("review.html", error=message, entries=None, **context)
+
     try:
         if config.runs_in_browser:
             parsed = _parse_browser_output(request.form.get("llm_output", ""))
@@ -696,21 +723,19 @@ def review():
                 "The shared model is busy or its daily allowance is used up. Try again in a "
                 "minute, or use your own key on the Settings page."
             )
-        return render_template("review.html", error=message, entries=None, **context)
+        return failed(message)
     except LLMError as e:
-        return render_template("review.html", error=e.user_message, entries=None, **context)
+        return failed(e.user_message)
     except Exception:  # noqa: BLE001
         current_app.logger.exception("Unexpected error while parsing workout")
-        return render_template(
-            "review.html",
-            error="Something went wrong while talking to the model. Please try again.",
-            entries=None,
-            **context,
-        )
+        return failed("Something went wrong while talking to the model. Please try again.")
     activity.record_parse(user_email)
     return render_template(
         "review.html",
         error=None,
+        first_log=not _has_logged(user_email),
+        # Nobody to share with yet: start private until there's a profile.
+        visibility=None if social.get_profile(user_email) else social.PRIVATE,
         entries=parsed.entries,
         cardio=parsed.cardio,
         bodyweight=parsed.bodyweight,
@@ -718,6 +743,14 @@ def review():
         default_title=session_meta.default_title(parsed.date or today.isoformat()),
         date_from_text=parsed.date is not None,
         **context,
+    )
+
+
+def _has_logged(user_email: str) -> bool:
+    """Whether anything at all (a lift, cardio or a weigh-in) is saved for this user."""
+    return any(
+        db.session.query(model.id).filter_by(user_email=user_email).first() is not None
+        for model in (Workout, Cardio, BodyWeight)
     )
 
 

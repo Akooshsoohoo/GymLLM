@@ -74,6 +74,8 @@ def profile_edit():
     email = current_user_email()
     profile = social.get_profile(email)
     next_url = safe_next(request.values.get("next"))
+    # Sent here from an invite link: keep who invited them in view.
+    inviter = social.profile_by_invite(request.values.get("invite", "")) if not profile else None
     error = None
     if request.method == "POST":
         handle = social.clean_handle(request.form.get("handle"))
@@ -87,9 +89,10 @@ def profile_edit():
                 request.form.get("bio", ""),
                 avatar_url=session.get(SESSION_GOOGLE_PICTURE) or None,
             )
-            flash("Profile created. Find friends below." if first_time else "Profile saved.", "ok")
             if next_url:
+                flash("Profile created." if first_time else "Profile saved.", "ok")
                 return redirect(next_url)
+            flash("Profile created. Find friends below." if first_time else "Profile saved.", "ok")
             return redirect(
                 url_for("social.friends" if first_time else "social.profile", handle=profile.handle)
             )
@@ -102,7 +105,12 @@ def profile_edit():
             "bio": (profile.bio or "") if profile else "",
         }
     return render_template(
-        "profile_edit.html", profile=profile, form=form, error=error, next_url=next_url
+        "profile_edit.html",
+        profile=profile,
+        form=form,
+        error=error,
+        next_url=next_url,
+        inviter=inviter,
     ), (400 if error else 200)
 
 
@@ -252,7 +260,9 @@ def invite(code: str):
         session[AFTER_LOGIN] = url_for("social.invite", code=code)
         return render_template("invite.html", owner=owner, signed_in=False)
     if social.get_profile(email) is None:
-        return redirect(url_for("social.profile_edit", next=url_for("social.invite", code=code)))
+        return redirect(
+            url_for("social.profile_edit", next=url_for("social.invite", code=code), invite=code)
+        )
     rel = social.relationship(email, owner.user_email)
     if request.method == "POST" and rel not in (social.SELF, social.FRIENDS):
         social.befriend(email, owner.user_email)

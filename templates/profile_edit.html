@@ -9,6 +9,10 @@
 <form method="post" action="{{ url_for('social.profile_edit') }}" class="card card-narrow">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+    {% if inviter %}
+    <input type="hidden" name="invite" value="{{ inviter.invite_code }}">
+    <div class="alert info">{{ inviter.display_name }} invited you. Set up your profile, then add them.</div>
+    {% endif %}
     {% if not profile %}
     <p class="muted small card-lead">
         Friends find you by your handle. They see the workouts you share with them, never your

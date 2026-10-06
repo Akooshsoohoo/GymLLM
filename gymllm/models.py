@@ -123,6 +123,10 @@ class UserPreference(db.Model):
 
     user_email = db.Column(db.String, primary_key=True)
     weight_unit = db.Column(db.String, nullable=False, default="lbs")
+    # "Hide" on Home's getting-started checklist. Added after launch, see migrate.py.
+    onboarding_dismissed = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
 
 
 def _utcnow() -> datetime:

@@ -1,0 +1,25 @@
+{#- Home's getting-started card: three steps that tick off as they're done. Needs
+    `checklist` ({logged, profile, friends}); gone once all are done or it's hidden. -#}
+{% set steps = (
+    ("logged", "Log a workout", "Type it, or record as you train.", url_for('main.log')),
+    ("profile", "Set up your profile", "A handle so friends can find you.", url_for('social.profile_edit')),
+    ("friends", "Add a friend", "Send your invite link or search by @handle.", url_for('social.friends')),
+) %}
+<section aria-labelledby="start-heading">
+    <div class="section-head">
+        <h2 id="start-heading">Getting started</h2>
+        <form method="post" action="{{ url_for('main.onboarding_dismiss') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="link-btn link-quiet">Hide</button>
+        </form>
+    </div>
+    <ol class="card start-list">
+        {% for key, label, help, href in steps %}
+        {% if checklist[key] %}
+        <li class="start-step is-done"><span class="start-tick" aria-hidden="true"></span><span class="start-label">{{ label }}<span class="sr-only"> (done)</span></span></li>
+        {% else %}
+        <li class="start-step"><span class="start-tick" aria-hidden="true"></span><a href="{{ href }}" class="start-label">{{ label }}<small>{{ help }}</small></a></li>
+        {% endif %}
+        {% endfor %}
+    </ol>
+</section>
