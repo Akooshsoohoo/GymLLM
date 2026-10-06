@@ -35,12 +35,12 @@
     <tbody>
     {% for s in summary %}
     <tr>
-        <td><a href="{{ url_for('main.exercise_history', name=s.exercise, range=range_key) }}" class="cell-link">{{ s.exercise }}</a></td>
+        <td class="wrap-cell"><a href="{{ url_for('main.exercise_history', name=s.exercise, range=range_key) }}" class="cell-link">{{ s.exercise|cap_first }}</a></td>
         <td class="num">{{ s.entries }}</td>
         <td class="num">{{ s.sessions }}</td>
         <td>{{ s.best or '—' }}</td>
         <td class="spark-cell">{% if s.spark|length > 1 %}<svg class="spark" data-chart="spark" data-series='{{ s.spark|tojson }}' aria-hidden="true"></svg>{% endif %}</td>
-        <td class="muted">{{ s.last|nice_date }}</td>
+        <td class="muted" data-sort-value="{{ s.last }}">{{ s.last|day_label }}</td>
     </tr>
     {% endfor %}
     </tbody>
@@ -64,11 +64,11 @@
         <tbody>
         {% for a in cardio %}
         <tr>
-            <td>{{ a.activity }}</td>
+            <td class="wrap-cell">{{ a.activity|cap_first }}</td>
             <td class="num">{{ a.count }}</td>
             <td>{{ a.distance_text or '—' }}</td>
             <td>{{ a.minutes_text or '—' }}</td>
-            <td class="muted">{{ a.last|nice_date }}</td>
+            <td class="muted" data-sort-value="{{ a.last }}">{{ a.last|day_label }}</td>
         </tr>
         {% endfor %}
         </tbody>

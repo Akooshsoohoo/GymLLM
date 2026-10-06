@@ -217,6 +217,8 @@
   function rowText(tr) {
     return $$("td", tr).map(cellText).join(" ").toLowerCase();
   }
+  // data-sort-value: what a cell sorts by when it shows something friendlier ("Today").
+  function sortText(td) { return td.dataset.sortValue || cellText(td); }
   function sortKey(text, type) {
     if (type === "number") { var m = text.match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : -Infinity; }
     return text.toLowerCase();
@@ -224,7 +226,8 @@
   function initSortable(root) { $$("table.sortable", root).forEach(function (table) {
     var tbody = table.tBodies[0];
     if (!tbody) return;
-    $$("th[data-sort]", table).forEach(function (th, idx) {
+    $$("th[data-sort]", table).forEach(function (th) {
+      var idx = th.cellIndex;  // not its place among the sortable headers: some columns have none
       th.classList.add("sortable-th");
       th.addEventListener("click", function () {
         var type = th.dataset.sort;
@@ -234,7 +237,7 @@
         th.classList.add(asc ? "sort-asc" : "sort-desc");
         var rows = $$("tr", tbody);
         rows.sort(function (a, b) {
-          var ka = sortKey(cellText(a.children[idx]), type), kb = sortKey(cellText(b.children[idx]), type);
+          var ka = sortKey(sortText(a.children[idx]), type), kb = sortKey(sortText(b.children[idx]), type);
           if (ka < kb) return asc ? -1 : 1;
           if (ka > kb) return asc ? 1 : -1;
           return 0;
@@ -434,9 +437,10 @@
     var s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
     return (h ? h + ":" + pad2(m) : m) + ":" + pad2(s % 60);
   }
-  // 42 min, 1 h 5 min.
+  // 42 min, 1 h 5 min; under a minute, 10 sec.
   function durationText(ms) {
-    var m = Math.max(1, Math.round(ms / 60000));
+    if (ms < 60000) return Math.max(0, Math.floor(ms / 1000)) + " sec";
+    var m = Math.round(ms / 60000);
     return m < 60 ? m + " min" : Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "");
   }
 
@@ -695,6 +699,8 @@
   // ---------------------------------------------------------------- Classic logger (Log page)
   // Search/pick an exercise to add a row; rows post to /confirm with the same field names
   // the review page uses.
+  // What a lift's weight may be; parsing.clean_lift_weight() checks the same on the server.
+  var LIFT_WEIGHT_PATTERN = "\\s*([0-9].*|[bB][wW].*|[bB][oO][dD][yY] ?[wW][eE][iI][gG][hH][tT].*)?";
   var classicForm = $("#classic-form");
   if (classicForm) {
     var esc = function (s) { return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"); };
@@ -735,12 +741,16 @@
     };
     var hasLifts = classicList({
       table: "#classic-table", count: "#classic-count", search: "#classic-search", button: "#classic-add", prefix: "entry",
-      columns: [["exercise"], ["weight", ' placeholder="185 lbs"'], ["sets", ' class="narrow" inputmode="numeric"'],
+      columns: [["exercise"], ["weight", ' placeholder="185 lbs" pattern="' + LIFT_WEIGHT_PATTERN + '" title="A number, like 185 lbs, or bodyweight"'], ["sets", ' class="narrow" inputmode="numeric"'],
                 ["reps", ' placeholder="10, 8, 6"'], ["notes", ""]]
     });
     var hasCardio = classicList({
       table: "#classic-cardio-table", count: "#classic-cardio-count", search: "#classic-cardio-search", button: "#classic-cardio-add", prefix: "cardio",
       columns: [["activity"], ["distance", ' placeholder="3 miles"'], ["duration", ' placeholder="45 min"'], ["notes", ""]]
+    });
+    // Enter in a row's field moves on; it doesn't save the whole workout.
+    classicForm.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" && ev.target.matches("tbody input")) ev.preventDefault();
     });
     classicForm.addEventListener("submit", function (ev) {
       if (!hasLifts() && !hasCardio() && !$("#classic-bodyweight").value.trim()) {
@@ -1410,6 +1420,8 @@
   // a month calendar. Picking sets the input and fires "change".
   function openCalendar(input, btn) {
     var today = parseIso(localDate()), sel = parseIso(input.value), focus = sel || today;
+    // data-no-future: a workout can't be logged on a day that hasn't happened.
+    var noFuture = "noFuture" in input.dataset;
     var box = document.createElement("div");
     box.className = "cal";
     box.setAttribute("role", "dialog");
@@ -1426,7 +1438,7 @@
         var cls = "cal-day" + (d.getMonth() !== first.getMonth() ? " is-outside" : "") +
           (sel && v === isoOf(sel) ? " is-selected" : "") + (v === isoOf(today) ? " is-today" : "");
         html += '<button type="button" class="' + cls + '" data-date="' + v + '" aria-label="' + niceDate(v) + '"' +
-          (sel && v === isoOf(sel) ? ' aria-pressed="true"' : "") + ' tabindex="' + (v === isoOf(focus) ? 0 : -1) + '">' + d.getDate() + "</button>";
+          (sel && v === isoOf(sel) ? ' aria-pressed="true"' : "") + (noFuture && d > today ? " disabled" : "") + ' tabindex="' + (v === isoOf(focus) ? 0 : -1) + '">' + d.getDate() + "</button>";
       }
       html += '</div><div class="cal-foot"><button type="button" class="btn btn-text btn-sm" data-date="' + isoOf(today) + '">Today</button></div>';
       box.innerHTML = html;
@@ -1458,6 +1470,7 @@
       if (moves[ev.key]) focus = new Date(focus.getFullYear(), focus.getMonth(), focus.getDate() + moves[ev.key]);
       else if (ev.key === "PageUp" || ev.key === "PageDown") focus = new Date(focus.getFullYear(), focus.getMonth() + (ev.key === "PageUp" ? -1 : 1), 1);
       else return;
+      if (noFuture && focus > today) focus = today;
       ev.preventDefault();
       render();
       focusDay();

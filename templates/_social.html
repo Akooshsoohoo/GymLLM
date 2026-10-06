@@ -95,7 +95,7 @@
 <form method="post" action="{{ url_for('social.comment', handle=card.owner.handle, when=card.date, n=card.session|default(0)) }}" class="comment-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ next }}">
     <label class="sr-only" for="c-{{ card.owner.handle }}-{{ card.date }}-{{ card.session|default(0) }}">Add a comment</label>
-    <input type="text" id="c-{{ card.owner.handle }}-{{ card.date }}-{{ card.session|default(0) }}" name="body" class="input" maxlength="500" required placeholder="{{ 'Reply…' if own else 'Say something nice…' }}" autocomplete="off">
+    <input type="text" id="c-{{ card.owner.handle }}-{{ card.date }}-{{ card.session|default(0) }}" name="body" class="input" maxlength="500" required placeholder="Add a comment" autocomplete="off">
     <button type="submit" class="btn btn-primary btn-sm">Post</button>
 </form>
 {%- endmacro %}

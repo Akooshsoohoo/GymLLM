@@ -179,7 +179,7 @@ def test_friend_sees_lifts_but_not_notes_or_bodyweight(
     add_workout(date="2026-01-10", notes="secret note")
     _add(app, BodyWeight, user_email=USER, date="2026-01-10", weight="181 lbs")
     page = other_client.get("/u/tester").data
-    assert b"barbell bench press" in page
+    assert b"Barbell bench press" in page
     assert b"secret note" not in page
     assert b"181 lbs" not in page
     with app.app_context():
@@ -220,20 +220,26 @@ def test_private_workout_is_hidden_from_friends(app, pair, make_friends, logged_
     assert other_client.post("/kudos/tester/2026-01-11").status_code == 302
 
 
-def test_public_workout_is_seen_by_strangers(app, pair, logged_in, other_client):
-    _confirm(logged_in, "public", bodyweight="181 lbs")
-    _confirm(logged_in, "friends", when="2026-01-11")
-    page = other_client.get("/u/tester").data
-    assert b"bench press" in page.lower()
-    assert b"181 lbs" not in page
+def test_public_is_no_longer_offered_and_old_public_days_are_friends_only(
+    app, pair, make_friends, logged_in, other_client
+):
+    _confirm(logged_in, "public")  # saved as friends
+    _add(app, Cardio, user_email=USER, date="2026-01-11", activity="running", distance="5 km")
+    with app.app_context():
+        assert social.visibilities(USER) == {"2026-01-10": "friends"}
+        social.set_visibility(USER, "2026-01-11", "public")  # a day saved before the change
+        db.session.commit()
+        assert social.visible_data(OTHER, USER) is None  # a stranger sees nothing
+    assert b"bench press" not in other_client.get("/u/tester").data.lower()
+    assert b'value="public"' not in logged_in.get("/log/manual").data
+    make_friends()
     with app.app_context():
         rows, cardio, weights = social.visible_data(OTHER, USER)
-        assert [r["date"] for r in rows] == ["2026-01-10"] and weights == []
-    assert other_client.get("/u/tester/compare").status_code == 404  # still friends-only
+        assert len(rows) == 1 and [c["date"] for c in cardio] == ["2026-01-11"]
 
 
 def test_resaving_a_day_changes_its_visibility(app, pair, logged_in):
-    _confirm(logged_in, "public")
+    _confirm(logged_in, "friends")
     _confirm(logged_in, "private")
     with app.app_context():
         assert social.visibilities(USER) == {"2026-01-10": "private"}
@@ -401,5 +407,5 @@ def test_compare_page_renders_for_friends(pair, make_friends, add_workout, logge
     add_workout(user_email=OTHER, date="2026-09-02", exercise="bench press", weight="200 lbs")
     page = logged_in.get("/u/sam/compare?range=all&today=2026-09-10").data
     assert b"Lifts you both do" in page
-    assert b"bench press" in page
+    assert b"Bench press" in page
     assert b"15 lbs" in page

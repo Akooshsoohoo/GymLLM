@@ -16,7 +16,9 @@
     </div>
 </div>
 {%- endmacro %}
-{% set lift_fields = [("weight", "weight", "", ""), ("sets", "sets", "sets", 'inputmode="numeric"'), ("reps", "reps", "reps", ""), ("notes", "note", "", "")] %}
+{#- The same rule parsing.clean_lift_weight() applies on save. -#}
+{% set lift_weight_attrs = 'pattern="\s*([0-9].*|[bB][wW].*|[bB][oO][dD][yY] ?[wW][eE][iI][gG][hH][tT].*)?" title="A number, like 185 lbs, or bodyweight"' %}
+{% set lift_fields = [("weight", "weight", "", lift_weight_attrs), ("sets", "sets", "sets", 'inputmode="numeric"'), ("reps", "reps", "reps", ""), ("notes", "note", "", "")] %}
 {% set cardio_fields = [("distance", "distance", "", ""), ("duration", "time", "", ""), ("notes", "note", "", "")] %}
 {% macro lift_row(i, e, prefix="entry") %}{{ row(prefix, i, "exercise", e.exercise, 'list="exercise-names" placeholder="Exercise"', lift_fields, e) }}{% endmacro %}
 {% macro cardio_row(i, c, prefix="cardio") %}{{ row(prefix, i, "activity", c.activity, 'placeholder="Activity"', cardio_fields, c) }}{% endmacro %}

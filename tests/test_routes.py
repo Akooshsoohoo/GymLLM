@@ -420,7 +420,7 @@ def test_exercises_index_and_history_page(logged_in, add_workout):
     add_workout(date="2026-01-08", weight="190 lbs")
     add_workout(date="2026-01-08", weight="bodyweight", exercise="pull up")
     r = logged_in.get("/exercises")
-    assert r.status_code == 200 and b"barbell bench press" in r.data and b"pull up" in r.data
+    assert r.status_code == 200 and b"Barbell bench press" in r.data and b"Pull up" in r.data
 
     r = logged_in.get("/exercise/Barbell Bench Press")
     body = r.data.decode()
@@ -432,8 +432,7 @@ def test_exercises_index_and_history_page(logged_in, add_workout):
     assert '"volume": 4625.0' in body  # 185 x 25 reps
     assert 'data-chart="line"' in body and 'data-chart="columns"' in body
 
-    r = logged_in.get("/exercise/nothing here")
-    assert r.status_code == 200 and b"No entries" in r.data
+    assert logged_in.get("/exercise/nothing here").status_code == 404
 
 
 def test_exercises_index_shows_best_and_sparkline(logged_in, add_workout):
@@ -865,7 +864,7 @@ def test_home_cards_show_cardio_and_weight(logged_in, add_workout, add_cardio, a
     body = logged_in.get("/").data.decode()
     body = body[body.index("Your recent") :]
     # A cardio-only day is named after the activity; a lifting day after the lift.
-    assert "Swimming · 20 laps" in body and "Bench · 2 exercises" in body
+    assert "Swimming · 20 laps" in body and "Bench · 1 exercise · 1 cardio" in body
     assert body.index("Swimming") < body.index("Bench")
 
 
@@ -892,7 +891,7 @@ def test_progress_and_exercises_show_cardio_and_weight(logged_in, add_cardio, ad
     assert 'aria-label="Body weight per day"' in body and "132 lbs" in body
 
     body = logged_in.get("/exercises?range=7d&today=2026-03-15").data.decode()
-    assert "walking" in body and "running" in body and "3 mi" in body and "45 min" in body
+    assert "Walking" in body and "Running" in body and "3 mi" in body and "45 min" in body
 
 
 # --- day page -----------------------------------------------------------------
@@ -999,6 +998,7 @@ def test_home_card_shows_one_row_per_exercise(logged_in, add_workout):
             date="2026-03-10", exercise="dumbbell shoulder press", weight=weight, sets="", reps=reps
         )
     add_workout(date="2026-03-10", exercise="squat", weight="225 lbs")
+    add_workout(date="2026-03-03", exercise="dumbbell shoulder press", weight="20 lbs")
     body = logged_in.get("/?today=2026-03-10").data.decode()
     start = body.index('class="session-rows"')
     rows = body[start : body.index("</ul>", start)]
@@ -1008,7 +1008,7 @@ def test_home_card_shows_one_row_per_exercise(logged_in, add_workout):
         '<span class="sub-part">30 lbs · 2×8,</span> <span class="sub-part">40 lbs · 3×8,</span> '
         '<span class="sub-part">50 lbs · 5</span>'
     ) in rows
-    assert rows.count("badge-best") == 1  # 40 and 50 both beat the last weight: one badge
+    assert rows.count("badge-best") == 1  # 30, 40 and 50 all beat last week's 20: one badge
 
 
 @pytest.mark.parametrize(
@@ -1245,7 +1245,7 @@ def test_day_edit_moves_the_whole_day(logged_in, app, add_workout, add_cardio, a
         assert Workout.query.get(stay).date == "2026-03-11"
         assert session_meta.get(USER, "2026-03-10") is None
         assert session_meta.get(USER, "2026-03-14").title == "Moved"
-        assert social.visibilities(USER) == {"2026-03-14": "public"}
+        assert social.visibilities(USER) == {"2026-03-14": "friends"}  # Public is gone
 
 
 def test_day_edit_refuses_a_second_weigh_in_on_the_new_date(
@@ -1513,3 +1513,73 @@ def test_rest_day_toggle_refuses_future_logged_and_bad_dates(app, logged_in, add
     assert logged_in.post("/rest/day/2026-03-20?today=2026-03-12").status_code == 400
     assert logged_in.post("/rest/day/nope").status_code == 404
     assert _count(app, RestOverride) == 0
+
+
+# --- QA pass: validation, future dates, where rest actions land -------------------
+
+
+def _lift(weight="185 lbs", **extra):
+    return {
+        "date": "2026-03-10",
+        "client_date": "2026-03-12",
+        "num_entries": "1",
+        "entry-0-exercise": "bench press",
+        "entry-0-weight": weight,
+        "entry-0-sets": "3",
+        "entry-0-reps": "5",
+        **extra,
+    }
+
+
+def test_confirm_refuses_a_future_date(app, logged_in):
+    r = logged_in.post("/confirm", data=_lift(date="2026-03-13"))
+    assert r.status_code == 302 and r.headers["Location"].endswith("/log")
+    assert logged_in.post("/confirm", data=_lift(date="2026-03-12")).status_code == 302  # today
+    with app.app_context():
+        assert [w.date for w in Workout.query.all()] == ["2026-03-12"]
+
+
+@pytest.mark.parametrize(
+    "data", [_lift(weight="my weird lift"), _lift(bodyweight="abc"), _lift(bodyweight="12 stone")]
+)
+def test_confirm_refuses_weights_that_are_not_weights(app, logged_in, data):
+    r = logged_in.post("/confirm", data=data, follow_redirects=True)
+    assert "Nothing was saved" in r.data.decode()
+    with app.app_context():
+        assert Workout.query.count() == 0 and BodyWeight.query.count() == 0
+
+
+def test_confirm_adds_the_unit_to_bare_values(app, logged_in):
+    data = _lift(weight="50", bodyweight="160")
+    data.update({"num_cardio": "1", "cardio-0-activity": "rowing", "cardio-0-duration": "30"})
+    data.update({"num_entries": "2", "entry-1-exercise": "pull up", "entry-1-weight": "BW"})
+    logged_in.post("/confirm", data=data)
+    with app.app_context():
+        assert [w.weight for w in Workout.query.order_by(Workout.id)] == ["50 lbs", "BW"]
+        assert Cardio.query.one().duration == "30 min"
+        assert BodyWeight.query.one().weight == "160 lbs"
+
+
+def test_day_edit_refuses_a_future_date_and_bad_weights(app, logged_in, add_workout):
+    w = add_workout(date="2026-03-10")
+    path = "/day/2026-03-10/edit"
+    form = {"client_date": "2026-03-12", "date": "2026-03-10", f"lift-{w}-exercise": "squat"}
+    r = logged_in.post(path, data={**form, "date": "2026-03-20"})
+    assert r.headers["Location"].endswith(path)
+    r = logged_in.post(path, data={**form, f"lift-{w}-weight": "heavy"})
+    assert r.headers["Location"].endswith(path)
+    with app.app_context():
+        row = db.session.get(Workout, w)
+        assert (row.date, row.exercise, row.weight) == ("2026-03-10", "barbell bench press", "185 lbs")
+    logged_in.post(path, data={**form, f"lift-{w}-weight": "50"})
+    with app.app_context():
+        row = db.session.get(Workout, w)
+        assert (row.exercise, row.weight) == ("squat", "50 lbs")
+
+
+def test_rest_actions_come_back_to_the_same_progress_view(app, logged_in):
+    place = {"week": "2026-03-09", "range": "30d", "by": "week"}
+    r = logged_in.post("/rest/rules", data={"kind": "weekdays", "weekdays": ["0"], **place})
+    assert r.headers["Location"] == "/progress?week=2026-03-09&range=30d&by=week&rest=1#week"
+    r = logged_in.post("/rest/day/2026-03-10?today=2026-03-12", data={**place, "range": "nope"})
+    assert r.headers["Location"] == "/progress?week=2026-03-09&by=week#week"

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Levra | {{ name }}{% endblock %}
+{% block title %}Levra | {{ name|cap_first }}{% endblock %}
 {% block content %}
-<p class="crumb"><a href="{{ url_for('main.exercises', range=range_key) }}">&larr; All exercises</a></p>
+<p class="crumb"><a href="{{ url_for('main.exercises', range=range_key) }}">&lsaquo; All exercises</a></p>
 <div class="page-head">
     <div>
-        <h1>{{ name }}</h1>
+        <h1>{{ name|cap_first }}</h1>
         {% if tags %}<div class="chips">{% for t in tags.split(';') if t %}<span class="chip">{{ t }}</span>{% endfor %}</div>{% endif %}
     </div>
 </div>
@@ -18,9 +18,9 @@
 {% else %}
 <p class="muted exercise-summary">
     {{ sessions }} session{{ '' if sessions == 1 else 's' }}
-    {%- if best %} · best <strong>{{ best.weight }}</strong> ({{ best.date|nice_date }}){% endif %}
-    {%- if volume %} · {{ volume|fmt_num }} total volume{% endif %}
-    · last done {{ last_date|nice_date }}
+    {%- if best %} · best <strong>{{ best.weight }}</strong> ({{ best.date|day_label }}){% endif %}
+    {%- if volume %} · {{ volume|fmt_num }} {{ weight_unit }} total volume{% endif %}
+    · last done {{ last_date|day_label }}
 </p>
 
 {% set weighted = series|selectattr('weight', 'ne', none)|list %}
@@ -62,7 +62,7 @@
     <tbody>
     {% for r in rows %}
     <tr>
-        <td><a href="{{ url_for('main.day', when=r.date) }}" class="cell-link">{{ r.date }}</a></td><td>{{ r.weight }}</td><td class="num">{{ r.sets }}</td><td>{{ r.reps }}</td><td>{{ r.notes }}</td>
+        <td data-sort-value="{{ r.date }}"><a href="{{ url_for('main.day', when=r.date) }}" class="cell-link">{{ r.date|day_label }}</a></td><td>{{ r.weight }}</td><td class="num">{{ r.sets }}</td><td>{{ r.reps }}</td><td>{{ r.notes }}</td>
     </tr>
     {% endfor %}
     </tbody>

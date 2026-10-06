@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-head">
     <h1>Friends</h1>
-    <a href="{{ url_for('social.feed') }}" class="btn btn-ghost btn-sm">Activity feed</a>
+    <a href="{{ url_for('social.feed') }}" class="btn btn-ghost btn-sm">Friends' activity</a>
 </div>
 
 <div class="two-col">
@@ -38,7 +38,7 @@
         </div>
         <form method="post" action="{{ url_for('social.invite_reset') }}" class="invite-reset">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-text btn-sm">Make a new link</button>
+            <button type="submit" class="btn btn-ghost btn-sm">Make a new link</button>
             <span class="muted small">The old one stops working.</span>
         </form>
     </section>
@@ -83,7 +83,7 @@
             <div class="activity-text">
                 <a href="{{ url_for('social.profile', handle=e.who.handle) }}">{{ e.who.display_name }}</a>
                 {% if e.kind == 'kudos' %}gave a high five on{% else %}commented on{% endif %}
-                <a href="{{ url_for('main.day', when=e.date, s=e.session or None) }}#social">your session on {{ e.date|nice_date }}</a>
+                <a href="{{ url_for('main.day', when=e.date, s=e.session or None) }}#social">your session on {{ e.date|day_label }}</a>
                 {% if e.body %}<p class="activity-quote">{{ e.body }}</p>{% endif %}
             </div>
             <span class="muted small">{{ e.at|ago }}</span>

@@ -28,7 +28,7 @@ _EXERCISES = [
     ("overhead press", "shoulders;push", 95),
     ("barbell row", "back;pull", 135),
 ]
-_VISIBILITIES = (social.PRIVATE, social.FRIENDS_ONLY, social.PUBLIC)
+_VISIBILITIES = (social.PRIVATE, social.FRIENDS_ONLY, social.FRIENDS_ONLY)
 _WEEKS = 8
 
 

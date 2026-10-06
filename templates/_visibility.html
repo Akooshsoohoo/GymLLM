@@ -1,18 +1,17 @@
 {#- Who can see the day being saved. Friends is the default (or pass `visibility`);
     body weight is never shared. -#}
-{% set current = visibility if visibility is defined and visibility else 'friends' %}
+{% set current = 'private' if visibility is defined and visibility == 'private' else 'friends' %}
 <section class="vis-card{{ ' ' ~ extra_class if extra_class }}" aria-labelledby="vis-h">
     <div>
         <h2 id="vis-h">Who can see this</h2>
         <p class="vis-help" id="vis-help">
             <span data-vis="private">Only you.</span>
             <span data-vis="friends">Your friends, in their feed.</span>
-            <span data-vis="public">Anyone who opens your profile.</span>
             Notes and body weight always stay private.
         </p>
     </div>
     <div class="vis-toggle" role="radiogroup" aria-labelledby="vis-h" aria-describedby="vis-help">
-        {% for value, label in (("private", "Private"), ("friends", "Friends"), ("public", "Public")) %}
+        {% for value, label in (("private", "Private"), ("friends", "Friends")) %}
         <label class="vis-btn"><input type="radio" name="visibility" value="{{ value }}" {% if value == current %}checked{% endif %}>{{ label }}</label>
         {% endfor %}
     </div>

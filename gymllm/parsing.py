@@ -122,6 +122,43 @@ def _weight_str(weight) -> str:
     return str(weight).strip()
 
 
+_BARE_NUMBER_RE = re.compile(r"^\d+(?:\.\d+)?$")
+_LIFT_WEIGHT_RE = re.compile(r"^(?:\d|bw\b|body\s?weight)", re.IGNORECASE)
+_BODY_WEIGHT_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*(lbs?|kgs?)?$", re.IGNORECASE)
+
+
+def clean_lift_weight(text: str | None, unit: str) -> str:
+    """A lift's weight as it is saved: '' stays '', '50' -> '50 lbs' (the user's unit),
+    '40 kg per hand' and 'bodyweight' are kept. Anything that neither starts with a
+    number nor says bodyweight raises ValueError."""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    if _BARE_NUMBER_RE.match(text):
+        return f"{text} {unit}"
+    if not _LIFT_WEIGHT_RE.match(text):
+        raise ValueError(text)
+    return text
+
+
+def clean_bodyweight(text: str | None, unit: str) -> str:
+    """A weigh-in as it is saved: '160' -> '160 lbs', '72.5 kg' is kept, '' stays ''.
+    Anything but a number with an optional lbs/kg raises ValueError."""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    m = _BODY_WEIGHT_RE.match(text)
+    if not m:
+        raise ValueError(text)
+    return text if m.group(2) else f"{m.group(1)} {unit}"
+
+
+def clean_duration(text: str | None) -> str:
+    """A cardio duration as it is saved: a bare '30' means minutes."""
+    text = (text or "").strip()
+    return f"{text} min" if _BARE_NUMBER_RE.match(text) else text
+
+
 def normalize_entry(entry) -> dict:
     """Coerce an LLM entry into flat strings suitable for the String columns."""
     if not isinstance(entry, dict):

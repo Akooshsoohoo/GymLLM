@@ -12,8 +12,10 @@
     <button type="button" class="day-title-btn" id="day-title" aria-label="Pick a date">
         <h1 class="day-title"><time datetime="{{ when }}"><span class="mobile-only">{{ when|short_date }}</span><span class="desktop-only">{{ when|day_label(long=True) }}</span></time></h1>
         <span class="day-sub">
-            {%- if rel in ('Today', 'Yesterday') %}{{ rel }}{% else %}{{ when[:4] }}{% endif -%}
-            {%- if prev %}<span class="desktop-only"> · previous: {{ prev|day_label }}</span>{% endif -%}
+            {#- The year only when it isn't this one (day_label adds it then). -#}
+            {%- set lead = rel if rel in ('Today', 'Yesterday') else when[:4] if rel.endswith(when[:4]) else '' -%}
+            {{- lead -}}
+            {%- if prev %}<span class="desktop-only">{{ ' · ' if lead }}Previous: {{ prev|day_label }}</span>{% endif -%}
         </span>
     </button>
     {% if nxt %}
@@ -75,7 +77,7 @@
         {% endif %}
 
         <div class="stat-grid stat-grid-3 mobile-only">
-            <div class="stat"><div class="stat-label">Exercises</div><div class="stat-value">{{ summary.entries }}</div></div>
+            <div class="stat"><div class="stat-label">Exercises</div><div class="stat-value">{{ summary.exercises }}</div></div>
             <div class="stat"><div class="stat-label">Reps</div><div class="stat-value">{{ summary.reps }}</div></div>
             <div class="stat"><div class="stat-label" title="Weight × reps, summed">Volume</div><div class="stat-value">{{ summary.volume|short_num if summary.volume else '—' }}</div></div>
         </div>
@@ -87,7 +89,7 @@
             <h2 class="day-name">{{ title }}</h2>
         </div>
         <div class="stat-grid desktop-only">
-            <div class="stat"><div class="stat-label">Exercises</div><div class="stat-value">{{ summary.entries }}</div></div>
+            <div class="stat"><div class="stat-label">Exercises</div><div class="stat-value">{{ summary.exercises }}</div></div>
             <div class="stat"><div class="stat-label">Sets</div><div class="stat-value">{{ summary.sets }}</div></div>
             <div class="stat"><div class="stat-label" title="Weight × reps, summed: {{ summary.volume|fmt_num }}">Volume</div><div class="stat-value">{% if summary.volume %}{{ summary.volume|short_num }} <small>{{ weight_unit }}</small>{% else %}—{% endif %}</div></div>
             {% if weight %}

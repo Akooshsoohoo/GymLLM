@@ -465,3 +465,21 @@ def test_week_strip_rest_never_marks_logged_days():
     strip = stats.week_strip(TODAY, rows, rest_rules=[weekly])
     assert [d["rest"] for d in strip] == [False] * 5 + [True, False]
     assert [d["logged"] for d in strip] == [False] * 6 + [True]
+
+
+def test_one_personal_record_per_exercise_per_day():
+    rows = [
+        row(id=1, date="2026-01-05", weight="165 lbs"),
+        row(id=2, date="2026-03-12", weight="185 lbs"),
+        row(id=3, date="2026-03-12", weight="225 lbs"),
+        row(id=4, date="2026-03-12", weight="205 lbs"),
+        row(id=5, date="2026-03-12", weight="40 lbs", exercise="curl"),  # nothing earlier to beat
+        row(id=6, date="2026-03-12", weight="45 lbs", exercise="curl"),
+    ]
+    prs = stats.personal_records(rows, None)
+    assert [(p["id"], p["previous"]) for p in prs] == [(3, 165.0)]
+
+
+def test_unilateral_is_not_a_muscle_group():
+    tags = stats.tag_counts([row(id=1, tags="shoulders;isolation;unilateral")])
+    assert [t["tag"] for t in tags] == ["shoulders"]

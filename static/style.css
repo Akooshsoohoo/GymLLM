@@ -125,6 +125,9 @@ body {
     min-height: 100vh;
 }
 
+/* Full-bleed bands (the profile cover) size themselves in vw, which counts the scrollbar. */
+html { overflow-x: clip; scrollbar-gutter: stable; }
+
 a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
 a:hover { color: var(--you-ink); }
 
@@ -366,6 +369,7 @@ body.has-tabs .page { padding-bottom: calc(var(--tabbar-h) + 32px + env(safe-are
 }
 .card-compact { padding: 14px 16px; }
 .card-narrow { max-width: 560px; }
+.page-narrow .card-narrow { max-width: none; }
 .card-flush { padding: 0; overflow: hidden; }
 .card-title {
     display: block;
@@ -419,7 +423,7 @@ label { font-weight: 600; font-size: 14px; }
 
 .input, .select, .textarea,
 input[type="text"], input[type="search"], input[type="url"], input[type="password"], input[type="date"],
-select, textarea {
+input[type="number"], select, textarea {
     width: 100%;
     font: inherit;
     color: var(--ink);
@@ -753,6 +757,7 @@ button.chip:hover { background: var(--surface); border-color: var(--dashed); }
 .table th.num, .table td.num { text-align: right; }
 .table .col-actions { width: 1%; text-align: center; }
 .cell-link { color: var(--ink); font-weight: 600; text-decoration: none; }
+.table td.wrap-cell { white-space: normal; overflow-wrap: anywhere; min-width: 140px; }
 .day-table .cell-link, .day-table strong { display: inline-block; }
 .day-table .cell-link::first-letter, .day-table strong::first-letter { text-transform: uppercase; }
 .cell-link:hover { color: var(--you-ink); text-decoration: underline; }
@@ -770,8 +775,11 @@ th.sort-desc::after { content: " \2193"; }
     min-width: 96px;
 }
 .table input.narrow { min-width: 56px; width: 64px; }
-.table td.exercise-cell { min-width: 200px; }
-.table-editing input[type="text"] { background: transparent; border-color: transparent; }
+.table td.exercise-cell { min-width: 200px; white-space: normal; overflow-wrap: anywhere; }
+/* Tighter, so the manual log's columns fit their card without a sideways scroll. */
+.table-editing th, .table-editing td { padding-left: 6px; padding-right: 6px; }
+.table-editing td.exercise-cell { min-width: 150px; }
+.table-editing input[type="text"] { min-width: 72px; background: transparent; border-color: transparent; }
 .table-editing input[type="text"]:hover { border-color: var(--chip-border); }
 .table-editing input[type="text"]:focus { background: var(--surface); border-color: var(--you); }
 
@@ -1022,7 +1030,7 @@ a.week-day.logged:hover { background: var(--you-hover); color: var(--on-you); }
 .week-day.rest { background: var(--rest); color: var(--rest-ink); }
 .week-day.rest.today { background: var(--rest); outline: 2px dashed var(--rest-ink); outline-offset: -2px; }
 .week-day-form { display: contents; }
-button.week-day { border: 0; font: inherit; cursor: pointer; width: 100%; }
+button.week-day { border: 0; border-radius: 16px; font: inherit; cursor: pointer; width: 100%; height: auto; padding: 10px 0; justify-content: flex-start; }
 button.week-day:hover { background: var(--line); }
 button.week-day.rest:hover { background: var(--rest); filter: brightness(0.95); }
 .week-dot.rest .dot { background: var(--rest); }
@@ -1404,8 +1412,7 @@ input.row-name:focus { border: 0; box-shadow: 0 2px 0 var(--you); border-radius:
 .vis-help { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
 .vis-help [data-vis] { display: none; color: var(--ink); }
 .vis-card:has(input[value="private"]:checked) [data-vis="private"],
-.vis-card:has(input[value="friends"]:checked) [data-vis="friends"],
-.vis-card:has(input[value="public"]:checked) [data-vis="public"] { display: inline; }
+.vis-card:has(input[value="friends"]:checked) [data-vis="friends"] { display: inline; }
 .vis-toggle { display: inline-flex; background: var(--field); border-radius: 99px; padding: 3px; }
 .vis-btn { position: relative; padding: 8px 14px; border-radius: 99px; color: var(--muted); font-size: 14px; font-weight: 600; line-height: 1.1; cursor: pointer; }
 .vis-btn input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
@@ -1467,7 +1474,7 @@ a.day-step:hover { background: var(--line-2); color: var(--ink); }
 .day-sub { color: var(--muted); font-size: 13px; font-weight: 500; }
 .day-actions { display: none; }
 .day-grid { display: grid; gap: 16px; }
-.day-side, .day-main { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.day-side, .day-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; min-width: 0; }
 .poster {
     background: var(--you);
     color: var(--on-you);
@@ -1483,8 +1490,9 @@ a.day-step:hover { background: var(--line-2); color: var(--ink); }
 .poster-top { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; }
 .poster-top span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .poster-top, .poster-head, .poster-rows { position: relative; }
-/* The day's muscle icon, in ink with a faint body; the focus name may sit over the body. */
-.poster-icon { position: absolute; right: 14px; top: 46px; color: var(--on-you); --mi-base: var(--on-you); --mi-base-opacity: .14; }
+/* The day's muscle icon, in ink with a faint body. In the flow, so the focus name and the
+   rows always start below it however many rows there are. */
+.poster-icon { position: relative; align-self: flex-end; margin: -6px -8px 0 0; line-height: 0; color: var(--on-you); --mi-base: var(--on-you); --mi-base-opacity: .14; }
 .poster-head { margin-top: auto; display: grid; gap: 8px; }
 .poster-focus { font-family: var(--font-head); font-size: 46px; font-weight: 800; line-height: 0.92; letter-spacing: -0.03em; margin: 0; overflow-wrap: anywhere; }
 .poster-stats { font-size: 16px; font-weight: 600; margin: 0; }
@@ -1644,6 +1652,7 @@ body.welcome { background: var(--bg); }
 .google-mark { width: 20px; height: 20px; border-radius: 50%; background: var(--bg); display: inline-flex; align-items: center; justify-content: center; }
 .google-mark svg { width: 14px; height: 14px; }
 .welcome-note { color: var(--muted); font-size: 13px; text-align: center; margin: 0; }
+.welcome-body .alert { margin: 0; }
 
 /* --- Social ------------------------------------------------------------ */
 .avatar {
@@ -1792,7 +1801,7 @@ a.feed-when:hover { color: var(--you-ink); }
 .friends-menu .menu button { width: 100%; justify-content: flex-start; height: auto; padding: 10px 12px; border-radius: 12px; background: transparent; font-weight: 500; }
 .friends-menu .menu button:hover { background: var(--field); }
 .profile-grid { display: grid; gap: 16px; }
-.profile-side, .profile-main { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.profile-side, .profile-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; min-width: 0; }
 .profile-side .stat-grid, .profile-side .stat-caption { margin: 0; }
 .fav-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .fav-list li { display: flex; align-items: center; gap: 12px; min-width: 0; font-size: 15px; }
@@ -1886,6 +1895,8 @@ a.feed-when:hover { color: var(--you-ink); }
     .stat-label { font-size: 14px; }
     .stat-value { font-size: 44px; }
     .stat-value small { font-size: 20px; }
+    .day-main .stat-value { font-size: 30px; }
+    .day-main .stat-value small { font-size: 15px; }
     .two-col, .lift-grid { grid-template-columns: 1fr 1fr; }
     .section-head h2 { font-size: 22px; }
 
@@ -1930,14 +1941,17 @@ a.feed-when:hover { color: var(--you-ink); }
     .words-card, .words-card.is-open { display: block; order: 1; margin: 0; }
     .review-date { order: 2; }
     .review-group .group-card { border-radius: 22px; padding: 4px 20px; }
-    .review-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 12px 0; }
+    .review-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, auto) auto; align-items: center; gap: 10px 16px; padding: 12px 0; }
     .row-head { display: contents; }
     .row-head .row-remove { order: 3; }
-    .vpills { order: 2; flex-wrap: nowrap; }
+    .vpills { order: 2; justify-content: flex-end; min-width: 0; }
     .review-pair { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; }
     .review-pair .review-group { background: var(--surface); border-radius: 22px; padding: 18px 20px; gap: 4px; }
     .review-pair .group-card { padding: 0; }
-    .review-pair .review-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+    /* The cardio column is narrow: the name gets the whole line, its values the next. */
+    .review-pair .review-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .review-pair .row-head .row-remove { order: 2; }
+    .review-pair .vpills { order: 3; grid-column: 1 / -1; justify-content: flex-start; }
     .bw-card, .vis-card { border-radius: 22px; padding: 18px 20px; }
     .bw-card h2 { font-size: 18px; }
     .group-head h2 { font-size: 18px; }
@@ -1948,7 +1962,7 @@ a.feed-when:hover { color: var(--you-ink); }
 
     /* Record: under the sticky top bar, Stop in the flow instead of pinned */
     .rec[data-state="live"] .rec-top { top: 72px; }
-    .latest { scroll-margin-top: 96px; }
+    .latest, #week { scroll-margin-top: 96px; }
     .rec-bar { position: static; padding: 0; margin-top: 8px; background: none; justify-content: flex-end; }
     .rec-bar .rec-stop { flex: none; width: 220px; }
 
@@ -1965,7 +1979,6 @@ a.feed-when:hover { color: var(--you-ink); }
     .poster { padding: 28px; min-height: 525px; gap: 20px; }
     .poster-focus { font-size: 60px; }
     .poster-stats { font-size: 18px; }
-    .poster-icon { right: 20px; top: 60px; }
     .poster-icon svg { width: 190px; height: 190px; }
     .poster-rows { font-size: 16px; gap: 8px; }
     .poster-rows li { padding-top: 10px; }

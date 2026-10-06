@@ -22,7 +22,9 @@ TOP_N = 8
 LIFTS_N = 6  # exercise progress charts on the Overview
 TAGS_N = 10  # muscle tags shown before the rest fold into "other"
 # Tags that describe the movement rather than a muscle; left out of the muscle-group chart.
-MOVEMENT_TAGS = {"compound", "isolation", "isolated", "push", "pull", "upper", "lower", "rowing"}
+MOVEMENT_TAGS = {
+    "compound", "isolation", "isolated", "push", "pull", "upper", "lower", "rowing", "unilateral",
+}  # fmt: skip
 
 _WEIGHT_NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)")
 _INT_RE = re.compile(r"\d+")
@@ -334,19 +336,27 @@ def week_streak(dates: set[str], today: date) -> int:
 
 
 def personal_records(all_rows: list[dict], start: date | None) -> list[dict]:
-    """Entries on/after `start` whose weight beat every earlier entry of that exercise."""
+    """Entries on/after `start` whose weight beat every earlier day's best for that
+    exercise. One per exercise per day: the day's top weight, with `previous` the best
+    before that day, however many times the weight went up within the session."""
     best: dict[str, float] = {}
     prs = []
     lo = start.isoformat() if start else ""
+    days: dict[str, dict[str, tuple[float, dict]]] = defaultdict(dict)  # date -> exercise -> top
     for r in sorted(all_rows, key=lambda r: (r["date"], r["id"])):
         n = weight_number(r["weight"])
         if n is None:
             continue
-        prev = best.get(r["exercise"])
-        if prev is None or n > prev:
-            if r["date"] >= lo and prev is not None:
-                prs.append({**r, "previous": prev, "value": n})
-            best[r["exercise"]] = n
+        top = days[r["date"]].get(r["exercise"])
+        if top is None or n > top[0]:
+            days[r["date"]][r["exercise"]] = (n, r)
+    for when in sorted(days):
+        for exercise, (n, r) in days[when].items():
+            prev = best.get(exercise)
+            if prev is None or n > prev:
+                if when >= lo and prev is not None:
+                    prs.append({**r, "previous": prev, "value": n})
+                best[exercise] = n
     prs.sort(key=lambda r: (r["date"], r["id"]), reverse=True)
     return prs
 

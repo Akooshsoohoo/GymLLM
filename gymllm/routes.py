@@ -39,6 +39,9 @@ from .llm.providers import PROVIDERS, LLMConfig
 from .models import BodyWeight, Cardio, RestOverride, RestRule, Workout
 from .parsing import (
     build_system_prompt,
+    clean_bodyweight,
+    clean_duration,
+    clean_lift_weight,
     is_iso_date,
     normalize_cardio,
     normalize_entry,
@@ -764,6 +767,32 @@ def _cardio_from_form(form) -> list[dict]:
     return activities
 
 
+BAD_LIFT_WEIGHT = (
+    "“{}” isn’t a weight. Use a number, like 185 lbs, or bodyweight. Nothing was saved."
+)
+BAD_BODY_WEIGHT = "“{}” isn’t a body weight. Use a number, like 160 lbs. Nothing was saved."
+FUTURE_DATE = "That date hasn’t happened yet. Nothing was saved."
+
+
+def _is_future(when: str) -> bool:
+    return date.fromisoformat(when) > _client_today()
+
+
+def _lift_weight(value: str, unit: str) -> str:
+    """clean_lift_weight(), with the message to show when the value is refused."""
+    try:
+        return clean_lift_weight(value, unit)
+    except ValueError as e:
+        raise ValueError(BAD_LIFT_WEIGHT.format(e)) from None
+
+
+def _bodyweight(value: str | None, unit: str) -> str:
+    try:
+        return clean_bodyweight(value, unit)
+    except ValueError as e:
+        raise ValueError(BAD_BODY_WEIGHT.format(e)) from None
+
+
 def _save_bodyweight(user_email: str, when: str, weight: str) -> BodyWeight:
     """One reading per day: a second weigh-in on the same date replaces the first."""
     reading = BodyWeight.query.filter_by(user_email=user_email, date=when).first()
@@ -783,11 +812,23 @@ def confirm():
     if not is_iso_date(when):
         flash("Date must be in YYYY-MM-DD format.", "error")
         return redirect(url_for("main.log"))
+    if _is_future(when):
+        flash(FUTURE_DATE, "error")
+        return redirect(url_for("main.log"))
     config = _llm_config()
     in_browser = config is not None and config.runs_in_browser
     entries = _entries_from_form(request.form, with_tags=in_browser)
     cardio = _cardio_from_form(request.form)
-    bodyweight = request.form.get("bodyweight", "").strip()
+    unit = preferences.get_weight_unit(user_email)
+    try:
+        for entry in entries:
+            entry["weight"] = _lift_weight(entry["weight"], unit)
+        bodyweight = _bodyweight(request.form.get("bodyweight"), unit)
+    except ValueError as e:
+        flash(str(e), "error")
+        return redirect(url_for("main.log"))
+    for c in cardio:
+        c["duration"] = clean_duration(c["duration"])
     if not (entries or cardio or bodyweight):
         flash("Nothing to save: every row was empty or deleted.", "error")
         return redirect(url_for("main.log"))
@@ -982,11 +1023,32 @@ def _save_day_edit(user_email: str, when: str, n: int, lifts, cardio, weight, ot
         flash("Pick a valid date. No changes were saved.", "error")
         return redirect(_edit_url(when, n))
     moving = new_date != when
+    if moving and _is_future(new_date):
+        flash(FUTURE_DATE, "error")
+        return redirect(_edit_url(when, n))
+    unit = preferences.get_weight_unit(user_email)
+    try:
+        return _apply_day_edit(
+            user_email, when, n, lifts, cardio, weight, others, is_first, new_date, unit
+        )
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), "error")
+        return redirect(_edit_url(when, n))
+
+
+def _apply_day_edit(
+    user_email: str, when: str, n: int, lifts, cardio, weight, others, is_first, new_date, unit
+):
+    """The edit itself. A value that can't be saved raises ValueError with the message
+    to show, before anything is committed."""
+    form = request.form
+    moving = new_date != when
     # The weigh-in is the day's, not a workout's: it travels with this workout only
     # when nothing else is left on the old day.
     handles_weight = is_first
     weight_moves = moving and not others
-    bodyweight = form.get("bodyweight", "").strip() if handles_weight else ""
+    bodyweight = _bodyweight(form.get("bodyweight"), unit) if handles_weight else ""
     if (
         moving
         and weight_moves
@@ -1015,6 +1077,10 @@ def _save_day_edit(user_email: str, when: str, n: int, lifts, cardio, weight, ot
                 value = form[f"{key}-{field}"].strip()
                 if field == required and not value:
                     continue  # never blank the name itself
+                if prefix == "lift" and field == "weight":
+                    value = _lift_weight(value, unit)
+                elif field == "duration":
+                    value = clean_duration(value)
                 if (getattr(row, field) or "") != value:
                     setattr(row, field, value)
                     if field == "exercise":  # a renamed lift gets its new muscle groups
@@ -1023,6 +1089,7 @@ def _save_day_edit(user_email: str, when: str, n: int, lifts, cardio, weight, ot
             row.date, row.session = new_date, new_n
 
     for entry in _entries_from_form(form):
+        entry["weight"] = _lift_weight(entry["weight"], unit)
         match = match_exercise(entry["exercise"])
         if match:
             entry["exercise"], tags = match
@@ -1033,6 +1100,7 @@ def _save_day_edit(user_email: str, when: str, n: int, lifts, cardio, weight, ot
         )
         kept += 1
     for c in _cardio_from_form(form):
+        c["duration"] = clean_duration(c["duration"])
         db.session.add(Cardio(user_email=user_email, date=new_date, session=new_n, **c))
         kept += 1
 
@@ -1119,6 +1187,7 @@ def progress():
         total=len(all_rows) + len(cardio) + len(weights),
         range_key=range_key,
         by=by,
+        rest_open=request.args.get("rest") == "1",
         weight_unit=preferences.get_weight_unit(user_email),
     )
 
@@ -1127,9 +1196,19 @@ MAX_REST_RULES = 10
 REST_INTERVAL_RANGE = (2, 60)
 
 
-def _back_to_progress():
+def _back_to_progress(editor: bool = True):
+    """Back to the week card of the Progress view the form was posted from: the same
+    week, range and grouping, with the rest editor still open after a change in it."""
     week = stats.parse_date(request.form.get("week"))
-    return redirect(url_for("main.progress", week=week.isoformat() if week else None))
+    range_key, by = request.form.get("range"), request.form.get("by")
+    url = url_for(
+        "main.progress",
+        week=week.isoformat() if week else None,
+        range=range_key if range_key in stats.RANGES else None,
+        by=by if by in stats.GROUPINGS else None,
+        rest="1" if editor else None,
+    )
+    return redirect(url + "#week")
 
 
 @bp.route("/rest/rules", methods=["POST"])
@@ -1196,7 +1275,7 @@ def rest_day_toggle(when: str):
     else:
         db.session.add(RestOverride(owner_email=user_email, date=when, is_rest=wanted))
     db.session.commit()
-    return _back_to_progress()
+    return _back_to_progress(editor=False)
 
 
 @bp.route("/exercises")
@@ -1254,6 +1333,8 @@ def exercise_history(name: str):
         .order_by(Workout.date.asc(), Workout.id.asc())
         .all()
     )
+    if not workouts:
+        abort(404)
     all_rows = [w.as_dict() for w in workouts]
     rows = stats.filter_range(all_rows, _client_today(), range_key)
     series = stats.exercise_series(rows)
@@ -1279,4 +1360,5 @@ def exercise_history(name: str):
         series=series,
         lift=next(iter(stats.lift_progress(rows, n=1)), None),
         range_key=range_key,
+        weight_unit=preferences.get_weight_unit(user_email),
     )
