@@ -568,7 +568,7 @@ def test_site_review_uses_owner_key_and_counts_quota(site_user, site_app, fake_l
     assert all(c.provider == "groq" and c.api_key == "gsk-site" for c in fake_llm.configs)
 
     r = site_user.post("/review", data={"workout": "bench"})
-    assert r.status_code == 200 and b"used today&#39;s 2 free parses" in r.data
+    assert r.status_code == 200 and b"used today&#39;s 2 free logs" in r.data
     assert len(fake_llm.calls) == 2  # refused before any model call
     with site_app.app_context():
         assert quota.remaining(USER, 2) == 0

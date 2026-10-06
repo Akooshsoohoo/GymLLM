@@ -3,7 +3,9 @@ at startup, after create_all(); every step checks first, so re-running is harmle
 
 Several workouts a day (see sessions.py): workout, cardio and comment gain a `session`
 column (existing rows are session 0), and the per-day tables session_meta and kudos
-are copied into session_info and session_kudos, which key on the session too."""
+are copied into session_info and session_kudos, which key on the session too.
+
+Onboarding: user_preference gains `onboarding_dismissed`."""
 
 from __future__ import annotations
 
@@ -25,6 +27,15 @@ def run() -> None:
                     text(f"ALTER TABLE {table} ADD COLUMN session INTEGER NOT NULL DEFAULT 0")
                 )
         names = insp.get_table_names()
+        if "user_preference" in names and "onboarding_dismissed" not in {
+            c["name"] for c in insp.get_columns("user_preference")
+        }:
+            conn.execute(
+                text(
+                    "ALTER TABLE user_preference ADD COLUMN onboarding_dismissed "
+                    "BOOLEAN NOT NULL DEFAULT FALSE"
+                )
+            )
         if "session_meta" in names:
             conn.execute(
                 text(

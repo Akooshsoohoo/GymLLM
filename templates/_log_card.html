@@ -1,10 +1,12 @@
 {#- The log box: type what you did, pick lbs or kg, "Log it". Posts to /review.
-    Needs config, weight_unit; set `wide` for the desktop Home row with chips inside. -#}
+    Needs config, weight_unit; set `wide` for the desktop Home row with chips inside.
+    Brings the writing tips sheet with it. -#}
 {% set suggestions = ["Ran 5k in 28 min", "Squats 3×8 at 135", "Yoga, 45 min", "Weighed in at 142"] %}
 {% if config.is_site and quota_left == 0 %}
 <div class="alert warn">
-    You've used today's {{ quota_limit }} free logs. Come back tomorrow, or
-    <a href="{{ url_for('main.settings') }}">set up your own in Settings</a> for unlimited logging.
+    You've used today's {{ quota_limit }} free logs. Come back tomorrow,
+    <a href="{{ url_for('main.log_manual') }}">add one manually</a>, or
+    <a href="{{ url_for('main.settings') }}">set up your own model in Settings</a> for unlimited logging.
 </div>
 {% endif %}
 <div class="alert error" id="llm-error" hidden></div>
@@ -23,6 +25,7 @@
             {% for s in suggestions[:3] %}<button type="button" class="chip" data-insert="{{ s }}">{{ s }}</button>{% endfor %}
         </div>
         {% endif %}
+        <button type="button" class="link-btn log-tips" data-dialog-open="tips">Tips</button>
         <div class="unit-toggle" role="group" aria-label="Weight unit when you don't say one">
             <button type="button" class="unit-btn{{ ' is-active' if weight_unit != 'kg' else '' }}" data-unit="lbs" aria-pressed="{{ 'true' if weight_unit != 'kg' else 'false' }}">lbs</button>
             <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
@@ -31,3 +34,4 @@
         <span class="log-status" role="status" data-llm-status></span>
     </div>
 </form>
+{% include "_tips.html" %}

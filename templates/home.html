@@ -11,7 +11,8 @@
 
 <div class="home-grid">
     <div class="home-main">
-        <div class="mobile-only">{% include "_week_hero.html" %}</div>
+        {#- Nothing logged yet: the log box leads on a phone too, instead of an empty week. -#}
+        {% if has_logged %}<div class="mobile-only">{% include "_week_hero.html" %}</div>{% endif %}
 
         {% if latest %}
         {% set shareable = latest.rows or latest.cardio %}
@@ -24,13 +25,16 @@
             <article class="session-card latest-card{{ ' is-new' if just_saved }}">
                 <header class="feed-head">
                     <a href="{{ latest.url }}" class="feed-when"><span class="latest-name">{{ latest.title }}</span> · <time datetime="{{ latest.date }}">{{ latest.date|day_label }}</time>{% if shareable %} · {{ latest|activity_count }}{% endif %}</a>
-                    {% if just_saved %}<span class="latest-badge">Saved</span>{% endif %}
+                    {% if just_saved %}<span class="latest-badge">{{ 'First workout logged' if first_save else 'Saved' }}</span>{% endif %}
                 </header>
                 {{ social.session_rows(latest, links=True) }}
                 <div class="latest-actions">
                     {% if shareable %}<button type="button" class="btn btn-you" data-share='{{ latest.share|tojson }}'>Share</button>{% endif %}
                     <a href="{{ latest.edit_url }}" class="btn btn-white">Edit</a>
                 </div>
+                {% if first_save %}
+                <p class="first-next">Next: <a href="{{ url_for('main.progress') }}">see your progress</a> or <a href="{{ url_for('social.friends') }}">add a friend</a>.</p>
+                {% endif %}
                 {% if latest.owner %}{{ social.social_bar(latest, url_for('main.home', saved=latest.date, session=latest.session) ~ '#my-latest') }}{% endif %}
             </article>
             <div class="alert error" data-share-error hidden></div>
@@ -41,15 +45,35 @@
         </section>
         {% endif %}
 
-        <section class="home-log" id="log" aria-labelledby="log-title">
+        <section class="home-log{{ ' is-first' if not has_logged }}" id="log" aria-labelledby="log-title">
             <div class="log-head">
                 <p class="page-sub">{{ today|day_label(long=True) }}</p>
+                {% if has_logged %}
                 <h1 id="log-title">What did you get up to{% if first_name %}, {{ first_name }}{% endif %}?</h1>
+                {% else %}
+                <h1 id="log-title">Log your first workout</h1>
+                <p class="first-lede">Type what you did, the way you'd text a friend. We turn it into a log, and you check it before anything is saved.</p>
+                {% endif %}
             </div>
             <div>{% set wide = True %}{% include "_log_card.html" %}</div>
-            {% if config.is_site %}<p class="muted small">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today · <a href="{{ url_for('main.log_manual') }}">Add manually</a></p>{% endif %}
+            {% if not has_logged %}
+            <div class="chips mobile-only" aria-label="Examples">
+                {% for s in ["Ran 5k in 28 min", "Squats 3×8 at 135", "Yoga, 45 min", "Weighed in at 142"] %}<button type="button" class="chip" data-insert="{{ s }}">{{ s }}</button>{% endfor %}
+            </div>
+            {% endif %}
+            {% if config.is_site %}
+            {% if has_logged %}
+            <p class="muted small">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today · <a href="{{ url_for('main.log_manual') }}">Add manually</a></p>
+            {% else %}
+            <p class="muted small">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today, out of {{ quota_limit }} a day. Prefer a form? <a href="{{ url_for('main.log_manual') }}">Add manually</a></p>
+            {% endif %}
+            {% endif %}
         </section>
 
+        {% if checklist %}{% include "_checklist.html" %}{% endif %}
+
+        {#- The checklist stands in for the "set up a profile" and "find friends" prompts. -#}
+        {% if not checklist or has_friends %}
         <section aria-labelledby="friends-heading">
             <div class="section-head">
                 <h2 id="friends-heading">Friends</h2>
@@ -73,6 +97,7 @@
             </div>
             {% endif %}
         </section>
+        {% endif %}
     </div>
 
     <aside class="home-side" aria-label="Your week">
@@ -95,7 +120,7 @@
         {% if invite_url %}
         <section class="card home-note">
             <h2 class="card-title">Train with friends</h2>
-            <p>Share your invite link. Anyone who signs in with it becomes your friend.</p>
+            <p>Share your invite link. Anyone who signs in with it can add you with one tap.</p>
             <input type="text" id="home-invite" class="sr-only" value="{{ invite_url }}" readonly tabindex="-1" aria-hidden="true">
             <button type="button" class="btn btn-ghost btn-sm" data-copy="#home-invite">Copy invite link</button>
         </section>

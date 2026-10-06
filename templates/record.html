@@ -21,6 +21,13 @@
             <span class="rec-start-btn" aria-hidden="true"><span></span></span>
             <span class="rec-start-label">Start workout</span>
         </button>
+        <div class="rec-alt">
+            <p class="rec-alt-label">Already done?</p>
+            <div class="rec-alt-actions">
+                <a href="{{ url_for('main.log') }}" class="btn btn-ghost">Log a past workout</a>
+                <a href="{{ url_for('main.log_manual') }}" class="btn btn-ghost">Add manually</a>
+            </div>
+        </div>
         <div class="rec-routines" aria-labelledby="rec-routines-h">
             <div class="section-head">
                 <h2 id="rec-routines-h">Routines</h2>
@@ -41,13 +48,6 @@
             {% endif %}
         </div>
         {% if config.is_site %}<p class="quota rec-quota">{{ quota_left }} free log{{ '' if quota_left == 1 else 's' }} left today</p>{% endif %}
-        <div class="rec-alt">
-            <p class="rec-alt-label">Already done?</p>
-            <div class="rec-alt-actions">
-                <a href="{{ url_for('main.log') }}" class="btn btn-ghost">Log a past workout</a>
-                <a href="{{ url_for('main.log_manual') }}" class="btn btn-ghost">Add manually</a>
-            </div>
-        </div>
     </section>
 
     <form method="post" action="{{ url_for('main.review') }}" id="rec-form" class="rec-live"

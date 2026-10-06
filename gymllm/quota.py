@@ -24,6 +24,16 @@ def remaining(user_email: str, limit: int) -> int:
     return max(0, limit - used(user_email))
 
 
+def refund(user_email: str) -> None:
+    """Give back a parse that `consume` granted but the model never delivered."""
+    db.session.execute(
+        update(LLMUsage)
+        .where(LLMUsage.user_email == user_email, LLMUsage.day == today(), LLMUsage.count > 0)
+        .values(count=LLMUsage.count - 1)
+    )
+    db.session.commit()
+
+
 def consume(user_email: str, limit: int) -> bool:
     """Grant one parse if the user is under `limit` today. Safe under concurrency:
     the increment is a conditional UPDATE, and a lost insert race falls back to it."""

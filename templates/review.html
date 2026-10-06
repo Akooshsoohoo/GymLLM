@@ -8,18 +8,28 @@
 {% block content %}
 {% set browser_llm = config.browser_config()|tojson if config and config.runs_in_browser else none %}
 {% set has_form = entries is not none %}
+{#- The model answered but found nothing to log: say so, with tips, instead of an empty form. -#}
+{% set nothing_found = has_form and not entries and not cardio and not bodyweight %}
 {#- From a recording, Cancel goes back to it: the blocks are still in the browser. -#}
 {% set cancel_url = url_for('main.record') if from_record else url_for('main.log') %}
 <div class="review-top">
-    <button type="button" class="link-btn" data-toggle="words" aria-controls="words" aria-expanded="{{ 'false' if has_form else 'true' }}">&lsaquo; Edit text</button>
+    <button type="button" class="link-btn" data-toggle="words" aria-controls="words" aria-expanded="{{ 'false' if has_form and not nothing_found else 'true' }}">&lsaquo; Edit text</button>
     <a href="{{ cancel_url }}">{{ 'Back to workout' if from_record else 'Cancel' }}</a>
 </div>
 
 <div class="review-grid">
     <div class="review-side">
-        <h1>{{ "Here's what we heard." if has_form else "Let's try that again." }}</h1>
-        {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+        <h1>{{ "That's today's free logs." if limit_reached
+               else "We couldn't find a workout in that." if nothing_found
+               else "Here's what we heard." if has_form
+               else "Let's try that again." }}</h1>
+        {% if error %}<div class="alert {{ 'warn' if limit_reached else 'error' }}">{{ error }}</div>{% endif %}
         <div class="alert error" id="llm-error" hidden></div>
+        {% if nothing_found %}
+        <p class="review-hint">Say what you did and how much, like "bench 135, 3 sets of 8, then ran 2 miles". Change your words below and try again, or add it by hand.</p>
+        {% elif first_log %}
+        <p class="review-hint">Tap anything to fix it. Nothing is saved until you press Save.</p>
+        {% endif %}
 
         {% if has_form %}
         <div class="review-date">
@@ -34,7 +44,7 @@
         </div>
         {% endif %}
 
-        <form method="post" action="{{ url_for('main.review') }}" class="card words-card reparse-form{{ ' is-open' if not has_form }}" id="words"
+        <form method="post" action="{{ url_for('main.review') }}" class="card words-card reparse-form{{ ' is-open' if not has_form or nothing_found }}" id="words"
               {% if browser_llm %}data-browser-llm='{{ browser_llm }}'{% endif %}>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="client_date" class="client-date" value="{{ client_date }}">
@@ -45,14 +55,27 @@
             <label for="workout" class="words-label">Your words</label>
             <textarea id="workout" name="workout" rows="3" class="textarea words-text">{{ workout_text }}</textarea>
             <div class="words-actions">
+                {% if limit_reached %}
+                {#- Trying again would only hit the limit again. -#}
+                <a href="{{ url_for('main.log_manual') }}" class="btn btn-primary btn-sm">Add manually</a>
+                <a href="{{ url_for('main.settings') }}" class="btn btn-ghost btn-sm">Settings</a>
+                {% else %}
                 <button type="submit" class="btn btn-ghost btn-sm">Change and try again</button>
+                {% if nothing_found %}<a href="{{ url_for('main.log_manual') }}" class="btn btn-ghost btn-sm">Add manually</a>{% endif %}
                 <div class="unit-toggle" role="group" aria-label="Weight unit when you don't say one">
                     <button type="button" class="unit-btn{{ ' is-active' if weight_unit != 'kg' else '' }}" data-unit="lbs" aria-pressed="{{ 'true' if weight_unit != 'kg' else 'false' }}">lbs</button>
                     <button type="button" class="unit-btn{{ ' is-active' if weight_unit == 'kg' else '' }}" data-unit="kg" aria-pressed="{{ 'true' if weight_unit == 'kg' else 'false' }}">kg</button>
                 </div>
                 <span class="muted small" role="status" data-llm-status></span>
+                {% endif %}
             </div>
         </form>
+        {% if nothing_found %}
+        <div class="card review-tips">
+            <p class="words-label">Writing tips</p>
+            {% include "_tips_list.html" %}
+        </div>
+        {% endif %}
     </div>
 
     {% if has_form %}

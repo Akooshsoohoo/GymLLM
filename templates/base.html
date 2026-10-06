@@ -107,7 +107,7 @@
 <nav class="tabbar" aria-label="Main">
     <a href="{{ url_for('main.home') }}" class="tab{{ ' active' if tab == 'home' }}"{% if tab == 'home' %} aria-current="page"{% endif %}>{{ icon.home() }}<span>Home</span></a>
     <a href="{{ url_for('main.progress') }}" class="tab{{ ' active' if tab == 'progress' }}"{% if tab == 'progress' %} aria-current="page"{% endif %}>{{ icon.progress() }}<span>Progress</span></a>
-    <a href="{{ url_for('main.record') }}" class="tab-log{{ ' active' if tab == 'log' }}" aria-label="Record a workout" data-record-link{% if tab == 'log' %} aria-current="page"{% endif %}><span class="tab-log-btn">{{ icon.record() }}</span><span class="tab-log-time" data-record-label hidden></span></a>
+    <a href="{{ url_for('main.record') }}" class="tab-log{{ ' active' if tab == 'log' }}" aria-label="Record a workout" data-record-link{% if tab == 'log' %} aria-current="page"{% endif %}><span class="tab-log-btn">{{ icon.record() }}</span><span class="tab-log-time" data-record-label>Record</span></a>
     <a href="{{ url_for('social.friends') }}" class="tab{{ ' active' if tab == 'friends' }}"{% if tab == 'friends' %} aria-current="page"{% endif %}>{{ icon.friends() }}<span>Friends</span>
         {%- if social_unseen %}<span class="tab-dot">{{ social_unseen if social_unseen < 10 else '9+' }}<span class="sr-only"> new</span></span>{% endif -%}
     </a>
