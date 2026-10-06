@@ -16,8 +16,8 @@
     <div class="stat"><div class="stat-label">Streak</div><div class="stat-value">{{ data.streak }} <small>week{{ '' if data.streak == 1 else 's' }}</small></div></div>
     <div class="stat"><div class="stat-label" title="Weight × reps, summed: {{ t.volume|fmt_num }}">Lifted</div><div class="stat-value">{{ t.volume|short_num }} <small>{{ weight_unit }}</small></div></div>
     <div class="stat"><div class="stat-label">Cardio</div><div class="stat-value">
-        {%- if data.cardio.lead %}{{ data.cardio.lead.split(' ')[0] }} <small>{{ data.cardio.lead.split(' ', 1)[1] if ' ' in data.cardio.lead }}</small>
-        {%- elif data.cardio.minutes %}{{ data.cardio.minutes|round|int }} <small>min</small>
+        {%- if data.cardio.minutes %}{{ data.cardio.minutes|round|int }} <small>min</small>
+        {%- elif data.cardio.lead %}{{ data.cardio.lead.split(' ')[0] }} <small>{{ data.cardio.lead.split(' ', 1)[1] if ' ' in data.cardio.lead }}</small>
         {%- else %}{{ data.cardio.count }}{% endif -%}
     </div></div>
 </div>
@@ -71,7 +71,7 @@
             {% for pr in data.prs %}
             <li>
                 <div>
-                    <a href="{{ url_for('main.exercise_history', name=pr.exercise) }}" class="best-name">{{ pr.exercise }}</a>
+                    <a href="{{ url_for('main.exercise_history', name=pr.exercise) }}" class="best-name">{{ pr.exercise|cap_first }}</a>
                     <span class="best-meta">{{ pr.date|day_label }} · up from {{ pr.previous|fmt_num }}</span>
                 </div>
                 {% set parts = pr.weight.split(' ', 1) %}
@@ -92,7 +92,7 @@
                 <strong>{{ bw.latest }}</strong>
                 {%- if bw.change is not none %}
                 {#- Neutral colour: whether gaining or losing is good depends on the goal. #}
-                <span class="change-badge">{{ '+' if bw.change > 0 }}{{ bw.change|fmt_num }} {{ bw.unit }} since {{ bw.since|nice_date }}</span>
+                <span class="change-badge">{{ '+' if bw.change > 0 }}{{ bw.change|fmt_num }} {{ bw.unit }} since {{ bw.since|day_label }}</span>
                 {%- endif %}
             </span>
             {% endif %}
@@ -113,7 +113,7 @@
     </section>
 </div>
 
-<section class="card">
+<section class="card" id="week">
     <div class="card-head">
         <div class="week-nav">
             <a href="{{ period_url(week=prev_week) }}" class="week-arrow" aria-label="Previous week" title="Previous week">&lsaquo;</a>
@@ -131,16 +131,16 @@
         </span>
     </div>
     {% set week, link_days, rest_toggle = data.week, True, True %}{% include "_week_strip.html" %}
-    <details class="rest-editor">
+    <details class="rest-editor"{% if rest_open %} open{% endif %}>
         <summary>Rest days{% if rest_rules %} <span class="rest-count">{{ rest_rules|length }}</span>{% endif %}</summary>
         <p class="rest-hint">Tap an empty day above to mark it as rest, or set a schedule. Rest days show in blue and don't change your counts or streak.</p>
         {% if rest_rules %}
         <ul class="rest-rules">
             {% for r in rest_rules %}
             <li>
-                <span>{% if r.kind == 'weekdays' %}Every {% for w in r.weekdays %}{{ ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][w] }}{{ ', ' if not loop.last }}{% endfor %}{% else %}Every {{ r.interval_days }} days, from {{ r.anchor_date|nice_date }}{% endif %}</span>
+                <span>{% if r.kind == 'weekdays' %}Every {% for w in r.weekdays %}{{ ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][w] }}{{ ', ' if not loop.last }}{% endfor %}{% else %}Every {{ r.interval_days }} days, from {{ r.anchor_date|day_label }}{% endif %}</span>
                 <form method="post" action="{{ url_for('main.rest_rule_delete', rule_id=r.id) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}"><input type="hidden" name="range" value="{{ range_key }}"><input type="hidden" name="by" value="{{ by }}">
                     <button type="submit" class="link-quiet" aria-label="Remove this rest rule">Remove</button>
                 </form>
             </li>
@@ -148,7 +148,7 @@
         </ul>
         {% endif %}
         <form method="post" action="{{ url_for('main.rest_rule_add') }}" class="rest-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}"><input type="hidden" name="range" value="{{ range_key }}"><input type="hidden" name="by" value="{{ by }}">
             <input type="hidden" name="kind" value="weekdays">
             <fieldset class="rest-days">
                 <legend>Repeat on</legend>
@@ -156,14 +156,14 @@
                 <label class="rest-day-pick"><input type="checkbox" name="weekdays" value="{{ loop.index0 }}"><span>{{ label }}</span></label>
                 {% endfor %}
             </fieldset>
-            <button type="submit" class="btn btn-secondary">Add weekly rest days</button>
+            <button type="submit" class="btn btn-ghost">Add weekly rest days</button>
         </form>
         <form method="post" action="{{ url_for('main.rest_rule_add') }}" class="rest-form rest-interval">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}"><input type="hidden" name="range" value="{{ range_key }}"><input type="hidden" name="by" value="{{ by }}">
             <input type="hidden" name="kind" value="interval">
             <label>Every <input type="number" name="interval_days" min="2" max="60" value="3" required> days</label>
             <label>starting <input type="date" name="anchor_date"></label>
-            <button type="submit" class="btn btn-secondary">Add</button>
+            <button type="submit" class="btn btn-ghost">Add</button>
         </form>
     </details>
 </section>
@@ -177,7 +177,7 @@
     {% for l in data.lifts %}
     <section class="card chart-card">
         <div class="card-head">
-            <a href="{{ url_for('main.exercise_history', name=l.exercise, range=range_key) }}" class="lift-name">{{ l.exercise }}</a>
+            <a href="{{ url_for('main.exercise_history', name=l.exercise, range=range_key) }}" class="lift-name">{{ l.exercise|cap_first }}</a>
             <span class="lift-trend">
                 {{ l.first|fmt_num }} &rarr; <strong>{{ l.latest|fmt_num }}</strong> {{ l.unit }}
                 {%- if l.change is not none %}
@@ -202,7 +202,7 @@
         <tbody>
         {% for e in data.top_exercises %}
         <tr>
-            <td><a href="{{ url_for('main.exercise_history', name=e.exercise, range=range_key) }}" class="cell-link">{{ e.exercise }}</a></td>
+            <td><a href="{{ url_for('main.exercise_history', name=e.exercise, range=range_key) }}" class="cell-link">{{ e.exercise|cap_first }}</a></td>
             <td class="num">{{ e.entries }}</td>
             <td>{{ e.best or '—' }}</td>
             <td class="muted">{{ e.last|day_label }}</td>

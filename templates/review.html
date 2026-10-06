@@ -34,7 +34,7 @@
         {% if has_form %}
         <div class="review-date">
             <label for="date" class="sr-only">Date</label>
-            <input type="date" id="date" name="date" value="{{ workout_date }}" required class="date-pill" form="confirm-form" data-relative>
+            <input type="date" id="date" name="date" value="{{ workout_date }}" required class="date-pill" form="confirm-form" data-relative data-no-future>
             {% if date_from_text %}<span class="muted small">taken from your text</span>{% endif %}
         </div>
         <div class="review-title">
@@ -90,7 +90,7 @@
         <section class="review-group" aria-labelledby="lifts-h">
             <div class="group-head">
                 <h2 id="lifts-h">Lifts</h2>
-                <button type="button" class="add-link" id="add-row">+ Add<span class="desktop-only"> lift</span></button>
+                <button type="button" class="add-link" id="add-row"><span>+ Add<span class="desktop-only"> lift</span></span></button>
             </div>
             <div class="group-card" id="entries-table">
                 {% for e in entries %}{{ lift_row(loop.index0, e) }}{% endfor %}
@@ -119,7 +119,7 @@
                     <h2 id="bw-h">Body weight</h2>
                     <p id="bodyweight-help">Only you see this</p>
                 </div>
-                <label class="vpill"><input type="text" id="bodyweight" name="bodyweight" value="{{ bodyweight or '' }}" placeholder="+ weight" aria-label="Body weight" aria-describedby="bodyweight-help"></label>
+                <label class="vpill"><input type="text" id="bodyweight" name="bodyweight" value="{{ bodyweight or '' }}" placeholder="+ weight" aria-label="Body weight" aria-describedby="bodyweight-help" pattern="\s*[0-9]+(\.[0-9]+)?\s*([lL][bB][sS]?|[kK][gG][sS]?)?\s*" title="A number, like 160 lbs"></label>
             </section>
         </div>
 

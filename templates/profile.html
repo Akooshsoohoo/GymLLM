@@ -59,7 +59,7 @@
     <div class="profile-side">
         <div class="stat-grid stat-grid-3">
             <div class="stat"><div class="stat-label">Workouts</div><div class="stat-value num">{{ totals.sessions }}</div></div>
-            <div class="stat desktop-only"><div class="stat-label">Streak</div><div class="stat-value num">{{ streak }} <small>wk{{ '' if streak == 1 else 's' }}</small></div></div>
+            <div class="stat desktop-only"><div class="stat-label">Streak</div><div class="stat-value num">{{ streak }} <small>week{{ '' if streak == 1 else 's' }}</small></div></div>
             <div class="stat"><div class="stat-label">Sets</div><div class="stat-value num">{{ sets }}</div></div>
             <div class="stat"><div class="stat-label">Cardio</div><div class="stat-value num">{{ totals.minutes|round|int }}<small> min</small></div></div>
         </div>
@@ -72,7 +72,7 @@
                 {% for f in favourites %}
                 <li>
                     <span class="fav-rank num">{{ loop.index }}</span>
-                    <span class="fav-name">{{ f.exercise }}</span>
+                    <span class="fav-name">{{ f.exercise|cap_first }}</span>
                     <span class="fav-meta num">{{ f.sessions }} session{{ '' if f.sessions == 1 else 's' }}{% if f.best %} · best {{ f.best }}{% endif %}</span>
                 </li>
                 {% endfor %}
@@ -91,7 +91,7 @@
                 {% for pr in prs %}
                 <li>
                     <div>
-                        <span class="best-name">{{ pr.exercise }}</span>
+                        <span class="best-name">{{ pr.exercise|cap_first }}</span>
                         <span class="best-meta">{{ pr.date|day_label }} · up from {{ pr.previous|fmt_num }}</span>
                     </div>
                     {% set parts = pr.weight.split(' ', 1) %}

@@ -94,11 +94,16 @@
     </header>
 {% endblock %}
 <main class="{% block main_class %}page{% endblock %}">
+{% macro flashes() %}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
         <div class="alert {{ category }}" role="status">{{ message }}</div>
         {% endfor %}
     {% endwith %}
+{% endmacro %}
+{#- A page whose <main> is a layout of its own (Welcome) empties this block and calls
+    flashes() where the messages fit. -#}
+{% block flashes %}{{ flashes() }}{% endblock %}
 {% block content %}{% endblock %}
 </main>
 {% block tabbar %}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "_social.html" as social with context %}
-{% block title %}Levra | Activity{% endblock %}
+{% block title %}Levra | Friends' activity{% endblock %}
 {% block content %}
 <div class="page-head">
     <h1>Friends' activity</h1>
@@ -15,7 +15,7 @@
 {% elif not cards %}
 <p class="muted">{{ 'Nothing older than this.' if before else 'Your friends haven\'t logged anything yet.' }}</p>
 {% else %}
-<div class="feed-list feed-column">
+<div class="feed-grid">
     {% for c in cards %}{{ social.session_card(c, request.full_path.rstrip('?')) }}{% endfor %}
 </div>
 {% if next_before %}

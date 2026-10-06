@@ -184,11 +184,16 @@ def exercise_lines(rows: list[dict]) -> list[dict]:
 
 
 def activity_count(session: dict) -> str:
-    """'3 exercises' when there are lifts (cardio counts too), else '2 activities'."""
-    n = len({r["exercise"] for r in session.get("rows", [])}) + len(session.get("cardio", []))
-    if session.get("rows"):
-        return f"{n} exercise{'' if n == 1 else 's'}"
-    return f"{n} activit{'y' if n == 1 else 'ies'}"
+    """Lifts and cardio counted apart: '3 exercises', '3 exercises · 1 cardio',
+    '2 cardio'. An exercise logged at several weights counts once."""
+    lifts = len({r["exercise"] for r in session.get("rows", [])})
+    cardio = len(session.get("cardio", []))
+    parts = []
+    if lifts:
+        parts.append(f"{lifts} exercise{'' if lifts == 1 else 's'}")
+    if cardio:
+        parts.append(f"{cardio} cardio")
+    return " · ".join(parts)
 
 
 def session_summary(session: dict) -> str:

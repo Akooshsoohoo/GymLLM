@@ -246,3 +246,12 @@ def test_migration_adds_session_columns_and_copies_per_day_tables(tmp_path):
         assert [(k.date, k.session, k.giver_email) for k in Kudos.query.all()] == [(DAY, 0, OTHER)]
         migrate.run()  # running it again changes nothing
         assert Kudos.query.count() == 1 and session_meta.get(USER, DAY, 0).title == "Leg day"
+
+
+def test_activity_count_keeps_lifts_and_cardio_apart():
+    from gymllm.sessions import activity_count
+
+    lifts = [{"exercise": "squat"}, {"exercise": "squat"}, {"exercise": "curl"}]
+    assert activity_count({"rows": lifts, "cardio": [{}]}) == "2 exercises · 1 cardio"
+    assert activity_count({"rows": lifts[:1], "cardio": []}) == "1 exercise"
+    assert activity_count({"rows": [], "cardio": [{}, {}]}) == "2 cardio"

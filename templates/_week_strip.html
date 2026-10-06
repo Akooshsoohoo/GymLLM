@@ -8,7 +8,7 @@
     <a href="{{ url_for('main.day', when=d.date) }}" class="{{ cls }}" title="{{ d.date|nice_date }}: open this day">
     {% elif can_toggle %}
     <form method="post" action="{{ url_for('main.rest_day_toggle', when=d.date) }}" class="week-day-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="week" value="{{ week_param }}"><input type="hidden" name="range" value="{{ range_key }}"><input type="hidden" name="by" value="{{ by }}">
         <button type="submit" class="{{ cls }}" title="{{ d.date|nice_date }}: {{ 'rest day, tap to clear' if d.rest else 'tap to mark as a rest day' }}" aria-pressed="{{ 'true' if d.rest else 'false' }}">
     {% else %}
     <div class="{{ cls }}" title="{{ d.date|nice_date }}{{ ': rest day' if d.rest }}">

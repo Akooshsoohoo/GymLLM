@@ -54,7 +54,7 @@
             {% set a, b = s.mine.value, s.theirs.value %}
             <div>
                 <div class="split-top">
-                    <span>{{ s.exercise }}</span>
+                    <span>{{ s.exercise|cap_first }}</span>
                     <span>
                         {%- if a is not none and b is not none and s.unit -%}
                         {{ a|fmt_num }} · {{ b|fmt_num }} ·
@@ -90,7 +90,7 @@
                     <span class="hbar-track" title="You: {{ m.mine }}%"><span class="hbar-fill" style="width: {{ m.mine }}%"></span></span>
                     <span class="hbar-track" title="{{ other.display_name }}: {{ m.theirs }}%"><span class="hbar-fill hbar-fill-2" style="width: {{ m.theirs }}%"></span></span>
                 </span>
-                <span class="hbar-value num muted">{{ m.mine }} / {{ m.theirs }}%</span>
+                <span class="hbar-value num muted">{{ m.mine }}% / {{ m.theirs }}%</span>
             </li>
             {% endfor %}
         </ol>
@@ -112,7 +112,7 @@
                 {% for f in data.favourites[side] %}
                 <li class="{{ 'is-shared' if f.shared }}">
                     <span class="fav-rank num">{{ loop.index }}</span>
-                    <span class="fav-name">{{ f.exercise }}</span>
+                    <span class="fav-name">{{ f.exercise|cap_first }}</span>
                 </li>
                 {% endfor %}
             </ol>

@@ -218,3 +218,31 @@ def test_parsed_from_output_tolerates_missing_or_odd_kinds():
     assert parsed_from_output({"exercises": [], "cardio": "walk"}).cardio == []
     with pytest.raises(BadOutputError):
         parsed_from_output({"nope": 1})
+
+
+def test_clean_lift_weight():
+    from gymllm.parsing import clean_lift_weight
+
+    assert (
+        clean_lift_weight("50", "lbs") == "50 lbs" and clean_lift_weight("22.5", "kg") == "22.5 kg"
+    )
+    for kept in ("", "185 lbs", "40 kg per hand", "bodyweight", "Body weight", "BW + 25 lbs"):
+        assert clean_lift_weight(f" {kept} ", "lbs") == kept
+    for bad in ("my weird lift", "heavy", "bwahaha", "-5"):
+        with pytest.raises(ValueError):
+            clean_lift_weight(bad, "lbs")
+
+
+def test_clean_bodyweight_and_duration():
+    from gymllm.parsing import clean_bodyweight, clean_duration
+
+    assert clean_bodyweight("160", "lbs") == "160 lbs" and clean_bodyweight("", "lbs") == ""
+    assert (
+        clean_bodyweight("72.5 kg", "lbs") == "72.5 kg"
+        and clean_bodyweight("181lbs", "kg") == "181lbs"
+    )
+    for bad in ("abc", "bodyweight", "12 stone", "160 lbs after lunch"):
+        with pytest.raises(ValueError):
+            clean_bodyweight(bad, "lbs")
+    assert clean_duration("30") == "30 min" and clean_duration("") == ""
+    assert clean_duration("45 min") == "45 min" and clean_duration("1:20:00") == "1:20:00"

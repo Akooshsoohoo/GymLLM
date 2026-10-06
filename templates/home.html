@@ -110,7 +110,7 @@
             {% if recent %}
             <ul class="recent-list">
                 {% for s in recent %}
-                <li><a href="{{ url_for('main.day', when=s.date, s=s.session or None) }}"><span><time datetime="{{ s.date }}">{{ s.date|day_label }}</time></span><span>{{ s.title }} · {{ s.summary }}</span></a></li>
+                <li><a href="{{ url_for('main.day', when=s.date, s=s.session or None) }}"><span><time datetime="{{ s.date }}">{{ s.date|day_label }}</time></span><span>{{ s.title }}{% if s.summary %} · {{ s.summary }}{% endif %}</span></a></li>
                 {% endfor %}
             </ul>
             {% else %}

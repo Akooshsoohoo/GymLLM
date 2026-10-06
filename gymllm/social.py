@@ -1,8 +1,8 @@
 """Profiles, friendships, kudos and comments, and what one user may see of another.
 
 Every social view reads another user's log through visible_data(), which is the
-only place the privacy rules live: each day is private, friends-only (the
-default) or public, notes are stripped, and body weight is never shown."""
+only place the privacy rules live: each day is private or friends-only (the
+default), notes are stripped, and body weight is never shown."""
 
 from __future__ import annotations
 
@@ -30,6 +30,7 @@ SEARCH_LIMIT = 10
 SELF, FRIENDS, OUTGOING, INCOMING, NONE = "self", "friends", "outgoing", "incoming", "none"
 
 # Who may see a day's lifts and cardio. FRIENDS_ONLY is the same word as FRIENDS.
+# PUBLIC is no longer offered; days saved with it are treated as FRIENDS_ONLY.
 PRIVATE, FRIENDS_ONLY, PUBLIC = "private", "friends", "public"
 VISIBILITIES = (PRIVATE, FRIENDS_ONLY, PUBLIC)
 
@@ -234,7 +235,7 @@ def can_view(viewer: str, owner: str) -> bool:
 
 
 def clean_visibility(raw: str | None) -> str:
-    return raw if raw in VISIBILITIES else FRIENDS_ONLY
+    return raw if raw in (PRIVATE, FRIENDS_ONLY) else FRIENDS_ONLY
 
 
 def set_visibility(owner: str, when: str, visibility: str) -> None:
@@ -258,12 +259,12 @@ def visible_data(viewer: str, owner: str) -> tuple[list[dict], list[dict], list[
     rows, cardio = sessions.all_rows(owner), sessions.all_cardio(owner)
     if rel == SELF:
         return rows, cardio, sessions.all_weights(owner)
-    allowed = (FRIENDS_ONLY, PUBLIC) if rel == FRIENDS else (PUBLIC,)
-    days = visibilities(owner)
-    rows = [dict(r, notes="") for r in rows if days.get(r["date"], FRIENDS_ONLY) in allowed]
-    cardio = [dict(c, notes="") for c in cardio if days.get(c["date"], FRIENDS_ONLY) in allowed]
-    if rel != FRIENDS and not (rows or cardio):
+    if rel != FRIENDS:
         return None
+    # Days saved as PUBLIC, back when that was offered, are shown to friends only.
+    days = visibilities(owner)
+    rows = [dict(r, notes="") for r in rows if days.get(r["date"], FRIENDS_ONLY) != PRIVATE]
+    cardio = [dict(c, notes="") for c in cardio if days.get(c["date"], FRIENDS_ONLY) != PRIVATE]
     return rows, cardio, []
 
 
@@ -363,6 +364,8 @@ def session_cards(
         if s["rows"] or s["cardio"]
     ][:limit]
     metas = session_meta.for_days(owner.user_email, {s["date"] for s in days})
+    for s in days:  # in the order they were logged, like your own day page
+        s["rows"], s["cardio"] = s["rows"][::-1], s["cardio"][::-1]
     return [
         dict(
             mark_prs(s, rows),
