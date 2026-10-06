@@ -17,31 +17,36 @@ from flask import (
 )
 from sqlalchemy import func
 
-from . import activity, preferences, quota, routines, session_meta, sessions, social, stats
+from . import logflow, preferences, quota, routines, session_meta, sessions, social, stats
 from .auth import current_user_email, login_required
 from .exercises import (
     ACTIVITY_NAMES,
     EXERCISE_NAMES,
     TAG_SYSTEM,
     clean_tags,
-    llm_tags,
     match_exercise,
 )
 from .extensions import db
 from .llm.client import (
     BadOutputError,
-    LLMError,
-    RateLimitError,
     extract_json,
     test_connection,
 )
 from .llm.providers import PROVIDERS, LLMConfig
+from .logflow import (
+    FUTURE_DATE,
+    MAX_ENTRIES,
+    MAX_SITE_TAG_CALLS,
+    LogError,
+)
+from .logflow import bodyweight_text as _bodyweight
+from .logflow import lift_weight as _lift_weight
+from .logflow import save_bodyweight as _save_bodyweight
+from .logflow import site_limit as _site_limit
 from .models import BodyWeight, Cardio, RestOverride, RestRule, Workout
 from .parsing import (
     build_system_prompt,
-    clean_bodyweight,
     clean_duration,
-    clean_lift_weight,
     is_iso_date,
     normalize_cardio,
     normalize_entry,
@@ -53,9 +58,7 @@ bp = Blueprint("main", __name__)
 
 ENTRY_FIELDS = ("exercise", "weight", "sets", "reps", "notes")
 CARDIO_FORM_FIELDS = ("activity", "distance", "duration", "notes")
-MAX_ENTRIES = 100
 MAX_LLM_OUTPUT = 200_000
-MAX_SITE_TAG_CALLS = 10  # per save, so tagging cannot drain the shared allowance
 HOME_FEED = 6  # friends' sessions on Home
 HOME_RECENT = 3  # your own days in the "Your recent" list
 
@@ -78,10 +81,6 @@ def _llm_config() -> LLMConfig | None:
     if config is None or config.validate():
         return None
     return config
-
-
-def _site_limit() -> int:
-    return int((LLMConfig.site_settings() or {}).get("daily_limit", 0))
 
 
 def _llm_client(config: LLMConfig):
@@ -188,6 +187,33 @@ def home():
     user_email = current_user_email()
     ctx = _log_context(user_email, config)
     all_data = ctx.pop("all_data")
+    parts = home_parts(
+        user_email,
+        ctx["today"],
+        all_data,
+        request.args.get("saved", ""),
+        request.args.get("session", type=int),
+    )
+    profile = parts.pop("profile")
+    hour = _client_hour()
+    return render_template(
+        "home.html",
+        **ctx,
+        **parts,
+        recorded=request.args.get("recorded") == "1",
+        invite_url=(
+            url_for("social.invite", code=profile.invite_code, _external=True) if profile else None
+        ),
+        greeting="Morning" if 4 <= hour < 12 else "Afternoon" if 12 <= hour < 17 else "Evening",
+    )
+
+
+def home_parts(
+    user_email: str, today: str, all_data: tuple, saved: str = "", saved_n: int | None = None
+) -> dict:
+    """Home below the week strip: your latest workout, your recent days, friends'
+    sessions and the getting-started checklist. `saved` and `saved_n` name the workout
+    just logged, which then leads the page."""
     rows, cardio, weights = all_data
     recent = sessions.group_sessions(rows, cardio, weights, HOME_RECENT)
     recent_metas = session_meta.for_days(user_email, {s["date"] for s in recent})
@@ -199,19 +225,17 @@ def home():
     profile = social.get_profile(user_email)
     friend_cards = social.feed(user_email, limit=HOME_FEED)[0][:HOME_FEED] if profile else []
 
-    # The workout you just saved (?saved= the day, ?session= which one, after a log),
-    # otherwise today's latest once anything is in.
+    # The workout you just saved (the day and which one, after a log), otherwise
+    # today's latest once anything is in.
     numbers = sessions.session_numbers(rows, cardio)
     dates = {x["date"] for x in rows + cardio + weights}
-    saved = request.args.get("saved", "")
-    latest_date = saved if saved in dates else ctx["today"] if ctx["today"] in dates else None
-    latest_n = request.args.get("session", type=int) if latest_date == saved else None
+    latest_date = saved if saved in dates else today if today in dates else None
+    latest_n = saved_n if latest_date == saved else None
     if latest_n not in numbers.get(latest_date, []):
         latest_n = numbers[latest_date][-1] if latest_date in numbers else 0
     latest = (
         _my_day_card(user_email, latest_date, latest_n, all_data, profile) if latest_date else None
     )
-    hour = _client_hour()
     just_saved = bool(latest) and latest_date == saved
     has_friends = bool(profile and social.friend_emails(user_email))
     # Getting started: three steps in place of the Friends prompts, until all are done
@@ -222,23 +246,17 @@ def home():
         if not all(steps.values()) and not preferences.onboarding_dismissed(user_email)
         else None
     )
-    return render_template(
-        "home.html",
-        **ctx,
-        latest=latest,
-        just_saved=just_saved,
-        has_logged=bool(dates),
-        first_save=just_saved and len(dates) == 1 and len(numbers.get(latest_date, [])) <= 1,
-        checklist=checklist,
-        recorded=request.args.get("recorded") == "1",
-        recent=recent,
-        friend_cards=friend_cards,
-        has_friends=has_friends,
-        invite_url=(
-            url_for("social.invite", code=profile.invite_code, _external=True) if profile else None
-        ),
-        greeting="Morning" if 4 <= hour < 12 else "Afternoon" if 12 <= hour < 17 else "Evening",
-    )
+    return {
+        "latest": latest,
+        "just_saved": just_saved,
+        "has_logged": bool(dates),
+        "first_save": just_saved and len(dates) == 1 and len(numbers.get(latest_date, [])) <= 1,
+        "checklist": checklist,
+        "recent": recent,
+        "friend_cards": friend_cards,
+        "has_friends": has_friends,
+        "profile": profile,
+    }
 
 
 @bp.route("/onboarding/dismiss", methods=["POST"])
@@ -512,6 +530,16 @@ def day(when: str):
     if not is_iso_date(when):
         abort(404)
     user_email = current_user_email()
+    return render_template(
+        "day.html",
+        **day_parts(user_email, when, request.args.get("s", type=int)),
+        weight_unit=preferences.get_weight_unit(user_email),
+    )
+
+
+def day_parts(user_email: str, when: str, n: int | None) -> dict:
+    """Everything the day page shows for your workout `n` of `when` (the day's first
+    when `n` isn't one of them)."""
     all_rows, all_cardio, all_weights = (
         sessions.all_rows(user_email),
         sessions.all_cardio(user_email),
@@ -521,7 +549,6 @@ def day(when: str):
     prev, nxt = _neighbours(dates, when)
     profile = social.get_profile(user_email)
     numbers = sessions.session_numbers(all_rows, all_cardio).get(when, [0])
-    n = request.args.get("s", type=int)
     if n not in numbers:
         n = numbers[0]
     detail = _day_detail(when, n, all_rows, all_cardio, profile)
@@ -546,26 +573,24 @@ def day(when: str):
         if len(numbers) > 1
         else []
     )
-    return render_template(
-        "day.html",
-        when=when,
-        n=n,
-        switcher=switcher,
-        title=session_meta.title_for(when, meta, n),
-        visual=session_meta.visual({"rows": rows, "cardio": cardio}, meta),
-        thread=thread,
-        rows=rows,
-        grouped_rows=_group_by_exercise(rows),
-        cardio=cardio,
-        weight=weight,
-        summary=summary,
-        share=detail["share"],
-        prev=prev,
-        nxt=nxt,
-        total=len(all_rows) + len(all_cardio) + len(all_weights),
-        edit_url=_edit_url(when, n),
-        weight_unit=preferences.get_weight_unit(user_email),
-    )
+    return {
+        "when": when,
+        "n": n,
+        "switcher": switcher,
+        "title": session_meta.title_for(when, meta, n),
+        "visual": session_meta.visual({"rows": rows, "cardio": cardio}, meta),
+        "thread": thread,
+        "rows": rows,
+        "grouped_rows": _group_by_exercise(rows),
+        "cardio": cardio,
+        "weight": weight,
+        "summary": summary,
+        "share": detail["share"],
+        "prev": prev,
+        "nxt": nxt,
+        "total": len(all_rows) + len(all_cardio) + len(all_weights),
+        "edit_url": _edit_url(when, n),
+    }
 
 
 # --- Settings -----------------------------------------------------------------
@@ -689,47 +714,22 @@ def review():
         "from_record": request.form.get("from_record") == "1",
         "routine_name": routines.clean_title(request.form.get("routine_name")),
     }
-    if config.is_site:
-        limit = _site_limit()
-        if not quota.consume(current_user_email(), limit):
-            return render_template(
-                "review.html",
-                error=(
-                    f"You've used today's {limit} free logs. Come back tomorrow, add this "
-                    "one manually, or set up your own model in Settings for unlimited logging."
-                ),
-                limit_reached=True,
-                entries=None,
-                **context,
-            )
 
-    def failed(message: str):
-        """The model gave nothing back, so the free log isn't spent."""
-        if config.is_site:
-            quota.refund(user_email)
-        return render_template("review.html", error=message, entries=None, **context)
+    def run():
+        if config.runs_in_browser:
+            return _parse_browser_output(request.form.get("llm_output", ""))
+        return parse_workout(workout_text, _llm_client(config), today=today, default_unit=unit)
 
     try:
-        if config.runs_in_browser:
-            parsed = _parse_browser_output(request.form.get("llm_output", ""))
-        else:
-            parsed = parse_workout(
-                workout_text, _llm_client(config), today=today, default_unit=unit
-            )
-    except RateLimitError as e:
-        message = e.user_message
-        if config.is_site:
-            message = (
-                "The shared model is busy or its daily allowance is used up. Try again in a "
-                "minute, or use your own key on the Settings page."
-            )
-        return failed(message)
-    except LLMError as e:
-        return failed(e.user_message)
-    except Exception:  # noqa: BLE001
-        current_app.logger.exception("Unexpected error while parsing workout")
-        return failed("Something went wrong while talking to the model. Please try again.")
-    activity.record_parse(user_email)
+        parsed = logflow.parse(user_email, config, run)
+    except LogError as e:
+        return render_template(
+            "review.html",
+            error=e.message,
+            limit_reached=e.code == logflow.QUOTA_EXCEEDED,
+            entries=None,
+            **context,
+        )
     return render_template(
         "review.html",
         error=None,
@@ -800,41 +800,8 @@ def _cardio_from_form(form) -> list[dict]:
     return activities
 
 
-BAD_LIFT_WEIGHT = (
-    "“{}” isn’t a weight. Use a number, like 185 lbs, or bodyweight. Nothing was saved."
-)
-BAD_BODY_WEIGHT = "“{}” isn’t a body weight. Use a number, like 160 lbs. Nothing was saved."
-FUTURE_DATE = "That date hasn’t happened yet. Nothing was saved."
-
-
 def _is_future(when: str) -> bool:
     return date.fromisoformat(when) > _client_today()
-
-
-def _lift_weight(value: str, unit: str) -> str:
-    """clean_lift_weight(), with the message to show when the value is refused."""
-    try:
-        return clean_lift_weight(value, unit)
-    except ValueError as e:
-        raise ValueError(BAD_LIFT_WEIGHT.format(e)) from None
-
-
-def _bodyweight(value: str | None, unit: str) -> str:
-    try:
-        return clean_bodyweight(value, unit)
-    except ValueError as e:
-        raise ValueError(BAD_BODY_WEIGHT.format(e)) from None
-
-
-def _save_bodyweight(user_email: str, when: str, weight: str) -> BodyWeight:
-    """One reading per day: a second weigh-in on the same date replaces the first."""
-    reading = BodyWeight.query.filter_by(user_email=user_email, date=when).first()
-    if reading is None:
-        reading = BodyWeight(user_email=user_email, date=when, weight=weight, notes="")
-        db.session.add(reading)
-    else:
-        reading.weight = weight
-    return reading
 
 
 @bp.route("/confirm", methods=["POST"])
@@ -842,74 +809,29 @@ def _save_bodyweight(user_email: str, when: str, weight: str) -> BodyWeight:
 def confirm():
     user_email = current_user_email()
     when = request.form.get("date", "").strip()
-    if not is_iso_date(when):
-        flash("Date must be in YYYY-MM-DD format.", "error")
-        return redirect(url_for("main.log"))
-    if _is_future(when):
-        flash(FUTURE_DATE, "error")
-        return redirect(url_for("main.log"))
     config = _llm_config()
     in_browser = config is not None and config.runs_in_browser
-    entries = _entries_from_form(request.form, with_tags=in_browser)
-    cardio = _cardio_from_form(request.form)
-    unit = preferences.get_weight_unit(user_email)
     try:
-        for entry in entries:
-            entry["weight"] = _lift_weight(entry["weight"], unit)
-        bodyweight = _bodyweight(request.form.get("bodyweight"), unit)
-    except ValueError as e:
-        flash(str(e), "error")
-        return redirect(url_for("main.log"))
-    for c in cardio:
-        c["duration"] = clean_duration(c["duration"])
-    if not (entries or cardio or bodyweight):
-        flash("Nothing to save: every row was empty or deleted.", "error")
-        return redirect(url_for("main.log"))
-
-    client = _llm_client(config) if config else None
-    # Every save is its own workout: a second log on the same day is a second card.
-    n = sessions.next_session(user_email, when)
-    tag_calls_left = MAX_SITE_TAG_CALLS if config is not None and config.is_site else MAX_ENTRIES
-    for entry in entries:
-        match = match_exercise(entry["exercise"])
-        if match:
-            name, tags = match
-        elif in_browser:
-            name = entry["exercise"]
-            tags = entry.get("tags", "")  # tagged by the local model in the browser
-        else:
-            name = entry["exercise"]
-            tags = ""
-            if client and tag_calls_left > 0:
-                tag_calls_left -= 1
-                tags = llm_tags(name, client)
-        db.session.add(
-            Workout(
-                user_email=user_email,
-                date=when,
-                session=n,
-                exercise=name,
-                weight=entry["weight"],
-                sets=entry["sets"],
-                reps=entry["reps"],
-                notes=entry["notes"],
-                tags=tags,
-            )
+        # Every save is its own workout: a second log on the same day is a second card.
+        n = logflow.save(
+            user_email,
+            when,
+            _client_today(),
+            _entries_from_form(request.form, with_tags=in_browser),
+            _cardio_from_form(request.form),
+            request.form.get("bodyweight"),
+            visibility=request.form.get("visibility"),
+            # The name typed on the review screen; from a routine it starts out as the
+            # routine's name.
+            title=request.form.get("title")
+            or routines.clean_title(request.form.get("routine_name")),
+            get_client=(lambda: _llm_client(config)) if config else None,
+            tag_calls=MAX_SITE_TAG_CALLS if config is not None and config.is_site else MAX_ENTRIES,
+            in_browser=in_browser,
         )
-    db.session.add_all(Cardio(user_email=user_email, date=when, session=n, **c) for c in cardio)
-    if entries or cardio:
-        # Covers the whole day, so a later save that day can change it.
-        social.set_visibility(
-            user_email, when, social.clean_visibility(request.form.get("visibility"))
-        )
-    if bodyweight:
-        _save_bodyweight(user_email, when, bodyweight)  # always private
-    if entries or cardio:
-        # The name typed on the review screen; from a routine it starts out as the
-        # routine's name.
-        title = request.form.get("title") or routines.clean_title(request.form.get("routine_name"))
-        session_meta.set_title(user_email, when, n, title)
-    db.session.commit()
+    except LogError as e:
+        flash(e.message, "error")
+        return redirect(url_for("main.log"))
     # Straight to Home, where the workout you just saved is on top and ready to share.
     # `recorded` tells the page to clear the finished recording from the browser.
     args = {"saved": when, "session": n}

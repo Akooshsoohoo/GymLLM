@@ -1,12 +1,14 @@
-"""Google sign-in via Flask-Dance, with the user's email cached in the session."""
+"""Google sign-in via Flask-Dance, with the user's email cached in the session, and
+the signed bearer tokens the iOS app uses instead of a cookie."""
 
 from __future__ import annotations
 
 from functools import wraps
 
 import requests
-from flask import Blueprint, abort, current_app, flash, redirect, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, g, redirect, request, session, url_for
 from flask_dance.contrib.google import google, make_google_blueprint
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from . import activity
 
@@ -20,6 +22,10 @@ AUTH_SESSION_KEYS = (
     SESSION_GOOGLE_PICTURE,
     "google_oauth_token",
 )
+
+API_TOKEN_SALT = "api-token"
+API_TOKEN_MAX_AGE = 30 * 24 * 60 * 60  # seconds; matches PERMANENT_SESSION_LIFETIME
+TOKEN_MISSING, TOKEN_EXPIRED, TOKEN_INVALID = "missing", "expired", "invalid"
 
 bp = Blueprint("auth", __name__)
 
@@ -47,13 +53,52 @@ def _clear_auth() -> None:
         pass
 
 
+def _token_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=API_TOKEN_SALT)
+
+
+def issue_api_token(email: str, name: str = "", picture: str = "") -> str:
+    """A signed, stateless token for the iOS app, good for API_TOKEN_MAX_AGE."""
+    return _token_serializer().dumps({"email": email, "name": name, "picture": picture})
+
+
+def _bearer_token() -> str | None:
+    scheme, _, token = request.headers.get("Authorization", "").partition(" ")
+    return token.strip() if scheme.lower() == "bearer" and token.strip() else None
+
+
+def api_token_claims() -> tuple[dict | None, str | None]:
+    """(claims, None) for this request's valid bearer token, else (None, why): one
+    of TOKEN_MISSING, TOKEN_EXPIRED, TOKEN_INVALID. Checked once per request."""
+    if "api_token" not in g:
+        token = _bearer_token()
+        if token is None:
+            g.api_token = (None, TOKEN_MISSING)
+        else:
+            try:
+                claims = _token_serializer().loads(token, max_age=API_TOKEN_MAX_AGE)
+            except SignatureExpired:
+                g.api_token = (None, TOKEN_EXPIRED)
+            except BadSignature:
+                g.api_token = (None, TOKEN_INVALID)
+            else:
+                ok = isinstance(claims, dict) and isinstance(claims.get("email"), str)
+                g.api_token = (claims, None) if ok and claims["email"] else (None, TOKEN_INVALID)
+    return g.api_token
+
+
 def current_user_email() -> str | None:
     """Return the signed-in user's email, or None.
 
-    The email is cached in the session after the first successful userinfo
-    call so normal page loads never hit Google. An expired or revoked token
-    clears the cached state so the next request lands on the welcome page.
+    A request carrying a bearer token is whoever the token says, and nobody if the
+    token is bad: it never falls back to the cookie. Otherwise the email is cached
+    in the session after the first successful userinfo call so normal page loads
+    never hit Google. An expired or revoked token clears the cached state so the
+    next request lands on the welcome page.
     """
+    if _bearer_token() is not None:
+        claims, _ = api_token_claims()
+        return claims["email"] if claims else None
     email = session.get(SESSION_EMAIL)
     if email:
         return email
