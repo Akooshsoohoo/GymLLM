@@ -1,0 +1,82 @@
+/* GymLLM theme: Fern on Cream (light) / Fern on Black (dark).
+   Paste at the top of static/style.css. Dark mode follows the OS by default;
+   set data-theme="light" or data-theme="dark" on <html> to force one. */
+:root {
+  color-scheme: light;
+  --font-head: 'Bricolage Grotesque', sans-serif;
+  --font-body: 'Instrument Sans', sans-serif;
+
+  --bg: #F5F1EA;
+  --surface: #FFFFFF;
+  --surface-2: #FBF8F3;
+  --field: #F5F1EA;
+  --ink: #1C1915;
+  --ink-2: #4F483F;
+  --muted: #6B6358;
+  --muted-2: #8A8175;
+  --line: #E7E0D5;
+  --line-2: #EFE8DD;
+  --chip-border: #E0D8CB;
+  --dashed: #D6CCBD;
+
+  --you: #3FA66B;          /* you: leaf green */
+  --on-you: #1C1915;       /* text on --you */
+  --you-faint: rgba(28,25,21,.2);
+  --you-tint: #DDF0E3;
+  --you-ink: #1D6B40;      /* links, hover, "+ Add" */
+
+  --friend: #D9895B;       /* friends: clay */
+  --on-friend: #1C1915;
+  --friend-tint: #F6E3D6;
+  --friend-ink: #8A4520;
+
+  --primary: #1C1915;      /* main buttons, raised + tab */
+  --on-primary: #F5F1EA;
+  --tab-bg: #FFFFFF;
+  --shadow-card: 0 1px 0 #E7E0D5, 0 10px 24px rgba(60,40,20,.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #16130F;
+    --surface: #221E19;
+    --surface-2: #1C1814;
+    --field: #2E2923;
+    --ink: #F3EEE6;
+    --ink-2: #CFC6B8;
+    --muted: #A39987;
+    --muted-2: #8C8272;
+    --line: #342E27;
+    --line-2: #2C2721;
+    --chip-border: #3A332B;
+    --dashed: #4A4238;
+    --you: #5CCB8A;
+    --on-you: #16130F;
+    --you-faint: rgba(22,19,15,.22);
+    --you-tint: #1E3326;
+    --you-ink: #9BE6B9;
+    --friend: #E39A6E;
+    --on-friend: #16130F;
+    --friend-tint: #3D251B;
+    --friend-ink: #F2B48E;
+    --primary: #5CCB8A;
+    --on-primary: #16130F;
+    --tab-bg: #1C1814;
+    --shadow-card: none;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #16130F; --surface: #221E19; --surface-2: #1C1814; --field: #2E2923;
+  --ink: #F3EEE6; --ink-2: #CFC6B8; --muted: #A39987; --muted-2: #8C8272;
+  --line: #342E27; --line-2: #2C2721; --chip-border: #3A332B; --dashed: #4A4238;
+  --you: #5CCB8A; --on-you: #16130F; --you-faint: rgba(22,19,15,.22); --you-tint: #1E3326; --you-ink: #9BE6B9;
+  --friend: #E39A6E; --on-friend: #16130F; --friend-tint: #3D251B; --friend-ink: #F2B48E;
+  --primary: #5CCB8A; --on-primary: #16130F; --tab-bg: #1C1814; --shadow-card: none;
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+a { color: var(--ink); text-underline-offset: 2px; }
+a:hover { color: var(--you-ink); }
