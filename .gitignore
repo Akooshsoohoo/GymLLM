@@ -11,3 +11,10 @@ instance/
 *.db
 *.sqlite
 workoutLog.csv
+
+# iOS: the Xcode project and Info.plist are generated from ios/project.yml
+ios/Levra.xcodeproj/
+ios/Levra/Info.plist
+ios/build/
+xcuserdata/
+DerivedData/
