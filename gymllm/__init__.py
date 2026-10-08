@@ -43,17 +43,19 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     app.config.setdefault("LLM_CLIENT_FACTORY", get_client)
 
-    from . import admin_routes, auth, routes, social_routes
+    from . import admin_routes, api, auth, routes, social_routes
 
     auth.init_app(app)
     app.register_blueprint(routes.bp)
     app.register_blueprint(social_routes.bp)
     app.register_blueprint(admin_routes.bp)
+    app.register_blueprint(api.bp)
 
     if not app.config["IS_PRODUCTION"] and is_local_sqlite(app.config["SQLALCHEMY_DATABASE_URI"]):
         from . import dev_routes
 
         app.register_blueprint(dev_routes.bp)
+        app.register_blueprint(api.dev_bp)
 
     _register_error_handlers(app)
     _register_context(app)
@@ -194,16 +196,19 @@ def _register_context(app: Flask) -> None:
         return url_for(request.endpoint, **{k: v for k, v in args.items() if v is not None})
 
 
-def _first_name(email: str | None, profile) -> str:
-    """What to call the user: their profile name, their Google name, or the start of
-    their email address."""
+def _first_name(email: str | None, profile, google_name: str | None = None) -> str:
+    """What to call the user: their profile name, their Google name (from the cookie
+    session unless the caller has it, as the API does from its token), or the start
+    of their email address."""
     from flask import session
 
     from .auth import SESSION_GOOGLE_NAME
 
     if not email:
         return ""
-    name = (profile.display_name if profile else "") or session.get(SESSION_GOOGLE_NAME) or ""
+    if google_name is None:
+        google_name = session.get(SESSION_GOOGLE_NAME)
+    name = (profile.display_name if profile else "") or google_name or ""
     first = name.split()[0] if name.split() else email.split("@")[0]
     return first[:1].upper() + first[1:]
 

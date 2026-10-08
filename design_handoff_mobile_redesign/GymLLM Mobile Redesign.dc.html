@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9E3D9;font-family:'Instrument Sans',sans-serif;color:#1C1915;-webkit-font-smoothing:antialiased}
+a{color:#1C1915;text-decoration:underline;text-underline-offset:2px}
+a:hover{color:#C4492A}
+</style>
+</helmet>
+<section id="2" style="padding:72px 80px 40px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:12px;max-width:760px">
+<div style="display:flex;align-items:center;gap:10px"><span style="font:600 13px 'Instrument Sans';background:#1C1915;color:#F5F1EA;padding:4px 10px;border-radius:99px">2</span><span style="font:600 13px 'Instrument Sans';letter-spacing:.08em;text-transform:uppercase;color:#6B6358">Desktop · same system</span></div>
+<h1 style="margin:0;font:700 56px/1 'Bricolage Grotesque';letter-spacing:-.02em">On a bigger screen</h1>
+<p style="margin:0;font:400 19px/1.5 'Instrument Sans';color:#4F483F;text-wrap:pretty">The top bar replaces the mobile tabs. Home puts the log box above your friends' feed, with your week beside it. Content is capped at 1200px, with two columns from 1024px up. Below 1024px, use the mobile layouts.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:56px">
+
+<!-- D1 WELCOME -->
+<div data-screen-label="D1 Welcome" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">D1 · Welcome</div>
+<div style="width:1280px;height:800px;border-radius:18px;overflow:hidden;background:#F5F1EA;box-shadow:0 30px 60px rgba(60,40,20,.14);display:grid;grid-template-columns:1fr 1fr">
+<div style="padding:56px 72px;display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:center;gap:8px;font:700 19px 'Bricolage Grotesque'"><span style="width:16px;height:16px;border-radius:8px;background:#EC6A45"></span>GymLLM</div>
+<div style="flex:1"></div>
+<h2 style="margin:0;font:700 64px/1 'Bricolage Grotesque';letter-spacing:-.03em;text-wrap:pretty">Log your workout like you'd text a friend.</h2>
+<p style="margin:0;font:400 19px/1.5 'Instrument Sans';color:#4F483F;max-width:460px">Lifting, running, yoga, a walk home. Just say what you did and we'll keep track, then cheer each other on.</p>
+<div style="display:flex;gap:12px;align-items:center;margin-top:10px"><div style="height:56px;padding:0 28px;border-radius:28px;background:#1C1915;color:#F5F1EA;display:flex;align-items:center;gap:10px;font:600 17px 'Instrument Sans'"><span style="width:20px;height:20px;border-radius:10px;background:#F5F1EA"></span>Continue with Google</div><span style="font:400 14px 'Instrument Sans';color:#6B6358">Free. Private until you add friends.</span></div>
+<div style="flex:1"></div>
+</div>
+<div style="background:repeating-linear-gradient(135deg,#EFE6D9 0 12px,#E6DCCD 12px 24px);display:flex;align-items:flex-end;padding:28px"><span style="font:500 12px ui-monospace,Menlo,monospace;color:#6B6358;background:#F5F1EA;padding:6px 10px;border-radius:8px">photo: friends mid-workout, candid, warm light</span></div>
+</div>
+</div>
+
+<!-- D2 HOME -->
+<div data-screen-label="D2 Home" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">D2 · Home: log box, feed and your week</div>
+<div style="width:1280px;height:860px;border-radius:18px;overflow:hidden;background:#F5F1EA;box-shadow:0 30px 60px rgba(60,40,20,.14)">
+<div style="height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #E7E0D5">
+<div style="display:flex;align-items:center;gap:40px"><div style="display:flex;align-items:center;gap:8px;font:700 19px 'Bricolage Grotesque'"><span style="width:14px;height:14px;border-radius:7px;background:#EC6A45"></span>GymLLM</div>
+<div style="display:flex;gap:4px;font:600 15px 'Instrument Sans'"><span style="padding:9px 16px;border-radius:99px;background:#1C1915;color:#F5F1EA">Home</span><span style="padding:9px 16px">Progress</span><span style="padding:9px 16px;display:flex;gap:8px;align-items:center">Friends<span style="min-width:20px;height:20px;border-radius:10px;background:#EC6A45;font:700 12px 'Instrument Sans';display:flex;align-items:center;justify-content:center">3</span></span></div></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="height:44px;padding:0 20px;border-radius:22px;background:#EC6A45;display:flex;align-items:center;font:700 15px 'Instrument Sans'">+ Log workout</span><span style="width:40px;height:40px;border-radius:20px;background:#FBE3D9;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#9A3A1F">M</span></div>
+</div>
+<div style="max-width:1200px;margin:0 auto;padding:36px 40px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:32px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;flex-direction:column;gap:4px"><div style="font:500 15px 'Instrument Sans';color:#6B6358">Thursday, 24 Sep</div><h2 style="margin:0;font:700 40px/1.05 'Bricolage Grotesque';letter-spacing:-.02em">What did you get up to, Maya?</h2></div>
+<div style="background:#FFFFFF;border-radius:26px;padding:22px;display:flex;flex-direction:column;gap:16px;box-shadow:0 1px 0 #E7E0D5,0 10px 24px rgba(60,40,20,.06)">
+<div style="font:400 20px/1.4 'Instrument Sans';min-height:84px;color:#8A8175">today I walked 3 miles, did some pull ups, curled the 20 lb dumbbells for a few sets…</div>
+<div style="display:flex;align-items:center;gap:10px">
+<div style="display:flex;flex-wrap:wrap;gap:8px;font:500 14px 'Instrument Sans';flex:1"><span style="padding:8px 13px;border-radius:99px;border:1.5px solid #E0D8CB;background:#FBF8F3">Ran 5k in 28 min</span><span style="padding:8px 13px;border-radius:99px;border:1.5px solid #E0D8CB;background:#FBF8F3">Squats 3×8 at 135</span><span style="padding:8px 13px;border-radius:99px;border:1.5px solid #E0D8CB;background:#FBF8F3">Yoga, 45 min</span></div>
+<div style="display:flex;background:#F5F1EA;border-radius:99px;padding:3px;font:600 14px 'Instrument Sans'"><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,.08)">lbs</span><span style="padding:8px 14px;color:#6B6358">kg</span></div>
+<div style="height:48px;padding:0 26px;border-radius:24px;background:#EC6A45;display:flex;align-items:center;font:700 16px 'Instrument Sans'">Log it</div>
+</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><span style="font:700 22px 'Bricolage Grotesque'">Friends</span><span style="font:600 14px 'Instrument Sans';color:#6B6358">See all activity</span></div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+<div style="background:#FFFFFF;border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;border-radius:21px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#2A5696">SO</span><div style="display:flex;flex-direction:column"><span style="font:600 16px 'Instrument Sans'">Sam Okafor</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Today · 3 exercises</span></div></div>
+<div style="display:flex;flex-direction:column;gap:8px;font:500 15px 'Instrument Sans'">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;gap:8px;align-items:center">Back squat <span style="padding:2px 8px;border-radius:99px;background:#EC6A45;font:700 11px 'Instrument Sans';letter-spacing:.04em">NEW BEST</span></span><span style="color:#4F483F">225 lbs · 5×5</span></div>
+<div style="display:flex;justify-content:space-between"><span>Romanian deadlift</span><span style="color:#4F483F">185 lbs · 3×8</span></div>
+<div style="display:flex;justify-content:space-between"><span>Run</span><span style="color:#4F483F">2 mi · 18 min</span></div>
+</div>
+<div style="display:flex;gap:8px;border-top:1px solid #EFE8DD;padding-top:12px"><span style="padding:8px 14px;border-radius:99px;background:#FBE3D9;color:#9A3A1F;font:700 14px 'Instrument Sans'">High five · 6</span><span style="padding:8px 14px;border-radius:99px;background:#F5F1EA;font:600 14px 'Instrument Sans'">2 comments</span></div>
+</div>
+<div style="background:#FFFFFF;border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;border-radius:21px;background:#F3DDC8;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#7A4A1E">PN</span><div style="display:flex;flex-direction:column"><span style="font:600 16px 'Instrument Sans'">Priya Nair</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Yesterday · 2 activities</span></div></div>
+<div style="display:flex;flex-direction:column;gap:8px;font:500 15px 'Instrument Sans'">
+<div style="display:flex;justify-content:space-between"><span>Yoga flow</span><span style="color:#4F483F">45 min</span></div>
+<div style="display:flex;justify-content:space-between"><span>Swim</span><span style="color:#4F483F">1,000 m · 30 min</span></div>
+</div>
+<div style="flex:1"></div>
+<div style="display:flex;gap:8px;border-top:1px solid #EFE8DD;padding-top:12px"><span style="padding:8px 14px;border-radius:99px;background:#F5F1EA;font:700 14px 'Instrument Sans'">High five · 3</span><span style="padding:8px 14px;border-radius:99px;background:#F5F1EA;font:600 14px 'Instrument Sans'">Comment</span></div>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="background:#EC6A45;border-radius:26px;padding:22px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;flex-direction:column"><span style="font:600 14px 'Instrument Sans'">This week</span><span style="font:800 48px/1 'Bricolage Grotesque';letter-spacing:-.02em">3 <span style="font-size:22px;font-weight:600">of 7 days</span></span></div><span style="padding:7px 12px;border-radius:99px;background:#1C1915;color:#F5F1EA;font:600 13px 'Instrument Sans'">4-week streak</span></div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;font:700 12px 'Instrument Sans'">
+<div style="display:flex;flex-direction:column;gap:6px"><span style="height:8px;border-radius:4px;background:#1C1915"></span>M</div><div style="display:flex;flex-direction:column;gap:6px"><span style="height:8px;border-radius:4px;background:rgba(28,25,21,.18)"></span>T</div><div style="display:flex;flex-direction:column;gap:6px"><span style="height:8px;border-radius:4px;background:#1C1915"></span>W</div><div style="display:flex;flex-direction:column;gap:6px"><span style="height:8px;border-radius:4px;background:#1C1915"></span>T</div><div style="display:flex;flex-direction:column;gap:6px"><span style="height:8px;border-radius:4px;background:rgba(28,25,21,.18)"></span>F</div><div style="display:flex;flex-direction:column;gap:6px"><span style="height:8px;border-radius:4px;background:rgba(28,25,21,.18)"></span>S</div><div style="display:flex;flex-direction:column;gap:6px"><span style="height:8px;border-radius:4px;background:rgba(28,25,21,.18)"></span>S</div>
+</div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 17px 'Bricolage Grotesque'">Your recent</span><span style="font:600 13px 'Instrument Sans';color:#6B6358">All sessions</span></div>
+<div style="display:flex;justify-content:space-between;font:500 15px 'Instrument Sans'"><span>Wed 23 Sep</span><span style="color:#4F483F">Legs · 4 exercises</span></div>
+<div style="display:flex;justify-content:space-between;font:500 15px 'Instrument Sans';border-top:1px solid #EFE8DD;padding-top:12px"><span>Mon 21 Sep</span><span style="color:#4F483F">Run · 5 km</span></div>
+<div style="display:flex;justify-content:space-between;font:500 15px 'Instrument Sans';border-top:1px solid #EFE8DD;padding-top:12px"><span>Sun 20 Sep</span><span style="color:#4F483F">Back · 3 exercises</span></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:10px">
+<span style="font:700 17px 'Bricolage Grotesque'">Train with friends</span>
+<span style="font:400 14px/1.45 'Instrument Sans';color:#4F483F">Share your invite link. Anyone who signs in with it becomes your friend.</span>
+<span style="align-self:flex-start;height:40px;padding:0 16px;border-radius:20px;border:1.5px solid #D6CCBD;display:flex;align-items:center;font:600 14px 'Instrument Sans'">Copy invite link</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- D3 REVIEW -->
+<div data-screen-label="D3 Review" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">D3 · Check it over</div>
+<div style="width:1280px;height:760px;border-radius:18px;overflow:hidden;background:#F5F1EA;box-shadow:0 30px 60px rgba(60,40,20,.14)">
+<div style="height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #E7E0D5">
+<div style="display:flex;align-items:center;gap:40px"><div style="display:flex;align-items:center;gap:8px;font:700 19px 'Bricolage Grotesque'"><span style="width:14px;height:14px;border-radius:7px;background:#EC6A45"></span>GymLLM</div>
+<div style="display:flex;gap:4px;font:600 15px 'Instrument Sans'"><span style="padding:9px 16px;border-radius:99px;background:#1C1915;color:#F5F1EA">Home</span><span style="padding:9px 16px">Progress</span><span style="padding:9px 16px">Friends</span></div></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="height:44px;padding:0 20px;border-radius:22px;background:#EC6A45;display:flex;align-items:center;font:700 15px 'Instrument Sans'">+ Log workout</span><span style="width:40px;height:40px;border-radius:20px;background:#FBE3D9;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#9A3A1F">M</span></div>
+</div>
+<div style="max-width:1200px;margin:0 auto;padding:36px 40px;display:grid;grid-template-columns:380px minmax(0,1fr);gap:32px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<h2 style="margin:0;font:700 40px/1.05 'Bricolage Grotesque';letter-spacing:-.02em">Here's what we heard.</h2>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<span style="font:600 13px 'Instrument Sans';color:#6B6358">Your words</span>
+<div style="font:400 17px/1.45 'Instrument Sans'">bench 185 for 5x5, lat pulldowns 3x10, then walked 3 miles home. weighed in at 130</div>
+<span style="align-self:flex-start;height:40px;padding:0 16px;border-radius:20px;border:1.5px solid #D6CCBD;display:flex;align-items:center;font:600 14px 'Instrument Sans'">Change and try again</span>
+</div>
+<div style="display:flex;gap:8px;align-items:center"><span style="padding:9px 14px;border-radius:99px;background:#1C1915;color:#F5F1EA;font:600 14px 'Instrument Sans'">Today · Thu 24 Sep ▾</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 20px;display:flex;flex-direction:column;gap:4px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px"><span style="font:700 18px 'Bricolage Grotesque'">Lifts</span><span style="font:600 14px 'Instrument Sans';color:#C4492A">+ Add lift</span></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;padding:12px 0;border-top:1px solid #EFE8DD"><span style="font:600 16px 'Instrument Sans'">Bench press</span><div style="display:flex;gap:8px;font:600 15px 'Instrument Sans'"><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">185 lbs</span><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">5 sets</span><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">5 reps</span><span style="padding:6px 12px;border-radius:12px;border:1.5px dashed #D6CCBD;color:#6B6358">+ note</span></div><span style="font:500 13px 'Instrument Sans';color:#8A8175">Remove</span></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;padding:12px 0;border-top:1px solid #EFE8DD"><span style="font:600 16px 'Instrument Sans'">Lat pulldown</span><div style="display:flex;gap:8px;font:600 15px 'Instrument Sans'"><span style="padding:6px 12px;border-radius:12px;border:1.5px dashed #D6CCBD;color:#6B6358">+ weight</span><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">3 sets</span><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">10 reps</span><span style="padding:6px 12px;border-radius:12px;border:1.5px dashed #D6CCBD;color:#6B6358">+ note</span></div><span style="font:500 13px 'Instrument Sans';color:#8A8175">Remove</span></div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px">
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 18px 'Bricolage Grotesque'">Cardio</span><span style="font:600 14px 'Instrument Sans';color:#C4492A">+ Add</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font:600 16px 'Instrument Sans'">Walk</span><div style="display:flex;gap:8px;font:600 15px 'Instrument Sans'"><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">3 miles</span><span style="padding:6px 12px;border-radius:12px;border:1.5px dashed #D6CCBD;color:#6B6358">+ time</span></div></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center">
+<div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 18px 'Bricolage Grotesque'">Body weight</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Only you see this</span></div>
+<span style="padding:8px 12px;border-radius:12px;background:#F5F1EA;font:600 15px 'Instrument Sans'">130 lbs</span>
+</div>
+</div>
+<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px"><span style="height:54px;padding:0 24px;border-radius:27px;display:flex;align-items:center;font:600 16px 'Instrument Sans';color:#6B6358">Cancel</span><span style="height:54px;padding:0 32px;border-radius:27px;background:#1C1915;color:#F5F1EA;display:flex;align-items:center;font:600 16px 'Instrument Sans'">Save workout</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- D4 DAY -->
+<div data-screen-label="D4 Day" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">D4 · A day, ready to share</div>
+<div style="width:1280px;height:780px;border-radius:18px;overflow:hidden;background:#F5F1EA;box-shadow:0 30px 60px rgba(60,40,20,.14)">
+<div style="height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #E7E0D5">
+<div style="display:flex;align-items:center;gap:40px"><div style="display:flex;align-items:center;gap:8px;font:700 19px 'Bricolage Grotesque'"><span style="width:14px;height:14px;border-radius:7px;background:#EC6A45"></span>GymLLM</div>
+<div style="display:flex;gap:4px;font:600 15px 'Instrument Sans'"><span style="padding:9px 16px">Home</span><span style="padding:9px 16px;border-radius:99px;background:#1C1915;color:#F5F1EA">Progress</span><span style="padding:9px 16px">Friends</span></div></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="height:44px;padding:0 20px;border-radius:22px;background:#EC6A45;display:flex;align-items:center;font:700 15px 'Instrument Sans'">+ Log workout</span><span style="width:40px;height:40px;border-radius:20px;background:#FBE3D9;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#9A3A1F">M</span></div>
+</div>
+<div style="max-width:1200px;margin:0 auto;padding:32px 40px;display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div style="display:flex;align-items:center;gap:16px"><span style="width:44px;height:44px;border-radius:22px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font:600 20px 'Instrument Sans'">‹</span><div><div style="font:700 32px 'Bricolage Grotesque';letter-spacing:-.02em">Thursday, 24 Sep</div><div style="font:500 14px 'Instrument Sans';color:#6B6358">Today · previous: Wed 23 Sep</div></div><span style="width:44px;height:44px;border-radius:22px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font:600 20px 'Instrument Sans';color:#C9BFB0">›</span></div>
+<div style="display:flex;gap:10px"><span style="height:48px;padding:0 20px;border-radius:24px;background:#FFFFFF;display:flex;align-items:center;font:600 15px 'Instrument Sans'">Pick a date</span><span style="height:48px;padding:0 20px;border-radius:24px;background:#FFFFFF;display:flex;align-items:center;font:600 15px 'Instrument Sans'">Edit</span><span style="height:48px;padding:0 24px;border-radius:24px;background:#1C1915;color:#F5F1EA;display:flex;align-items:center;font:600 15px 'Instrument Sans'">Share</span></div>
+</div>
+<div style="display:grid;grid-template-columns:420px minmax(0,1fr);gap:28px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="background:#EC6A45;border-radius:28px;padding:28px;height:525px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;justify-content:space-between;font:700 12px 'Instrument Sans';letter-spacing:.1em"><span style="white-space:nowrap">MAYA · THU 24 SEP</span><span>GYMLLM</span></div>
+<div style="flex:1"></div>
+<div style="font:800 76px/.9 'Bricolage Grotesque';letter-spacing:-.03em">8 sets.<br>3 miles.</div>
+<div style="display:flex;flex-direction:column;gap:8px;font:600 16px 'Instrument Sans'">
+<div style="display:flex;justify-content:space-between;border-top:1.5px solid rgba(28,25,21,.25);padding-top:10px"><span>Bench press · new best</span><span>185 × 5×5</span></div>
+<div style="display:flex;justify-content:space-between;border-top:1.5px solid rgba(28,25,21,.25);padding-top:10px"><span>Lat pulldown</span><span>3×10</span></div>
+<div style="display:flex;justify-content:space-between;border-top:1.5px solid rgba(28,25,21,.25);padding-top:10px"><span>Walk</span><span>3 mi</span></div>
+</div>
+</div>
+<div style="font:400 13px 'Instrument Sans';color:#6B6358;text-align:center">Share preview (4:5). Body weight is never included.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Exercises</div><div style="font:800 32px 'Bricolage Grotesque'">3</div></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Sets</div><div style="font:800 32px 'Bricolage Grotesque'">8</div></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Volume</div><div style="font:800 32px 'Bricolage Grotesque'">4.6k <span style="font-size:15px;font-weight:600">lbs</span></div></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Body weight</div><div style="font:800 32px 'Bricolage Grotesque'">130 <span style="font-size:15px;font-weight:600">lbs</span></div></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:6px 20px">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 140px 120px;gap:12px;padding:12px 0;font:600 13px 'Instrument Sans';color:#6B6358;border-bottom:1px solid #EFE8DD"><span>Exercise</span><span>Weight</span><span>Sets × reps</span></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 140px 120px;gap:12px;padding:14px 0;font:500 16px 'Instrument Sans';border-bottom:1px solid #EFE8DD;align-items:center"><span style="font-weight:600">Bench press</span><span style="display:flex;gap:8px;align-items:center">185 lbs <span style="padding:2px 8px;border-radius:99px;background:#EC6A45;font:700 11px 'Instrument Sans'">NEW BEST</span></span><span>5 × 5</span></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 140px 120px;gap:12px;padding:14px 0;font:500 16px 'Instrument Sans';border-bottom:1px solid #EFE8DD"><span style="font-weight:600">Lat pulldown</span><span style="color:#8A8175">—</span><span>3 × 10</span></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 140px 120px;gap:12px;padding:14px 0;font:500 16px 'Instrument Sans'"><span style="font-weight:600">Walk</span><span>3 mi</span><span style="color:#8A8175">—</span></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 17px 'Bricolage Grotesque'">From friends</span><span style="font:600 14px 'Instrument Sans';color:#9A3A1F">4 high fives</span></div>
+<div style="display:flex;gap:10px;align-items:flex-start"><span style="width:32px;height:32px;flex:none;border-radius:16px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 12px 'Bricolage Grotesque';color:#2A5696">SO</span><span style="font:400 15px/1.4 'Instrument Sans'"><b>Sam</b> 185 already?! Catching me up.</span></div>
+<div style="height:44px;border-radius:22px;background:#F5F1EA;display:flex;align-items:center;padding:0 16px;font:400 15px 'Instrument Sans';color:#8A8175">Reply…</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- D5 PROGRESS -->
+<div data-screen-label="D5 Progress" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">D5 · Progress</div>
+<div style="width:1280px;height:860px;border-radius:18px;overflow:hidden;background:#F5F1EA;box-shadow:0 30px 60px rgba(60,40,20,.14)">
+<div style="height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #E7E0D5">
+<div style="display:flex;align-items:center;gap:40px"><div style="display:flex;align-items:center;gap:8px;font:700 19px 'Bricolage Grotesque'"><span style="width:14px;height:14px;border-radius:7px;background:#EC6A45"></span>GymLLM</div>
+<div style="display:flex;gap:4px;font:600 15px 'Instrument Sans'"><span style="padding:9px 16px">Home</span><span style="padding:9px 16px;border-radius:99px;background:#1C1915;color:#F5F1EA">Progress</span><span style="padding:9px 16px">Friends</span></div></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="height:44px;padding:0 20px;border-radius:22px;background:#EC6A45;display:flex;align-items:center;font:700 15px 'Instrument Sans'">+ Log workout</span><span style="width:40px;height:40px;border-radius:20px;background:#FBE3D9;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#9A3A1F">M</span></div>
+</div>
+<div style="max-width:1200px;margin:0 auto;padding:32px 40px;display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end">
+<div style="display:flex;flex-direction:column;gap:14px"><h2 style="margin:0;font:700 40px 'Bricolage Grotesque';letter-spacing:-.02em">Progress</h2>
+<div style="display:flex;gap:24px;font:600 16px 'Instrument Sans';color:#6B6358"><span style="color:#1C1915;padding-bottom:8px;border-bottom:2.5px solid #1C1915">Overview</span><span>Sessions</span><span>Exercises</span></div></div>
+<div style="display:flex;gap:6px;font:600 14px 'Instrument Sans'"><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF">7d</span><span style="padding:8px 14px;border-radius:99px;background:#1C1915;color:#F5F1EA">30d</span><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF">90d</span><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF">1y</span><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF">All time</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 20px"><div style="font:500 14px 'Instrument Sans';color:#6B6358">Workouts</div><div style="font:800 44px 'Bricolage Grotesque';letter-spacing:-.02em">14</div></div>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 20px"><div style="font:500 14px 'Instrument Sans';color:#6B6358">Streak</div><div style="font:800 44px 'Bricolage Grotesque';letter-spacing:-.02em">4 <span style="font-size:20px;font-weight:600">weeks</span></div></div>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 20px"><div style="font:500 14px 'Instrument Sans';color:#6B6358">Lifted</div><div style="font:800 44px 'Bricolage Grotesque';letter-spacing:-.02em">86k <span style="font-size:20px;font-weight:600">lbs</span></div></div>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 20px"><div style="font:500 14px 'Instrument Sans';color:#6B6358">Cardio</div><div style="font:800 44px 'Bricolage Grotesque';letter-spacing:-.02em">22 <span style="font-size:20px;font-weight:600">mi</span></div></div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px">
+<div style="background:#FFFFFF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 18px 'Bricolage Grotesque'">Workouts per week</span><span style="font:500 13px 'Instrument Sans';color:#6B6358">by day · <b style="color:#1C1915">week</b> · month</span></div>
+<div style="height:180px;display:grid;grid-template-columns:repeat(12,1fr);gap:12px;align-items:end">
+<span style="height:40%;border-radius:8px;background:#F0E2D8"></span><span style="height:20%;border-radius:8px;background:#F0E2D8"></span><span style="height:60%;border-radius:8px;background:#F0E2D8"></span><span style="height:40%;border-radius:8px;background:#F0E2D8"></span><span style="height:60%;border-radius:8px;background:#F0E2D8"></span><span style="height:40%;border-radius:8px;background:#F0E2D8"></span><span style="height:80%;border-radius:8px;background:#F0E2D8"></span><span style="height:60%;border-radius:8px;background:#F0E2D8"></span><span style="height:80%;border-radius:8px;background:#F0E2D8"></span><span style="height:100%;border-radius:8px;background:#F0E2D8"></span><span style="height:80%;border-radius:8px;background:#F0E2D8"></span><span style="height:60%;border-radius:8px;background:#EC6A45"></span>
+</div>
+<div style="display:flex;justify-content:space-between;font:500 12px 'Instrument Sans';color:#8A8175"><span>6 Jul</span><span>This week</span></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:700 18px 'Bricolage Grotesque'">Muscle groups</span>
+<div style="display:grid;grid-template-columns:80px 1fr 24px;gap:10px;align-items:center;font:500 14px 'Instrument Sans'"><span>Back</span><span style="height:10px;border-radius:5px;background:#F0EAE0"><span style="display:block;width:100%;height:100%;border-radius:5px;background:#EC6A45"></span></span><span style="text-align:right">18</span></div>
+<div style="display:grid;grid-template-columns:80px 1fr 24px;gap:10px;align-items:center;font:500 14px 'Instrument Sans'"><span>Chest</span><span style="height:10px;border-radius:5px;background:#F0EAE0"><span style="display:block;width:78%;height:100%;border-radius:5px;background:#EC6A45"></span></span><span style="text-align:right">14</span></div>
+<div style="display:grid;grid-template-columns:80px 1fr 24px;gap:10px;align-items:center;font:500 14px 'Instrument Sans'"><span>Legs</span><span style="height:10px;border-radius:5px;background:#F0EAE0"><span style="display:block;width:67%;height:100%;border-radius:5px;background:#EC6A45"></span></span><span style="text-align:right">12</span></div>
+<div style="display:grid;grid-template-columns:80px 1fr 24px;gap:10px;align-items:center;font:500 14px 'Instrument Sans'"><span>Shoulders</span><span style="height:10px;border-radius:5px;background:#F0EAE0"><span style="display:block;width:44%;height:100%;border-radius:5px;background:#EC6A45"></span></span><span style="text-align:right">8</span></div>
+<div style="display:grid;grid-template-columns:80px 1fr 24px;gap:10px;align-items:center;font:500 14px 'Instrument Sans'"><span>Arms</span><span style="height:10px;border-radius:5px;background:#F0EAE0"><span style="display:block;width:33%;height:100%;border-radius:5px;background:#EC6A45"></span></span><span style="text-align:right">6</span></div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px">
+<div style="background:#FFFFFF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:700 18px 'Bricolage Grotesque'">New personal bests</span>
+<div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;flex-direction:column"><span style="font:600 16px 'Instrument Sans'">Bench press</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Thu 24 Sep · up from 180</span></div><span style="font:800 24px 'Bricolage Grotesque'">185 <span style="font-size:14px;font-weight:600">lbs</span></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #EFE8DD;padding-top:12px"><div style="display:flex;flex-direction:column"><span style="font:600 16px 'Instrument Sans'">Back squat</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Mon 14 Sep · up from 195</span></div><span style="font:800 24px 'Bricolage Grotesque'">205 <span style="font-size:14px;font-weight:600">lbs</span></span></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 18px 'Bricolage Grotesque'">Body weight</span><span style="font:600 14px 'Instrument Sans'">130 lbs <span style="color:#6B6358;font-weight:500">· −2 since 25 Aug</span></span></div>
+<div style="height:70px;display:grid;grid-template-columns:repeat(12,1fr);gap:8px;align-items:end">
+<span style="height:90%;border-radius:6px;background:#E7E0D5"></span><span style="height:88%;border-radius:6px;background:#E7E0D5"></span><span style="height:92%;border-radius:6px;background:#E7E0D5"></span><span style="height:86%;border-radius:6px;background:#E7E0D5"></span><span style="height:84%;border-radius:6px;background:#E7E0D5"></span><span style="height:85%;border-radius:6px;background:#E7E0D5"></span><span style="height:80%;border-radius:6px;background:#E7E0D5"></span><span style="height:82%;border-radius:6px;background:#E7E0D5"></span><span style="height:78%;border-radius:6px;background:#E7E0D5"></span><span style="height:76%;border-radius:6px;background:#E7E0D5"></span><span style="height:77%;border-radius:6px;background:#E7E0D5"></span><span style="height:74%;border-radius:6px;background:#1C1915"></span>
+</div>
+<span style="font:400 13px 'Instrument Sans';color:#6B6358">Weekly average. Only you can see this.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- D6 PROFILE -->
+<div data-screen-label="D6 Profile" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">D6 · A friend's profile</div>
+<div style="width:1280px;height:800px;border-radius:18px;overflow:hidden;background:#F5F1EA;box-shadow:0 30px 60px rgba(60,40,20,.14)">
+<div style="height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #E7E0D5">
+<div style="display:flex;align-items:center;gap:40px"><div style="display:flex;align-items:center;gap:8px;font:700 19px 'Bricolage Grotesque'"><span style="width:14px;height:14px;border-radius:7px;background:#EC6A45"></span>GymLLM</div>
+<div style="display:flex;gap:4px;font:600 15px 'Instrument Sans'"><span style="padding:9px 16px">Home</span><span style="padding:9px 16px">Progress</span><span style="padding:9px 16px;border-radius:99px;background:#1C1915;color:#F5F1EA">Friends</span></div></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="height:44px;padding:0 20px;border-radius:22px;background:#EC6A45;display:flex;align-items:center;font:700 15px 'Instrument Sans'">+ Log workout</span><span style="width:40px;height:40px;border-radius:20px;background:#FBE3D9;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#9A3A1F">M</span></div>
+</div>
+<div style="height:160px;background:#DCE7F8"></div>
+<div style="max-width:1200px;margin:0 auto;padding:0 40px;display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:flex-end;gap:24px;margin-top:-56px">
+<span style="width:128px;height:128px;border-radius:64px;background:#5A8FE0;border:6px solid #F5F1EA;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:800 40px 'Bricolage Grotesque';flex:none">SO</span>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px;padding-bottom:6px"><h2 style="margin:0;font:700 36px 'Bricolage Grotesque';letter-spacing:-.02em">Sam Okafor</h2><div style="font:500 15px 'Instrument Sans';color:#6B6358">@sam.lifts · 42 friends · since Mar 2025 · Marathon in November. Squats in between.</div></div>
+<div style="display:flex;gap:10px;padding-bottom:10px"><span style="height:48px;padding:0 20px;border-radius:24px;border:1.5px solid #D6CCBD;display:flex;align-items:center;font:600 15px 'Instrument Sans'">Friends ✓</span><span style="height:48px;padding:0 24px;border-radius:24px;background:#5A8FE0;display:flex;align-items:center;font:700 15px 'Instrument Sans'">Compare with you</span></div>
+</div>
+<div style="display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+<div style="background:#FFFFFF;border-radius:18px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Workouts</div><div style="font:800 30px 'Bricolage Grotesque'">17</div></div>
+<div style="background:#FFFFFF;border-radius:18px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Streak</div><div style="font:800 30px 'Bricolage Grotesque'">6 <span style="font-size:15px;font-weight:600">wks</span></div></div>
+<div style="background:#FFFFFF;border-radius:18px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Sets</div><div style="font:800 30px 'Bricolage Grotesque'">212</div></div>
+<div style="background:#FFFFFF;border-radius:18px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Cardio</div><div style="font:800 30px 'Bricolage Grotesque'">340 <span style="font-size:15px;font-weight:600">min</span></div></div>
+</div>
+<div style="font:500 13px 'Instrument Sans';color:#6B6358">Last 30 days</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<span style="font:700 17px 'Bricolage Grotesque'">Favourites</span>
+<div style="display:flex;gap:12px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque'">1</span><span style="flex:1;font:600 15px 'Instrument Sans'">Run</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">12 sessions</span></div>
+<div style="display:flex;gap:12px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque'">2</span><span style="flex:1;font:600 15px 'Instrument Sans'">Back squat</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">best 225</span></div>
+<div style="display:flex;gap:12px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque'">3</span><span style="flex:1;font:600 15px 'Instrument Sans'">Romanian deadlift</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">best 185</span></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<span style="font:700 20px 'Bricolage Grotesque'">Recent sessions</span>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+<div style="background:#FFFFFF;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<span style="font:600 15px 'Instrument Sans';color:#6B6358">Today</span>
+<div style="display:flex;flex-direction:column;gap:8px;font:500 15px 'Instrument Sans'">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;gap:8px;align-items:center">Back squat <span style="padding:2px 8px;border-radius:99px;background:#EC6A45;font:700 11px 'Instrument Sans'">NEW BEST</span></span><span style="color:#4F483F">225 · 5×5</span></div>
+<div style="display:flex;justify-content:space-between"><span>Romanian deadlift</span><span style="color:#4F483F">185 · 3×8</span></div>
+<div style="display:flex;justify-content:space-between"><span>Run</span><span style="color:#4F483F">2 mi · 18 min</span></div>
+</div>
+<div style="display:flex;gap:8px;border-top:1px solid #EFE8DD;padding-top:12px"><span style="padding:8px 14px;border-radius:99px;background:#FBE3D9;color:#9A3A1F;font:700 14px 'Instrument Sans'">High five · 6</span><span style="padding:8px 14px;border-radius:99px;background:#F5F1EA;font:600 14px 'Instrument Sans'">2 comments</span></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<span style="font:600 15px 'Instrument Sans';color:#6B6358">Tue 22 Sep</span>
+<div style="display:flex;flex-direction:column;gap:8px;font:500 15px 'Instrument Sans'">
+<div style="display:flex;justify-content:space-between"><span>Long run</span><span style="color:#4F483F">10 mi · 1 h 32</span></div>
+<div style="display:flex;justify-content:space-between"><span>Plank</span><span style="color:#4F483F">3 × 60 s</span></div>
+</div>
+<div style="flex:1"></div>
+<div style="display:flex;gap:8px;border-top:1px solid #EFE8DD;padding-top:12px"><span style="padding:8px 14px;border-radius:99px;background:#F5F1EA;font:700 14px 'Instrument Sans'">High five · 9</span><span style="padding:8px 14px;border-radius:99px;background:#F5F1EA;font:600 14px 'Instrument Sans'">Comment</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- D7 COMPARE -->
+<div data-screen-label="D7 Compare" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">D7 · You vs a friend</div>
+<div style="width:1280px;height:800px;border-radius:18px;overflow:hidden;background:#F5F1EA;box-shadow:0 30px 60px rgba(60,40,20,.14)">
+<div style="height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #E7E0D5">
+<div style="display:flex;align-items:center;gap:40px"><div style="display:flex;align-items:center;gap:8px;font:700 19px 'Bricolage Grotesque'"><span style="width:14px;height:14px;border-radius:7px;background:#EC6A45"></span>GymLLM</div>
+<div style="display:flex;gap:4px;font:600 15px 'Instrument Sans'"><span style="padding:9px 16px">Home</span><span style="padding:9px 16px">Progress</span><span style="padding:9px 16px;border-radius:99px;background:#1C1915;color:#F5F1EA">Friends</span></div></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="height:44px;padding:0 20px;border-radius:22px;background:#EC6A45;display:flex;align-items:center;font:700 15px 'Instrument Sans'">+ Log workout</span><span style="width:40px;height:40px;border-radius:20px;background:#FBE3D9;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#9A3A1F">M</span></div>
+</div>
+<div style="max-width:1200px;margin:0 auto;padding:32px 40px;display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div style="display:flex;align-items:center;gap:18px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:60px;height:60px;border-radius:30px;background:#EC6A45;display:flex;align-items:center;justify-content:center;font:800 22px 'Bricolage Grotesque'">M</span><span style="font:700 30px 'Bricolage Grotesque'">You</span></div>
+<span style="font:800 22px 'Bricolage Grotesque';color:#8A8175">vs</span>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:60px;height:60px;border-radius:30px;background:#5A8FE0;display:flex;align-items:center;justify-content:center;font:800 22px 'Bricolage Grotesque'">SO</span><span style="font:700 30px 'Bricolage Grotesque'">Sam</span></div>
+</div>
+<div style="display:flex;gap:6px;font:600 14px 'Instrument Sans'"><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF">7d</span><span style="padding:8px 14px;border-radius:99px;background:#1C1915;color:#F5F1EA">30d</span><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF">90d</span><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF">1y</span><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF">All time</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+<div style="background:#FFFFFF;border-radius:22px;padding:16px 20px;display:flex;flex-direction:column;gap:6px"><span style="font:500 14px 'Instrument Sans';color:#6B6358">Workouts</span><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:800 32px 'Bricolage Grotesque'">14</span><span style="font:800 32px 'Bricolage Grotesque';color:#2A5696">17</span></div></div>
+<div style="background:#FFFFFF;border-radius:22px;padding:16px 20px;display:flex;flex-direction:column;gap:6px"><span style="font:500 14px 'Instrument Sans';color:#6B6358">Lbs lifted</span><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:800 32px 'Bricolage Grotesque';color:#9A3A1F">86k</span><span style="font:800 32px 'Bricolage Grotesque'">71k</span></div></div>
+<div style="background:#FFFFFF;border-radius:22px;padding:16px 20px;display:flex;flex-direction:column;gap:6px"><span style="font:500 14px 'Instrument Sans';color:#6B6358">Cardio</span><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:800 32px 'Bricolage Grotesque'">22 mi</span><span style="font:800 32px 'Bricolage Grotesque';color:#2A5696">31 mi</span></div></div>
+<div style="background:#FFFFFF;border-radius:22px;padding:16px 20px;display:flex;flex-direction:column;gap:6px"><span style="font:500 14px 'Instrument Sans';color:#6B6358">Week streak</span><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:800 32px 'Bricolage Grotesque'">4</span><span style="font:800 32px 'Bricolage Grotesque';color:#2A5696">6</span></div></div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px">
+<div style="background:#FFFFFF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 18px 'Bricolage Grotesque'">Lifts you both do</span><span style="display:flex;gap:14px;font:500 13px 'Instrument Sans';color:#6B6358"><span style="display:flex;gap:6px;align-items:center"><span style="width:10px;height:10px;border-radius:5px;background:#EC6A45"></span>You</span><span style="display:flex;gap:6px;align-items:center"><span style="width:10px;height:10px;border-radius:5px;background:#5A8FE0"></span>Sam</span></span></div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font:600 15px 'Instrument Sans'"><span>Back squat</span><span style="color:#6B6358">205 · 225 lbs · Sam +20</span></div><div style="display:flex;gap:4px;height:12px"><span style="flex:205;background:#EC6A45;border-radius:6px"></span><span style="flex:225;background:#5A8FE0;border-radius:6px"></span></div></div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font:600 15px 'Instrument Sans'"><span>Bench press</span><span style="color:#6B6358">185 · 175 lbs · You +10</span></div><div style="display:flex;gap:4px;height:12px"><span style="flex:185;background:#EC6A45;border-radius:6px"></span><span style="flex:175;background:#5A8FE0;border-radius:6px"></span></div></div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font:600 15px 'Instrument Sans'"><span>Deadlift</span><span style="color:#6B6358">245 · 275 lbs · Sam +30</span></div><div style="display:flex;gap:4px;height:12px"><span style="flex:245;background:#EC6A45;border-radius:6px"></span><span style="flex:275;background:#5A8FE0;border-radius:6px"></span></div></div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font:600 15px 'Instrument Sans'"><span>Lat pulldown</span><span style="color:#6B6358">120 · 120 lbs · tied</span></div><div style="display:flex;gap:4px;height:12px"><span style="flex:1;background:#EC6A45;border-radius:6px"></span><span style="flex:1;background:#5A8FE0;border-radius:6px"></span></div></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:700 18px 'Bricolage Grotesque'">Muscle split</span>
+<div style="display:grid;grid-template-columns:80px 1fr 64px;gap:10px;align-items:center;font:500 14px 'Instrument Sans'"><span>Legs</span><span style="display:flex;flex-direction:column;gap:3px"><span style="height:7px;width:56%;border-radius:4px;background:#EC6A45"></span><span style="height:7px;width:82%;border-radius:4px;background:#5A8FE0"></span></span><span style="text-align:right;color:#6B6358">28 / 41%</span></div>
+<div style="display:grid;grid-template-columns:80px 1fr 64px;gap:10px;align-items:center;font:500 14px 'Instrument Sans'"><span>Back</span><span style="display:flex;flex-direction:column;gap:3px"><span style="height:7px;width:60%;border-radius:4px;background:#EC6A45"></span><span style="height:7px;width:44%;border-radius:4px;background:#5A8FE0"></span></span><span style="text-align:right;color:#6B6358">30 / 22%</span></div>
+<div style="display:grid;grid-template-columns:80px 1fr 64px;gap:10px;align-items:center;font:500 14px 'Instrument Sans'"><span>Chest</span><span style="display:flex;flex-direction:column;gap:3px"><span style="height:7px;width:48%;border-radius:4px;background:#EC6A45"></span><span style="height:7px;width:30%;border-radius:4px;background:#5A8FE0"></span></span><span style="text-align:right;color:#6B6358">24 / 15%</span></div>
+<div style="display:grid;grid-template-columns:80px 1fr 64px;gap:10px;align-items:center;font:500 14px 'Instrument Sans'"><span>Shoulders</span><span style="display:flex;flex-direction:column;gap:3px"><span style="height:7px;width:36%;border-radius:4px;background:#EC6A45"></span><span style="height:7px;width:44%;border-radius:4px;background:#5A8FE0"></span></span><span style="text-align:right;color:#6B6358">18 / 22%</span></div>
+<span style="font:400 13px 'Instrument Sans';color:#6B6358">Share of each person's logged exercises.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</section>
+
+<section id="1" style="padding:72px 80px 120px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:12px;max-width:760px">
+<div style="display:flex;align-items:center;gap:10px"><span style="font:600 13px 'Instrument Sans';background:#1C1915;color:#F5F1EA;padding:4px 10px;border-radius:99px">1</span><span style="font:600 13px 'Instrument Sans';letter-spacing:.08em;text-transform:uppercase;color:#6B6358">Mobile redesign · direction 1</span></div>
+<h1 style="margin:0;font:700 56px/1 'Bricolage Grotesque';letter-spacing:-.02em">A warm, social training log</h1>
+<p style="margin:0;font:400 19px/1.5 'Instrument Sans';color:#4F483F;text-wrap:pretty">No models, keys or tables on the surface. You describe your workout like you'd text a friend, then see it laid out. The feed and high-fives come first, and progress uses big friendly numbers. Warm cream background, one coral accent for you and a blue for friends, set in Bricolage Grotesque and Instrument Sans.</p>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:56px 48px;align-items:flex-start">
+
+<!-- 01 WELCOME -->
+<div data-screen-label="01 Welcome" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">01 · Welcome</div>
+<div style="width:390px;height:844px;padding:10px;background:#1C1915;border-radius:56px;box-shadow:0 30px 60px rgba(60,40,20,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#F5F1EA;display:flex;flex-direction:column">
+<div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:600 15px 'Instrument Sans';z-index:2"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:#1C1915"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid #1C1915"></span></span></div>
+<div style="height:470px;background:repeating-linear-gradient(135deg,#EFE6D9 0 12px,#E6DCCD 12px 24px);display:flex;align-items:flex-end;padding:24px">
+<span style="font:500 12px ui-monospace,Menlo,monospace;color:#6B6358;background:#F5F1EA;padding:6px 10px;border-radius:8px">photo: friends mid-workout, candid, warm light</span>
+</div>
+<div style="flex:1;padding:28px 28px 40px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:8px;font:700 17px 'Bricolage Grotesque'"><span style="width:14px;height:14px;border-radius:7px;background:#EC6A45"></span>GymLLM</div>
+<h2 style="margin:0;font:700 34px/1.05 'Bricolage Grotesque';letter-spacing:-.02em;text-wrap:pretty">Log your workout like you'd text a friend.</h2>
+<p style="margin:0;font:400 16px/1.45 'Instrument Sans';color:#4F483F">Lifting, running, yoga, a walk home. Just say what you did and we'll keep track.</p>
+<div style="flex:1"></div>
+<div style="height:56px;border-radius:28px;background:#1C1915;color:#F5F1EA;display:flex;align-items:center;justify-content:center;gap:10px;font:600 17px 'Instrument Sans'"><span style="width:20px;height:20px;border-radius:10px;background:#F5F1EA"></span>Continue with Google</div>
+<div style="text-align:center;font:400 13px 'Instrument Sans';color:#6B6358">Free. Private until you add friends.</div>
+</div>
+</div></div></div>
+
+<!-- 02 LOG -->
+<div data-screen-label="02 Log" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">02 · Log a workout</div>
+<div style="width:390px;height:844px;padding:10px;background:#1C1915;border-radius:56px;box-shadow:0 30px 60px rgba(60,40,20,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#F5F1EA">
+<div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:600 15px 'Instrument Sans'"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:#1C1915"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid #1C1915"></span></span></div>
+<div style="padding:14px 22px 0;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="font:500 14px 'Instrument Sans';color:#6B6358">Thursday, 24 Sep</div>
+<h2 style="margin:0;font:700 32px/1.05 'Bricolage Grotesque';letter-spacing:-.02em">What did you get up to, Maya?</h2>
+</div>
+<div style="background:#FFFFFF;border-radius:26px;padding:20px;display:flex;flex-direction:column;gap:18px;box-shadow:0 1px 0 #E7E0D5,0 10px 24px rgba(60,40,20,.06)">
+<div style="font:400 20px/1.4 'Instrument Sans';min-height:140px">bench 185 for 5x5, lat pulldowns 3x10, then walked 3 miles home. weighed in at 130<span style="display:inline-block;width:2px;height:22px;background:#EC6A45;vertical-align:-4px;margin-left:2px"></span></div>
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;background:#F5F1EA;border-radius:99px;padding:3px;font:600 14px 'Instrument Sans'"><span style="padding:8px 14px;border-radius:99px;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,.08)">lbs</span><span style="padding:8px 14px;color:#6B6358">kg</span></div>
+<div style="height:48px;padding:0 24px;border-radius:24px;background:#EC6A45;display:flex;align-items:center;font:700 16px 'Instrument Sans'">Log it</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font:600 13px 'Instrument Sans';color:#6B6358">Or try something like</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;font:500 14px 'Instrument Sans'">
+<span style="padding:9px 14px;border-radius:99px;border:1.5px solid #E0D8CB;background:#FBF8F3">Ran 5k in 28 min</span>
+<span style="padding:9px 14px;border-radius:99px;border:1.5px solid #E0D8CB;background:#FBF8F3">Squats 3×8 at 135</span>
+<span style="padding:9px 14px;border-radius:99px;border:1.5px solid #E0D8CB;background:#FBF8F3">Yoga, 45 min</span>
+<span style="padding:9px 14px;border-radius:99px;border:1.5px solid #E0D8CB;background:#FBF8F3">Weighed in at 142</span>
+</div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 16px 'Bricolage Grotesque'">This week</span><span style="font:500 13px 'Instrument Sans';color:#6B6358">3 of 7 days · 4-week streak</span></div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;font:600 12px 'Instrument Sans';color:#6B6358">
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="width:34px;height:34px;border-radius:17px;background:#EC6A45"></span>M</div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="width:34px;height:34px;border-radius:17px;background:#F0EAE0"></span>T</div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="width:34px;height:34px;border-radius:17px;background:#EC6A45"></span>W</div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center;color:#1C1915"><span style="width:30px;height:30px;border-radius:17px;border:2px dashed #EC6A45"></span>T</div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="width:34px;height:34px;border-radius:17px;background:#F0EAE0"></span>F</div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="width:34px;height:34px;border-radius:17px;background:#F0EAE0"></span>S</div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="width:34px;height:34px;border-radius:17px;background:#EC6A45"></span>S</div>
+</div>
+</div>
+<div style="display:flex;justify-content:space-between;font:500 14px 'Instrument Sans';color:#6B6358"><span>Prefer a form? <span style="color:#1C1915;text-decoration:underline">Add manually</span></span><span>17 free logs left today</span></div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:88px;background:#FFFFFF;border-top:1px solid #E7E0D5;display:grid;grid-template-columns:repeat(5,1fr);padding-top:12px;font:600 12px 'Instrument Sans';color:#8A8175">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span>Home</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;display:flex;align-items:flex-end;gap:3px"><span style="width:5px;height:10px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:16px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:22px;background:currentColor;border-radius:2px"></span></span>Progress</div>
+<div style="display:flex;justify-content:center"><div style="width:58px;height:58px;border-radius:29px;background:#1C1915;margin-top:-28px;display:flex;align-items:center;justify-content:center;font:500 32px/1 'Bricolage Grotesque';color:#F5F1EA;border:4px solid #F5F1EA">+</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:26px;height:22px;position:relative"><span style="position:absolute;left:0;top:3px;width:14px;height:14px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span><span style="position:absolute;right:0;top:3px;width:14px;height:14px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span></span>Friends</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:11px;border:2px solid currentColor;box-sizing:border-box"></span>Me</div>
+</div>
+</div></div></div>
+
+<!-- 03 REVIEW -->
+<div data-screen-label="03 Review" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">03 · Check it over</div>
+<div style="width:390px;height:844px;padding:10px;background:#1C1915;border-radius:56px;box-shadow:0 30px 60px rgba(60,40,20,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#F5F1EA">
+<div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:600 15px 'Instrument Sans'"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:#1C1915"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid #1C1915"></span></span></div>
+<div style="padding:6px 22px 0;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:center;font:600 15px 'Instrument Sans'"><span>‹ Edit text</span><span style="color:#6B6358">Cancel</span></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<h2 style="margin:0;font:700 30px/1.05 'Bricolage Grotesque';letter-spacing:-.02em">Here's what we heard.</h2>
+<div style="display:flex;gap:8px"><span style="padding:8px 14px;border-radius:99px;background:#1C1915;color:#F5F1EA;font:600 14px 'Instrument Sans'">Today · Thu 24 Sep ▾</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 17px 'Bricolage Grotesque'">Lifts</span><span style="font:600 14px 'Instrument Sans';color:#C4492A">+ Add</span></div>
+<div style="background:#FFFFFF;border-radius:20px;overflow:hidden">
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid #EFE8DD">
+<div style="display:flex;justify-content:space-between"><span style="font:600 16px 'Instrument Sans'">Bench press</span><span style="font:500 13px 'Instrument Sans';color:#8A8175">Remove</span></div>
+<div style="display:flex;gap:8px;font:600 15px 'Instrument Sans'"><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">185 lbs</span><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">5 sets</span><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">5 reps</span></div>
+</div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between"><span style="font:600 16px 'Instrument Sans'">Lat pulldown</span><span style="font:500 13px 'Instrument Sans';color:#8A8175">Remove</span></div>
+<div style="display:flex;gap:8px;font:600 15px 'Instrument Sans'"><span style="padding:6px 12px;border-radius:12px;border:1.5px dashed #D6CCBD;color:#6B6358">+ weight</span><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">3 sets</span><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">10 reps</span></div>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 17px 'Bricolage Grotesque'">Cardio</span><span style="font:600 14px 'Instrument Sans';color:#C4492A">+ Add</span></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<span style="font:600 16px 'Instrument Sans'">Walk</span>
+<div style="display:flex;gap:8px;font:600 15px 'Instrument Sans'"><span style="padding:8px 12px;border-radius:12px;background:#F5F1EA">3 miles</span><span style="padding:6px 12px;border-radius:12px;border:1.5px dashed #D6CCBD;color:#6B6358">+ time</span></div>
+</div>
+</div>
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center">
+<div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 17px 'Bricolage Grotesque'">Body weight</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Only you see this</span></div>
+<span style="padding:8px 12px;border-radius:12px;background:#F5F1EA;font:600 15px 'Instrument Sans'">130 lbs</span>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;padding:16px 22px 34px;background:linear-gradient(rgba(245,241,234,0),#F5F1EA 30%)">
+<div style="height:56px;border-radius:28px;background:#1C1915;color:#F5F1EA;display:flex;align-items:center;justify-content:center;font:600 17px 'Instrument Sans'">Save workout</div>
+</div>
+</div></div></div>
+
+<!-- 04 HOME / FEED -->
+<div data-screen-label="04 Home feed" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">04 · Home: your week and friends</div>
+<div style="width:390px;height:844px;padding:10px;background:#1C1915;border-radius:56px;box-shadow:0 30px 60px rgba(60,40,20,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#F5F1EA">
+<div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:600 15px 'Instrument Sans'"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:#1C1915"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid #1C1915"></span></span></div>
+<div style="padding:8px 20px 0;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font:700 30px 'Bricolage Grotesque';letter-spacing:-.02em">Evening, Maya</h2><span style="width:40px;height:40px;border-radius:20px;background:#FBE3D9;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#9A3A1F">M</span></div>
+<div style="background:#EC6A45;border-radius:26px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end">
+<div style="display:flex;flex-direction:column"><span style="font:600 14px 'Instrument Sans'">This week</span><span style="font:800 44px/1 'Bricolage Grotesque';letter-spacing:-.02em">3 <span style="font-size:22px;font-weight:600">of 7 days</span></span></div>
+<span style="padding:7px 12px;border-radius:99px;background:#1C1915;color:#F5F1EA;font:600 13px 'Instrument Sans'">4-week streak</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+<span style="height:8px;border-radius:4px;background:#1C1915"></span><span style="height:8px;border-radius:4px;background:rgba(28,25,21,.18)"></span><span style="height:8px;border-radius:4px;background:#1C1915"></span><span style="height:8px;border-radius:4px;background:#1C1915"></span><span style="height:8px;border-radius:4px;background:rgba(28,25,21,.18)"></span><span style="height:8px;border-radius:4px;background:rgba(28,25,21,.18)"></span><span style="height:8px;border-radius:4px;background:rgba(28,25,21,.18)"></span>
+</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 19px 'Bricolage Grotesque'">Friends</span><span style="font:600 14px 'Instrument Sans';color:#6B6358">See all</span></div>
+<div style="background:#FFFFFF;border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;border-radius:21px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#2A5696">SO</span><div style="display:flex;flex-direction:column;flex:1"><span style="font:600 16px 'Instrument Sans'">Sam Okafor</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Today · 3 exercises</span></div></div>
+<div style="display:flex;flex-direction:column;gap:8px;font:500 15px 'Instrument Sans'">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;gap:8px;align-items:center">Back squat <span style="padding:2px 8px;border-radius:99px;background:#EC6A45;font:700 11px 'Instrument Sans';letter-spacing:.04em">NEW BEST</span></span><span style="color:#4F483F">225 lbs · 5×5</span></div>
+<div style="display:flex;justify-content:space-between"><span>Romanian deadlift</span><span style="color:#4F483F">185 lbs · 3×8</span></div>
+<div style="display:flex;justify-content:space-between"><span>Run</span><span style="color:#4F483F">2 mi · 18 min</span></div>
+</div>
+<div style="display:flex;gap:8px;align-items:center;padding-top:4px;border-top:1px solid #EFE8DD;padding-top:12px">
+<span style="padding:8px 14px;border-radius:99px;background:#FBE3D9;color:#9A3A1F;font:700 14px 'Instrument Sans'">High five · 6</span>
+<span style="padding:8px 14px;border-radius:99px;background:#F5F1EA;font:600 14px 'Instrument Sans'">2 comments</span>
+</div>
+<div style="font:400 14px/1.4 'Instrument Sans';color:#4F483F"><b style="color:#1C1915">Priya</b> that squat though. See you Saturday?</div>
+</div>
+<div style="background:#FFFFFF;border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;border-radius:21px;background:#F3DDC8;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque';color:#7A4A1E">PN</span><div style="display:flex;flex-direction:column;flex:1"><span style="font:600 16px 'Instrument Sans'">Priya Nair</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Yesterday · 2 activities</span></div></div>
+<div style="display:flex;flex-direction:column;gap:8px;font:500 15px 'Instrument Sans'">
+<div style="display:flex;justify-content:space-between"><span>Yoga flow</span><span style="color:#4F483F">45 min</span></div>
+<div style="display:flex;justify-content:space-between"><span>Swim</span><span style="color:#4F483F">1,000 m · 30 min</span></div>
+</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:88px;background:#FFFFFF;border-top:1px solid #E7E0D5;display:grid;grid-template-columns:repeat(5,1fr);padding-top:12px;font:600 12px 'Instrument Sans';color:#8A8175">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;color:#1C1915"><span style="width:22px;height:22px;border-radius:7px;background:#1C1915"></span>Home</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;display:flex;align-items:flex-end;gap:3px"><span style="width:5px;height:10px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:16px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:22px;background:currentColor;border-radius:2px"></span></span>Progress</div>
+<div style="display:flex;justify-content:center"><div style="width:58px;height:58px;border-radius:29px;background:#1C1915;margin-top:-28px;display:flex;align-items:center;justify-content:center;font:500 32px/1 'Bricolage Grotesque';color:#F5F1EA;border:4px solid #F5F1EA">+</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:26px;height:22px;position:relative"><span style="position:absolute;left:0;top:3px;width:14px;height:14px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span><span style="position:absolute;right:0;top:3px;width:14px;height:14px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span></span>Friends</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:11px;border:2px solid currentColor;box-sizing:border-box"></span>Me</div>
+</div>
+</div></div></div>
+
+<!-- 05 DAY + SHARE -->
+<div data-screen-label="05 Day" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">05 · A day, ready to share</div>
+<div style="width:390px;height:844px;padding:10px;background:#1C1915;border-radius:56px;box-shadow:0 30px 60px rgba(60,40,20,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#F5F1EA">
+<div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:600 15px 'Instrument Sans'"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:#1C1915"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid #1C1915"></span></span></div>
+<div style="padding:6px 20px 0;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="width:40px;height:40px;border-radius:20px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font:600 20px 'Instrument Sans'">‹</span><div style="text-align:center"><div style="font:700 22px 'Bricolage Grotesque'">Thu 24 Sep</div><div style="font:500 13px 'Instrument Sans';color:#6B6358">Today</div></div><span style="width:40px;height:40px;border-radius:20px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font:600 20px 'Instrument Sans';color:#C9BFB0">›</span></div>
+<div style="background:#EC6A45;border-radius:28px;padding:22px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;justify-content:space-between;font:700 12px 'Instrument Sans';letter-spacing:.1em"><span style="white-space:nowrap">MAYA · THU 24 SEP</span><span>GYMLLM</span></div>
+<div style="font:800 64px/.9 'Bricolage Grotesque';letter-spacing:-.03em">8 sets.<br>3 miles.</div>
+<div style="display:flex;flex-direction:column;gap:6px;font:600 15px 'Instrument Sans'">
+<div style="display:flex;justify-content:space-between;border-top:1.5px solid rgba(28,25,21,.25);padding-top:8px"><span>Bench press · new best</span><span>185 × 5×5</span></div>
+<div style="display:flex;justify-content:space-between;border-top:1.5px solid rgba(28,25,21,.25);padding-top:8px"><span>Lat pulldown</span><span>3×10</span></div>
+<div style="display:flex;justify-content:space-between;border-top:1.5px solid rgba(28,25,21,.25);padding-top:8px"><span>Walk</span><span>3 mi</span></div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+<div style="background:#FFFFFF;border-radius:18px;padding:12px 14px"><div style="font:500 12px 'Instrument Sans';color:#6B6358">Exercises</div><div style="font:700 26px 'Bricolage Grotesque'">3</div></div>
+<div style="background:#FFFFFF;border-radius:18px;padding:12px 14px"><div style="font:500 12px 'Instrument Sans';color:#6B6358">Reps</div><div style="font:700 26px 'Bricolage Grotesque'">55</div></div>
+<div style="background:#FFFFFF;border-radius:18px;padding:12px 14px"><div style="font:500 12px 'Instrument Sans';color:#6B6358">Volume</div><div style="font:700 26px 'Bricolage Grotesque'">4.6k</div></div>
+</div>
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 16px 'Bricolage Grotesque'">From friends</span><span style="font:600 13px 'Instrument Sans';color:#9A3A1F">4 high fives</span></div>
+<div style="display:flex;gap:10px;align-items:flex-start"><span style="width:30px;height:30px;flex:none;border-radius:15px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 12px 'Bricolage Grotesque';color:#2A5696">SO</span><span style="font:400 14px/1.4 'Instrument Sans'"><b>Sam</b> 185 already?! Catching me up.</span></div>
+</div>
+<div style="display:flex;gap:10px">
+<div style="flex:1;height:54px;border-radius:27px;background:#1C1915;color:#F5F1EA;display:flex;align-items:center;justify-content:center;font:600 16px 'Instrument Sans'">Share to story</div>
+<div style="width:96px;height:54px;border-radius:27px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font:600 16px 'Instrument Sans'">Edit</div>
+</div>
+<div style="text-align:center;font:400 13px 'Instrument Sans';color:#6B6358">Body weight is never included when you share.</div>
+</div>
+</div></div></div>
+
+<!-- 06 PROGRESS -->
+<div data-screen-label="06 Progress" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">06 · Progress</div>
+<div style="width:390px;height:844px;padding:10px;background:#1C1915;border-radius:56px;box-shadow:0 30px 60px rgba(60,40,20,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#F5F1EA">
+<div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:600 15px 'Instrument Sans'"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:#1C1915"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid #1C1915"></span></span></div>
+<div style="padding:8px 20px 0;display:flex;flex-direction:column;gap:14px">
+<h2 style="margin:0;font:700 30px 'Bricolage Grotesque';letter-spacing:-.02em">Progress</h2>
+<div style="display:flex;gap:20px;font:600 15px 'Instrument Sans';color:#6B6358;border-bottom:1px solid #E0D8CB"><span style="color:#1C1915;padding-bottom:10px;border-bottom:2.5px solid #1C1915">Overview</span><span>Sessions</span><span>Exercises</span></div>
+<div style="display:flex;gap:6px;font:600 14px 'Instrument Sans'"><span style="padding:7px 12px;border-radius:99px;background:#FFFFFF">7d</span><span style="padding:7px 12px;border-radius:99px;background:#1C1915;color:#F5F1EA">30d</span><span style="padding:7px 12px;border-radius:99px;background:#FFFFFF">90d</span><span style="padding:7px 12px;border-radius:99px;background:#FFFFFF">1y</span><span style="padding:7px 12px;border-radius:99px;background:#FFFFFF">All</span></div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Workouts</div><div style="font:800 34px 'Bricolage Grotesque';letter-spacing:-.02em">14</div></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Streak</div><div style="font:800 34px 'Bricolage Grotesque';letter-spacing:-.02em">4 <span style="font-size:18px;font-weight:600">weeks</span></div></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Lifted</div><div style="font:800 34px 'Bricolage Grotesque';letter-spacing:-.02em">86k <span style="font-size:18px;font-weight:600">lbs</span></div></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:14px 16px"><div style="font:500 13px 'Instrument Sans';color:#6B6358">Cardio</div><div style="font:800 34px 'Bricolage Grotesque';letter-spacing:-.02em">22 <span style="font-size:18px;font-weight:600">mi</span></div></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 16px 'Bricolage Grotesque'">Workouts per week</span><span style="font:500 13px 'Instrument Sans';color:#6B6358">last 8 weeks</span></div>
+<div style="height:96px;display:grid;grid-template-columns:repeat(8,1fr);gap:10px;align-items:end">
+<span style="height:40%;border-radius:8px;background:#F0E2D8"></span><span style="height:60%;border-radius:8px;background:#F0E2D8"></span><span style="height:40%;border-radius:8px;background:#F0E2D8"></span><span style="height:80%;border-radius:8px;background:#F0E2D8"></span><span style="height:60%;border-radius:8px;background:#F0E2D8"></span><span style="height:80%;border-radius:8px;background:#F0E2D8"></span><span style="height:100%;border-radius:8px;background:#F0E2D8"></span><span style="height:60%;border-radius:8px;background:#EC6A45"></span>
+</div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px">
+<span style="font:700 16px 'Bricolage Grotesque'">New personal bests</span>
+<div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;flex-direction:column"><span style="font:600 15px 'Instrument Sans'">Bench press</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Thu 24 Sep · up from 180</span></div><span style="font:800 22px 'Bricolage Grotesque'">185 <span style="font-size:14px;font-weight:600">lbs</span></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #EFE8DD;padding-top:12px"><div style="display:flex;flex-direction:column"><span style="font:600 15px 'Instrument Sans'">Back squat</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">Mon 14 Sep · up from 195</span></div><span style="font:800 22px 'Bricolage Grotesque'">205 <span style="font-size:14px;font-weight:600">lbs</span></span></div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:88px;background:#FFFFFF;border-top:1px solid #E7E0D5;display:grid;grid-template-columns:repeat(5,1fr);padding-top:12px;font:600 12px 'Instrument Sans';color:#8A8175">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span>Home</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;color:#1C1915"><span style="width:22px;height:22px;display:flex;align-items:flex-end;gap:3px"><span style="width:5px;height:10px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:16px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:22px;background:currentColor;border-radius:2px"></span></span>Progress</div>
+<div style="display:flex;justify-content:center"><div style="width:58px;height:58px;border-radius:29px;background:#1C1915;margin-top:-28px;display:flex;align-items:center;justify-content:center;font:500 32px/1 'Bricolage Grotesque';color:#F5F1EA;border:4px solid #F5F1EA">+</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:26px;height:22px;position:relative"><span style="position:absolute;left:0;top:3px;width:14px;height:14px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span><span style="position:absolute;right:0;top:3px;width:14px;height:14px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span></span>Friends</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:11px;border:2px solid currentColor;box-sizing:border-box"></span>Me</div>
+</div>
+</div></div></div>
+
+<!-- 07 FRIEND PROFILE -->
+<div data-screen-label="07 Profile" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">07 · A friend's profile</div>
+<div style="width:390px;height:844px;padding:10px;background:#1C1915;border-radius:56px;box-shadow:0 30px 60px rgba(60,40,20,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#F5F1EA">
+<div style="background:#DCE7F8;height:190px;position:relative">
+<div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:600 15px 'Instrument Sans'"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:#1C1915"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid #1C1915"></span></span></div>
+<div style="padding:4px 20px;font:600 15px 'Instrument Sans'">‹ Friends</div>
+<span style="position:absolute;left:20px;bottom:-44px;width:96px;height:96px;border-radius:48px;background:#5A8FE0;border:5px solid #F5F1EA;display:flex;align-items:center;justify-content:center;font:800 32px 'Bricolage Grotesque';color:#1C1915;box-sizing:border-box">SO</span>
+</div>
+<div style="padding:56px 20px 0;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-direction:column;gap:4px">
+<h2 style="margin:0;font:700 28px 'Bricolage Grotesque';letter-spacing:-.02em">Sam Okafor</h2>
+<div style="font:500 14px 'Instrument Sans';color:#6B6358">@sam.lifts · 42 friends · since Mar 2025</div>
+<p style="margin:4px 0 0;font:400 15px/1.45 'Instrument Sans'">Marathon in November. Squats in between.</p>
+</div>
+<div style="display:flex;gap:8px">
+<div style="flex:1;height:48px;border-radius:24px;background:#5A8FE0;display:flex;align-items:center;justify-content:center;font:700 15px 'Instrument Sans'">Compare with you</div>
+<div style="height:48px;padding:0 18px;border-radius:24px;border:1.5px solid #D6CCBD;display:flex;align-items:center;font:600 15px 'Instrument Sans'">Friends ✓</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+<div style="background:#FFFFFF;border-radius:18px;padding:12px 14px"><div style="font:500 12px 'Instrument Sans';color:#6B6358">Workouts</div><div style="font:700 26px 'Bricolage Grotesque'">17</div></div>
+<div style="background:#FFFFFF;border-radius:18px;padding:12px 14px"><div style="font:500 12px 'Instrument Sans';color:#6B6358">Sets</div><div style="font:700 26px 'Bricolage Grotesque'">212</div></div>
+<div style="background:#FFFFFF;border-radius:18px;padding:12px 14px"><div style="font:500 12px 'Instrument Sans';color:#6B6358">Cardio</div><div style="font:700 26px 'Bricolage Grotesque'">340<span style="font-size:13px;font-weight:600"> min</span></div></div>
+</div>
+<div style="font:500 13px 'Instrument Sans';color:#6B6358;margin-top:-6px">Last 30 days · 6-week streak</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px">
+<span style="font:700 16px 'Bricolage Grotesque'">Favourites</span>
+<div style="display:flex;gap:12px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque'">1</span><span style="flex:1;font:600 15px 'Instrument Sans'">Run</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">12 sessions</span></div>
+<div style="display:flex;gap:12px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque'">2</span><span style="flex:1;font:600 15px 'Instrument Sans'">Back squat</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">8 · best 225</span></div>
+<div style="display:flex;gap:12px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#DCE7F8;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque'">3</span><span style="flex:1;font:600 15px 'Instrument Sans'">Romanian deadlift</span><span style="font:400 13px 'Instrument Sans';color:#6B6358">6 · best 185</span></div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:88px;background:#FFFFFF;border-top:1px solid #E7E0D5;display:grid;grid-template-columns:repeat(5,1fr);padding-top:12px;font:600 12px 'Instrument Sans';color:#8A8175">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span>Home</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;display:flex;align-items:flex-end;gap:3px"><span style="width:5px;height:10px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:16px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:22px;background:currentColor;border-radius:2px"></span></span>Progress</div>
+<div style="display:flex;justify-content:center"><div style="width:58px;height:58px;border-radius:29px;background:#1C1915;margin-top:-28px;display:flex;align-items:center;justify-content:center;font:500 32px/1 'Bricolage Grotesque';color:#F5F1EA;border:4px solid #F5F1EA">+</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;color:#1C1915"><span style="width:26px;height:22px;position:relative"><span style="position:absolute;left:0;top:3px;width:14px;height:14px;border-radius:7px;background:#1C1915"></span><span style="position:absolute;right:0;top:3px;width:14px;height:14px;border-radius:7px;background:#1C1915"></span></span>Friends</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:11px;border:2px solid currentColor;box-sizing:border-box"></span>Me</div>
+</div>
+</div></div></div>
+
+<!-- 08 COMPARE -->
+<div data-screen-label="08 Compare" style="display:flex;flex-direction:column;gap:14px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">08 · You vs a friend</div>
+<div style="width:390px;height:844px;padding:10px;background:#1C1915;border-radius:56px;box-shadow:0 30px 60px rgba(60,40,20,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#F5F1EA">
+<div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:600 15px 'Instrument Sans'"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:#1C1915"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid #1C1915"></span></span></div>
+<div style="padding:6px 20px 0;display:flex;flex-direction:column;gap:16px">
+<div style="font:600 15px 'Instrument Sans'">‹ Sam</div>
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:52px;height:52px;border-radius:26px;background:#EC6A45;display:flex;align-items:center;justify-content:center;font:800 20px 'Bricolage Grotesque'">M</span><span style="font:700 22px 'Bricolage Grotesque'">You</span></div>
+<span style="font:800 18px 'Bricolage Grotesque';color:#8A8175">vs</span>
+<div style="display:flex;align-items:center;gap:10px"><span style="font:700 22px 'Bricolage Grotesque'">Sam</span><span style="width:52px;height:52px;border-radius:26px;background:#5A8FE0;display:flex;align-items:center;justify-content:center;font:800 20px 'Bricolage Grotesque'">SO</span></div>
+</div>
+<div style="display:flex;gap:6px;font:600 14px 'Instrument Sans';justify-content:center"><span style="padding:7px 12px;border-radius:99px;background:#FFFFFF">7d</span><span style="padding:7px 12px;border-radius:99px;background:#1C1915;color:#F5F1EA">30d</span><span style="padding:7px 12px;border-radius:99px;background:#FFFFFF">90d</span><span style="padding:7px 12px;border-radius:99px;background:#FFFFFF">1y</span></div>
+<div style="background:#FFFFFF;border-radius:22px;padding:6px 16px">
+<div style="display:grid;grid-template-columns:1fr 1.2fr 1fr;align-items:center;padding:10px 0;border-bottom:1px solid #EFE8DD"><span style="font:700 22px 'Bricolage Grotesque'">14</span><span style="text-align:center;font:500 13px 'Instrument Sans';color:#6B6358">Workouts</span><span style="text-align:right;font:700 22px 'Bricolage Grotesque';color:#2A5696">17</span></div>
+<div style="display:grid;grid-template-columns:1fr 1.2fr 1fr;align-items:center;padding:10px 0;border-bottom:1px solid #EFE8DD"><span style="font:700 22px 'Bricolage Grotesque';color:#9A3A1F">86k</span><span style="text-align:center;font:500 13px 'Instrument Sans';color:#6B6358">Lbs lifted</span><span style="text-align:right;font:700 22px 'Bricolage Grotesque'">71k</span></div>
+<div style="display:grid;grid-template-columns:1fr 1.2fr 1fr;align-items:center;padding:10px 0"><span style="font:700 22px 'Bricolage Grotesque'">22 mi</span><span style="text-align:center;font:500 13px 'Instrument Sans';color:#6B6358">Cardio</span><span style="text-align:right;font:700 22px 'Bricolage Grotesque';color:#2A5696">31 mi</span></div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px">
+<span style="font:700 16px 'Bricolage Grotesque'">Lifts you both do</span>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font:600 14px 'Instrument Sans'"><span>Back squat</span><span style="color:#6B6358">205 · 225</span></div><div style="display:flex;gap:4px;height:10px"><span style="flex:205;background:#EC6A45;border-radius:5px"></span><span style="flex:225;background:#5A8FE0;border-radius:5px"></span></div></div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font:600 14px 'Instrument Sans'"><span>Bench press</span><span style="color:#6B6358">185 · 175</span></div><div style="display:flex;gap:4px;height:10px"><span style="flex:185;background:#EC6A45;border-radius:5px"></span><span style="flex:175;background:#5A8FE0;border-radius:5px"></span></div></div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font:600 14px 'Instrument Sans'"><span>Deadlift</span><span style="color:#6B6358">245 · 275</span></div><div style="display:flex;gap:4px;height:10px"><span style="flex:245;background:#EC6A45;border-radius:5px"></span><span style="flex:275;background:#5A8FE0;border-radius:5px"></span></div></div>
+<div style="display:flex;gap:14px;font:500 12px 'Instrument Sans';color:#6B6358"><span style="display:flex;gap:6px;align-items:center"><span style="width:10px;height:10px;border-radius:5px;background:#EC6A45"></span>You</span><span style="display:flex;gap:6px;align-items:center"><span style="width:10px;height:10px;border-radius:5px;background:#5A8FE0"></span>Sam</span><span>Best weight, lbs</span></div>
+</div>
+</div>
+</div></div></div>
+
+</div>
+</section>
+</x-dc>
+</body>
+</html>

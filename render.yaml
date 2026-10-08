@@ -18,6 +18,9 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      # The iOS app's OAuth client ID, so the app can sign in with Google.
+      - key: GOOGLE_IOS_CLIENT_ID
+        sync: false
       # Optional shared model so visitors need no key of their own.
       - key: SITE_LLM_API_KEY
         sync: false

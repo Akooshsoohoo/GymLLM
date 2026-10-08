@@ -358,7 +358,9 @@ def test_confirm_saves_rows_with_tags_and_skips_deleted(logged_in, app, fake_llm
         "entry-2-notes": "",
     }
     r = logged_in.post("/confirm", data=data)
-    assert r.status_code == 302 and r.headers["Location"] == "/?saved=2026-09-13&session=0#my-latest"
+    assert (
+        r.status_code == 302 and r.headers["Location"] == "/?saved=2026-09-13&session=0#my-latest"
+    )
     with app.app_context():
         rows = Workout.query.order_by(Workout.id).all()
         assert [w.exercise for w in rows] == ["barbell bench press", "made-up movement"]
@@ -951,7 +953,16 @@ def test_day_page_share_payload_excludes_body_weight(
     assert share["stat_line"] == "5 sets · 3 mi" and share["short"] == "TUE 10 MAR"
     assert share["hint"].startswith("chest") and share["hint"].endswith("walking")
     assert set(share) == {
-        "date", "session", "label", "short", "name", "stat_line", "hint", "stats", "lifts", "cardio"
+        "date",
+        "session",
+        "label",
+        "short",
+        "name",
+        "stat_line",
+        "hint",
+        "stats",
+        "lifts",
+        "cardio",
     }
 
 
@@ -1014,7 +1025,10 @@ def test_home_card_shows_one_row_per_exercise(logged_in, add_workout):
 @pytest.mark.parametrize(
     "entries, parts",
     [
-        ([("30", "8, 8"), ("50 lbs", "5"), ("40", "8")], ["30 lbs · 2×8", "50 lbs · 5", "40 lbs · 8"]),
+        (
+            [("30", "8, 8"), ("50 lbs", "5"), ("40", "8")],
+            ["30 lbs · 2×8", "50 lbs · 5", "40 lbs · 8"],
+        ),
         ([("30", "8"), ("30 lbs", "5")], ["30 lbs · 8, 5"]),  # the same weight, merged
         ([("40 lbs", "8, 8"), ("40 lbs", "8")], ["40 lbs · 3×8"]),
         ([("bodyweight", "10"), ("bodyweight", "8")], ["bodyweight · 10, 8"]),
@@ -1475,7 +1489,9 @@ def test_weekly_rest_rule_shows_on_progress_strip(logged_in, add_workout):
 
 def test_interval_rule_and_validation(app, logged_in, add_workout):
     add_workout(date="2026-03-01")  # the week card only shows once something is logged
-    logged_in.post("/rest/rules", data={"kind": "interval", "interval_days": "3", "anchor_date": "2026-03-09"})
+    logged_in.post(
+        "/rest/rules", data={"kind": "interval", "interval_days": "3", "anchor_date": "2026-03-09"}
+    )
     assert _count(app, RestRule) == 1
     logged_in.post("/rest/rules", data={"kind": "interval", "interval_days": "1"})
     logged_in.post("/rest/rules", data={"kind": "weekdays"})
@@ -1570,7 +1586,11 @@ def test_day_edit_refuses_a_future_date_and_bad_weights(app, logged_in, add_work
     assert r.headers["Location"].endswith(path)
     with app.app_context():
         row = db.session.get(Workout, w)
-        assert (row.date, row.exercise, row.weight) == ("2026-03-10", "barbell bench press", "185 lbs")
+        assert (row.date, row.exercise, row.weight) == (
+            "2026-03-10",
+            "barbell bench press",
+            "185 lbs",
+        )
     logged_in.post(path, data={**form, f"lift-{w}-weight": "50"})
     with app.app_context():
         row = db.session.get(Workout, w)

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&family=Young+Serif&family=Figtree:wght@400..800&family=Archivo:wdth,wght@62..125,400..900&family=Gabarito:wght@400..900&family=Onest:wght@400..800&family=Schibsted+Grotesk:wght@400..900&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E4E0DA;font-family:'Instrument Sans',sans-serif;color:#1C1915;-webkit-font-smoothing:antialiased}
+a{color:#1C1915;text-decoration:underline;text-underline-offset:2px}
+a:hover{color:#C4492A}
+</style>
+</helmet>
+<section id="3" style="padding:72px 80px 120px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:12px;max-width:820px">
+<div style="display:flex;align-items:center;gap:10px"><span style="font:600 13px 'Instrument Sans';background:#1C1915;color:#F5F1EA;padding:4px 10px;border-radius:99px">3</span><span style="font:600 13px 'Instrument Sans';letter-spacing:.08em;text-transform:uppercase;color:#6B6358">Palettes, type and dark themes</span></div>
+<h1 style="margin:0;font:700 56px/1 'Bricolage Grotesque';letter-spacing:-.02em">Twelve looks, same app</h1>
+<p style="margin:0;font:400 19px/1.5 'Instrument Sans';color:#4F483F;text-wrap:pretty">Each option shows Home and the share poster on mobile. The layout is identical across them, so only colour and type change: three light, three dark. The newest pair, 6a and 6b, is Fern on a neutral cream or black background; compare it with 5a and 5b directly below, the green-tinted version. 4a and 4b is the original in white and blue, with a black-and-blue dark mode. Option 3a is the current direction, for reference. You can pair any light option with a dark one as its dark mode, e.g. 3a with 3b.</p>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:72px 64px;align-items:flex-start">
+<sc-for list="{{ themes }}" as="t" hint-placeholder-count="6">
+<div id="{{ t.id }}" data-screen-label="{{ t.id }} {{ t.name }}" style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+<div style="display:flex;align-items:center;gap:10px"><span style="font:700 14px 'Instrument Sans';background:#1C1915;color:#F5F1EA;padding:4px 10px;border-radius:99px">{{ t.id }}</span><span style="font:700 26px 'Bricolage Grotesque';letter-spacing:-.01em">{{ t.name }}</span><span style="font:600 12px 'Instrument Sans';letter-spacing:.08em;text-transform:uppercase;color:#6B6358;border:1.5px solid #CFC8BD;border-radius:99px;padding:3px 9px">{{ t.mode }}</span></div>
+<div style="font:400 16px/1.45 'Instrument Sans';color:#4F483F;max-width:760px">{{ t.note }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+<div style="display:flex;gap:6px"><sc-for list="{{ t.swatches }}" as="s" hint-placeholder-count="6"><div style="display:flex;flex-direction:column;gap:4px;align-items:center"><span style="width:44px;height:44px;border-radius:12px;background:{{ s.c }};box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)"></span><span style="font:500 11px 'Instrument Sans';color:#6B6358">{{ s.n }}</span></div></sc-for></div>
+<div style="font:500 14px 'Instrument Sans';color:#4F483F">{{ t.fontLabel }}</div>
+</div>
+</div>
+<div style="display:flex;gap:28px">
+
+<div style="width:390px;height:844px;padding:10px;background:{{ t.frame }};border-radius:56px;box-shadow:0 30px 60px rgba(20,15,10,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:{{ t.bg }};color:{{ t.ink }};font-family:{{ t.body }}">
+<div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-weight:600;font-size:15px"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:{{ t.ink }}"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid {{ t.ink }}"></span></span></div>
+<div style="padding:8px 20px 0;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-family:{{ t.head }};font-weight:{{ t.headW }};font-stretch:{{ t.stretch }};font-size:30px;letter-spacing:{{ t.track }}">Evening, Maya</h2><span style="width:40px;height:40px;border-radius:20px;background:{{ t.youTint }};color:{{ t.youInk }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px">M</span></div>
+<div style="background:{{ t.you }};color:{{ t.onYou }};border-radius:{{ t.radius }};padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end">
+<div style="display:flex;flex-direction:column"><span style="font-weight:600;font-size:14px">This week</span><span style="font-family:{{ t.head }};font-weight:{{ t.heroW }};font-stretch:{{ t.stretch }};font-size:44px;line-height:1;letter-spacing:{{ t.track }};white-space:nowrap">3 <span style="font-size:20px;font-weight:600">of 7 days</span></span></div>
+<span style="flex:none;white-space:nowrap;padding:7px 12px;border-radius:99px;background:{{ t.onYou }};color:{{ t.you }};font-weight:700;font-size:13px">4-week streak</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+<span style="height:8px;border-radius:4px;background:{{ t.onYou }}"></span><span style="height:8px;border-radius:4px;background:{{ t.heroFaint }}"></span><span style="height:8px;border-radius:4px;background:{{ t.onYou }}"></span><span style="height:8px;border-radius:4px;background:{{ t.onYou }}"></span><span style="height:8px;border-radius:4px;background:{{ t.heroFaint }}"></span><span style="height:8px;border-radius:4px;background:{{ t.heroFaint }}"></span><span style="height:8px;border-radius:4px;background:{{ t.heroFaint }}"></span>
+</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:{{ t.head }};font-weight:{{ t.headW }};font-stretch:{{ t.stretch }};font-size:19px">Friends</span><span style="font-weight:600;font-size:14px;color:{{ t.muted }}">See all</span></div>
+<div style="background:{{ t.surface }};border-radius:{{ t.radius }};padding:16px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;border-radius:21px;background:{{ t.friendTint }};color:{{ t.friendInk }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px">SO</span><div style="display:flex;flex-direction:column"><span style="font-weight:600;font-size:16px">Sam Okafor</span><span style="font-size:13px;color:{{ t.muted }}">Today · 3 exercises</span></div></div>
+<div style="display:flex;flex-direction:column;gap:8px;font-weight:500;font-size:15px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;gap:8px;align-items:center;white-space:nowrap;flex:none">Back squat <span style="flex:none;white-space:nowrap;padding:2px 8px;border-radius:99px;background:{{ t.you }};color:{{ t.onYou }};font-weight:700;font-size:11px;letter-spacing:.04em">NEW BEST</span></span><span style="color:{{ t.ink2 }}">225 lbs · 5×5</span></div>
+<div style="display:flex;justify-content:space-between"><span>Romanian deadlift</span><span style="color:{{ t.ink2 }}">185 lbs · 3×8</span></div>
+<div style="display:flex;justify-content:space-between"><span>Run</span><span style="color:{{ t.ink2 }}">2 mi · 18 min</span></div>
+</div>
+<div style="display:flex;gap:8px;border-top:1px solid {{ t.line }};padding-top:12px"><span style="padding:8px 14px;border-radius:99px;background:{{ t.youTint }};color:{{ t.youInk }};font-weight:700;font-size:14px">High five · 6</span><span style="padding:8px 14px;border-radius:99px;background:{{ t.field }};font-weight:600;font-size:14px">2 comments</span></div>
+<div style="font-size:14px;line-height:1.4;color:{{ t.ink2 }}"><b style="color:{{ t.ink }}">Priya</b> that squat though. See you Saturday?</div>
+</div>
+<div style="background:{{ t.surface }};border-radius:{{ t.radius }};padding:16px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;border-radius:21px;background:{{ t.friendTint }};color:{{ t.friendInk }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px">PN</span><div style="display:flex;flex-direction:column"><span style="font-weight:600;font-size:16px">Priya Nair</span><span style="font-size:13px;color:{{ t.muted }}">Yesterday · 2 activities</span></div></div>
+<div style="display:flex;justify-content:space-between;font-weight:500;font-size:15px"><span>Yoga flow</span><span style="color:{{ t.ink2 }}">45 min</span></div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:88px;background:{{ t.tab }};border-top:1px solid {{ t.line }};display:grid;grid-template-columns:repeat(5,1fr);padding-top:12px;font-weight:600;font-size:12px;color:{{ t.muted }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;color:{{ t.ink }}"><span style="width:22px;height:22px;border-radius:7px;background:{{ t.ink }}"></span>Home</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;display:flex;align-items:flex-end;gap:3px"><span style="width:5px;height:10px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:16px;background:currentColor;border-radius:2px"></span><span style="width:5px;height:22px;background:currentColor;border-radius:2px"></span></span>Progress</div>
+<div style="display:flex;justify-content:center"><div style="width:58px;height:58px;border-radius:29px;background:{{ t.plus }};color:{{ t.onPlus }};margin-top:-28px;display:flex;align-items:center;justify-content:center;font-size:32px;line-height:1;font-weight:500;border:4px solid {{ t.bg }}">+</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:26px;height:22px;position:relative"><span style="position:absolute;left:0;top:3px;width:14px;height:14px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span><span style="position:absolute;right:0;top:3px;width:14px;height:14px;border-radius:7px;border:2px solid currentColor;box-sizing:border-box"></span></span>Friends</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:11px;border:2px solid currentColor;box-sizing:border-box"></span>Me</div>
+</div>
+</div></div>
+
+<div style="width:390px;height:844px;padding:10px;background:{{ t.frame }};border-radius:56px;box-shadow:0 30px 60px rgba(20,15,10,.18)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:{{ t.bg }};color:{{ t.ink }};font-family:{{ t.body }}">
+<div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-weight:600;font-size:15px"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:{{ t.ink }}"></span><span style="width:24px;height:11px;border-radius:3px;border:1.5px solid {{ t.ink }}"></span></span></div>
+<div style="padding:6px 20px 0;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="width:40px;height:40px;border-radius:20px;background:{{ t.surface }};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:20px">‹</span><div style="text-align:center"><div style="font-family:{{ t.head }};font-weight:{{ t.headW }};font-stretch:{{ t.stretch }};font-size:22px">Thu 24 Sep</div><div style="font-weight:500;font-size:13px;color:{{ t.muted }}">Today</div></div><span style="width:40px;height:40px;border-radius:20px;background:{{ t.surface }};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:20px;color:{{ t.line }}">›</span></div>
+<div style="background:{{ t.you }};color:{{ t.onYou }};border-radius:{{ t.radius }};padding:22px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;justify-content:space-between;font-weight:700;font-size:12px;letter-spacing:.1em"><span style="white-space:nowrap">MAYA · THU 24 SEP</span><span>GYMLLM</span></div>
+<div style="font-family:{{ t.head }};font-weight:{{ t.heroW }};font-stretch:{{ t.stretch }};font-size:{{ t.posterSize }};line-height:.92;letter-spacing:{{ t.track }}">8 sets.<br>3 miles.</div>
+<div style="display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px">
+<div style="display:flex;justify-content:space-between;border-top:1.5px solid {{ t.heroFaint }};padding-top:8px"><span>Bench press · new best</span><span>185 × 5×5</span></div>
+<div style="display:flex;justify-content:space-between;border-top:1.5px solid {{ t.heroFaint }};padding-top:8px"><span>Lat pulldown</span><span>3×10</span></div>
+<div style="display:flex;justify-content:space-between;border-top:1.5px solid {{ t.heroFaint }};padding-top:8px"><span>Walk</span><span>3 mi</span></div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+<div style="background:{{ t.surface }};border-radius:18px;padding:12px 14px"><div style="font-weight:500;font-size:12px;color:{{ t.muted }}">Exercises</div><div style="font-family:{{ t.head }};font-weight:{{ t.headW }};font-stretch:{{ t.stretch }};font-size:26px">3</div></div>
+<div style="background:{{ t.surface }};border-radius:18px;padding:12px 14px"><div style="font-weight:500;font-size:12px;color:{{ t.muted }}">Reps</div><div style="font-family:{{ t.head }};font-weight:{{ t.headW }};font-stretch:{{ t.stretch }};font-size:26px">55</div></div>
+<div style="background:{{ t.surface }};border-radius:18px;padding:12px 14px"><div style="font-weight:500;font-size:12px;color:{{ t.muted }}">Volume</div><div style="font-family:{{ t.head }};font-weight:{{ t.headW }};font-stretch:{{ t.stretch }};font-size:26px">4.6k</div></div>
+</div>
+<div style="background:{{ t.surface }};border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:{{ t.head }};font-weight:{{ t.headW }};font-stretch:{{ t.stretch }};font-size:16px">From friends</span><span style="font-weight:600;font-size:13px;color:{{ t.youInk }}">4 high fives</span></div>
+<div style="display:flex;gap:10px;align-items:flex-start"><span style="width:30px;height:30px;flex:none;border-radius:15px;background:{{ t.friendTint }};color:{{ t.friendInk }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">SO</span><span style="font-size:14px;line-height:1.4"><b>Sam</b> 185 already?! Catching me up.</span></div>
+</div>
+<div style="display:flex;gap:10px">
+<div style="flex:1;height:54px;border-radius:27px;background:{{ t.plus }};color:{{ t.onPlus }};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px">Share to story</div>
+<div style="width:96px;height:54px;border-radius:27px;background:{{ t.surface }};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px">Edit</div>
+</div>
+</div>
+</div></div>
+
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const sw = t => [
+      { c: t.bg, n: 'Base' }, { c: t.surface, n: 'Card' }, { c: t.ink, n: 'Ink' },
+      { c: t.you, n: 'You' }, { c: t.youTint, n: 'You tint' }, { c: t.friendTint, n: 'Friend' }
+    ];
+    const base = { stretch: '100%', track: '-.02em', radius: '24px', posterSize: '64px', headW: 700, heroW: 800 };
+    const themes = [
+      { ...base, id: '6a', name: 'Fern on Cream', mode: 'Light',
+        note: 'Classic cream background and near-black text, with leaf green as the only colour for you and clay tints for friends. The neutral background lets the green stand out.',
+        head: "'Bricolage Grotesque', sans-serif", body: "'Instrument Sans', sans-serif", fontLabel: 'Bricolage Grotesque + Instrument Sans',
+        bg: '#F5F1EA', surface: '#FFFFFF', field: '#F5F1EA', ink: '#1C1915', ink2: '#4F483F', muted: '#6B6358', line: '#EFE8DD',
+        you: '#3FA66B', onYou: '#1C1915', heroFaint: 'rgba(28,25,21,.2)', youTint: '#DDF0E3', youInk: '#1D6B40',
+        friendTint: '#F6E3D6', friendInk: '#8A4520', tab: '#FFFFFF', frame: '#1C1915', plus: '#1C1915', onPlus: '#F5F1EA' },
+      { ...base, id: '6b', name: 'Fern on Black', mode: 'Dark',
+        note: 'Warm black instead of pine, with a bright mint green. Clean and high-contrast, and still cosy rather than cold.',
+        head: "'Bricolage Grotesque', sans-serif", body: "'Instrument Sans', sans-serif", fontLabel: 'Bricolage Grotesque + Instrument Sans',
+        bg: '#16130F', surface: '#221E19', field: '#2E2923', ink: '#F3EEE6', ink2: '#CFC6B8', muted: '#A39987', line: '#342E27',
+        you: '#5CCB8A', onYou: '#16130F', heroFaint: 'rgba(22,19,15,.22)', youTint: '#1E3326', youInk: '#9BE6B9',
+        friendTint: '#3D251B', friendInk: '#F2B48E', tab: '#1C1814', frame: '#050403', plus: '#5CCB8A', onPlus: '#16130F' },
+      { ...base, id: '5a', name: 'Fern', mode: 'Light',
+        note: 'Original layout and fonts on a pale moss background, with a fresh leaf green for you and warm clay tints for friends. It feels outdoorsy and alive rather than clinical.',
+        head: "'Bricolage Grotesque', sans-serif", body: "'Instrument Sans', sans-serif", fontLabel: 'Bricolage Grotesque + Instrument Sans',
+        bg: '#F1F3EC', surface: '#FFFFFF', field: '#EAEEE3', ink: '#15241A', ink2: '#3C4B40', muted: '#5C6B60', line: '#E3E8DC',
+        you: '#3FA66B', onYou: '#0F1F15', heroFaint: 'rgba(15,31,21,.2)', youTint: '#DDF0E3', youInk: '#1D6B40',
+        friendTint: '#F6E3D6', friendInk: '#8A4520', tab: '#FFFFFF', frame: '#15241A', plus: '#1E4D33', onPlus: '#F1F3EC' },
+      { ...base, id: '5b', name: 'Fern Night', mode: 'Dark',
+        note: 'The forest after dark: deep pine instead of black, a brighter mint-leaf green, and dark text on the green so it stays crisp.',
+        head: "'Bricolage Grotesque', sans-serif", body: "'Instrument Sans', sans-serif", fontLabel: 'Bricolage Grotesque + Instrument Sans',
+        bg: '#0E1A14', surface: '#16261D', field: '#1F3328', ink: '#EEF4EE', ink2: '#C3D1C6', muted: '#8FA396', line: '#24382C',
+        you: '#5CCB8A', onYou: '#0E1A14', heroFaint: 'rgba(14,26,20,.22)', youTint: '#1B3B2A', youInk: '#9BE6B9',
+        friendTint: '#3A2618', friendInk: '#F2B48E', tab: '#12211A', frame: '#050B08', plus: '#5CCB8A', onPlus: '#0E1A14' },
+      { ...base, id: '4a', name: 'Clay Blue', mode: 'Light',
+        note: 'The original layout and fonts, recoloured: clean cool white with a confident blue for you, navy ink and sky-tinted friends.',
+        head: "'Bricolage Grotesque', sans-serif", body: "'Instrument Sans', sans-serif", fontLabel: 'Bricolage Grotesque + Instrument Sans',
+        bg: '#F4F6FA', surface: '#FFFFFF', field: '#EEF2F8', ink: '#0F1B33', ink2: '#3F4B63', muted: '#5F6B82', line: '#E6EBF3',
+        you: '#2F6BFF', onYou: '#FFFFFF', heroFaint: 'rgba(255,255,255,.32)', youTint: '#E3EBFF', youInk: '#1F4FD1',
+        friendTint: '#DDF1FF', friendInk: '#0B5A8A', tab: '#FFFFFF', frame: '#0F1B33', plus: '#0F1B33', onPlus: '#FFFFFF' },
+      { ...base, id: '4b', name: 'Clay Blue Night', mode: 'Dark',
+        note: '4a after dark: neutral black, a brighter blue that glows against it, and dark text on the blue so small labels stay readable.',
+        head: "'Bricolage Grotesque', sans-serif", body: "'Instrument Sans', sans-serif", fontLabel: 'Bricolage Grotesque + Instrument Sans',
+        bg: '#0B0D12', surface: '#161A22', field: '#212633', ink: '#F2F4F8', ink2: '#C4CAD6', muted: '#8F97A8', line: '#272C37',
+        you: '#5B8CFF', onYou: '#0B0D12', heroFaint: 'rgba(11,13,18,.22)', youTint: '#1A2748', youInk: '#A9C2FF',
+        friendTint: '#12303A', friendInk: '#8EDCF0', tab: '#10131A', frame: '#000000', plus: '#5B8CFF', onPlus: '#0B0D12' },
+      { ...base, id: '3a', name: 'Clay', mode: 'Light · current',
+        note: 'The current direction: warm cream, coral for you and blue for friends. Friendly and a bit editorial.',
+        head: "'Bricolage Grotesque', sans-serif", body: "'Instrument Sans', sans-serif", fontLabel: 'Bricolage Grotesque + Instrument Sans',
+        bg: '#F5F1EA', surface: '#FFFFFF', field: '#F5F1EA', ink: '#1C1915', ink2: '#4F483F', muted: '#6B6358', line: '#EFE8DD',
+        you: '#EC6A45', onYou: '#1C1915', heroFaint: 'rgba(28,25,21,.2)', youTint: '#FBE3D9', youInk: '#9A3A1F',
+        friendTint: '#DCE7F8', friendInk: '#2A5696', tab: '#FFFFFF', frame: '#1C1915', plus: '#1C1915', onPlus: '#F5F1EA' },
+      { ...base, id: '3b', name: 'Clay Night', mode: 'Dark',
+        note: "Clay's dark mode: warm brown-black instead of blue-black, so it still feels cosy at night. The coral is brightened slightly to stay vivid.",
+        head: "'Bricolage Grotesque', sans-serif", body: "'Instrument Sans', sans-serif", fontLabel: 'Bricolage Grotesque + Instrument Sans',
+        bg: '#16130F', surface: '#221E19', field: '#2E2923', ink: '#F3EEE6', ink2: '#CFC6B8', muted: '#A39987', line: '#342E27',
+        you: '#F07A55', onYou: '#16130F', heroFaint: 'rgba(22,19,15,.22)', youTint: '#3D251B', youInk: '#FFB59A',
+        friendTint: '#1F2C40', friendInk: '#A9C6F5', tab: '#1C1814', frame: '#050403', plus: '#F3EEE6', onPlus: '#16130F' },
+      { ...base, id: '3c', name: 'Park', mode: 'Light',
+        note: 'Outdoorsy and calm: soft sage, forest ink and a sunny yellow. A serif headline makes it feel like a journal more than a gym app, which suits walkers and yoga people as well as lifters.',
+        head: "'Young Serif', serif", headW: 400, heroW: 400, track: '-.01em', body: "'Figtree', sans-serif", fontLabel: 'Young Serif + Figtree',
+        bg: '#ECF0E5', surface: '#FFFFFF', field: '#ECF0E5', ink: '#16261C', ink2: '#3E4F43', muted: '#5E6D62', line: '#E1E7D8',
+        you: '#F4C542', onYou: '#16261C', heroFaint: 'rgba(22,38,28,.18)', youTint: '#FBEFC4', youInk: '#6E5200',
+        friendTint: '#D5EADF', friendInk: '#1F5E43', tab: '#FFFFFF', frame: '#16261C', plus: '#16261C', onPlus: '#ECF0E5' },
+      { ...base, id: '3d', name: 'Floodlight', mode: 'Dark',
+        note: 'The sportiest option: near-black, electric lime and lavender friends, with wide, heavy type like a scoreboard. The most energetic of the six, but it leans more "gym" than "everyone".',
+        head: "'Archivo', sans-serif", stretch: '125%', headW: 800, heroW: 900, track: '-.01em', posterSize: '52px', radius: '18px',
+        body: "'Archivo', sans-serif", fontLabel: 'Archivo Expanded + Archivo',
+        bg: '#0E0F12', surface: '#1A1C21', field: '#262930', ink: '#F4F4EF', ink2: '#C9CBC4', muted: '#9A9D96', line: '#2B2E35',
+        you: '#C6F432', onYou: '#0E0F12', heroFaint: 'rgba(14,15,18,.2)', youTint: '#2B3510', youInk: '#D9FF6B',
+        friendTint: '#27234A', friendInk: '#C7BFFF', tab: '#141619', frame: '#000000', plus: '#C6F432', onPlus: '#0E0F12' },
+      { ...base, id: '3e', name: 'Sunrise', mode: 'Light',
+        note: 'Bright and playful: blush background, pink for you and teal for friends, with rounded type. The most welcoming for people new to working out.',
+        head: "'Gabarito', sans-serif", headW: 800, heroW: 900, radius: '28px', body: "'Onest', sans-serif", fontLabel: 'Gabarito + Onest',
+        bg: '#FFF3EE', surface: '#FFFFFF', field: '#FFEAE2', ink: '#2A1420', ink2: '#5A3F4B', muted: '#7A6470', line: '#F6E1D9',
+        you: '#FF6B8B', onYou: '#2A1420', heroFaint: 'rgba(42,20,32,.18)', youTint: '#FFE0E7', youInk: '#A3143D',
+        friendTint: '#D3F1EA', friendInk: '#0D6B59', tab: '#FFFFFF', frame: '#2A1420', plus: '#2A1420', onPlus: '#FFF3EE' },
+      { ...base, id: '3f', name: 'Deep End', mode: 'Dark',
+        note: 'Pool-at-night navy with a warm orange for you and aqua for friends. Cool and calm, and easy on the eyes after a late session.',
+        head: "'Schibsted Grotesk', sans-serif", headW: 800, heroW: 900, track: '-.025em', body: "'Schibsted Grotesk', sans-serif", fontLabel: 'Schibsted Grotesk',
+        bg: '#0D1826', surface: '#15243A', field: '#1E3049', ink: '#EAF2FA', ink2: '#BCCBDC', muted: '#8DA0B6', line: '#243851',
+        you: '#FF8A3D', onYou: '#0D1826', heroFaint: 'rgba(13,24,38,.22)', youTint: '#3A2615', youInk: '#FFB985',
+        friendTint: '#143B40', friendInk: '#8FE6DA', tab: '#111F32', frame: '#050A12', plus: '#EAF2FA', onPlus: '#0D1826' }
+    ];
+    return { themes: themes.map(t => ({ ...t, swatches: sw(t) })) };
+  }
+}
+</script>
+</body>
+</html>

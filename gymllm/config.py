@@ -108,6 +108,8 @@ def build_config(env: Mapping[str, str] | None = None) -> dict:
         # Flask-Dance reads these keys when the Google blueprint is registered.
         "GOOGLE_OAUTH_CLIENT_ID": env.get("GOOGLE_CLIENT_ID", ""),
         "GOOGLE_OAUTH_CLIENT_SECRET": env.get("GOOGLE_CLIENT_SECRET", ""),
+        # The iOS app's OAuth client: the audience its Google ID tokens must carry.
+        "GOOGLE_IOS_CLIENT_ID": env.get("GOOGLE_IOS_CLIENT_ID", "").strip(),
         "SITE_LLM": site_llm_config(env),
         "ADMIN_EMAILS": admin_emails(env),
     }

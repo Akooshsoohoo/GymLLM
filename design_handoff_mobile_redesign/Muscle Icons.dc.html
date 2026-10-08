@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#F5F1EA;color:#1C1915;-webkit-font-smoothing:antialiased}a{color:#1C1915}a:hover{color:#1D6B40}</style>
+</helmet>
+<div style="max-width:1200px;margin:0 auto;padding:48px 28px 80px;display:flex;flex-direction:column;gap:48px;font-family:'Instrument Sans',sans-serif">
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font:600 14px 'Instrument Sans';color:#6B6358">GymLLM · Muscle icons</div>
+<h1 style="margin:0;font:800 44px/1.05 'Bricolage Grotesque';letter-spacing:-.02em">One body, whatever you did.</h1>
+<p style="margin:0;max-width:620px;font:400 17px/1.5 'Instrument Sans';color:#4F483F;text-wrap:pretty">Every icon is the same figure. Lifting days are cropped to the muscle group; sports and cardio show the whole body with a badge. Plain words map to an icon, so "pickup basketball" or "bench 185" both land somewhere sensible.</p>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="font:700 20px 'Bricolage Grotesque'">Try it</div>
+<div style="background:#FFFFFF;border-radius:26px;padding:20px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;box-shadow:0 1px 0 #E7E0D5,0 10px 24px rgba(60,40,20,.06)">
+<div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+<input value="{{ query }}" onChange="{{ onQuery }}" placeholder="What did you get up to?" style="font:400 20px 'Instrument Sans';color:#1C1915;border:none;outline:none;background:#F5F1EA;border-radius:16px;padding:14px 16px;width:100%;box-sizing:border-box">
+<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ samples }}" as="q" hint-placeholder-count="6"><span onClick="{{ q.pick }}" style="cursor:pointer;padding:6px 12px;border-radius:99px;border:1.5px solid #E0D8CB;background:#FBF8F3;font:500 13px 'Instrument Sans';white-space:nowrap" style-hover="border-color:#3FA66B">{{ q.text }}</span></sc-for></div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:130px;color:#3FA66B;--mi-base:#1C1915;--mi-base-opacity:.1">
+<x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="{{ resolved }}" size="110" variant="{{ variant }}" hint-size="110px,110px"></x-import>
+<span style="font:600 15px 'Instrument Sans';color:#1C1915;white-space:nowrap">{{ resolvedLabel }}</span>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="font:700 20px 'Bricolage Grotesque'">Lifting</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px">
+<sc-for list="{{ groups }}" as="g" hint-placeholder-count="15">
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 12px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;color:#3FA66B;--mi-base:#1C1915;--mi-base-opacity:.1;box-shadow:0 1px 0 #E7E0D5">
+<x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="{{ g.id }}" size="80" variant="{{ variant }}" crop="{{ crop }}" hint-size="80px,80px"></x-import>
+<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><span style="font:600 14px 'Instrument Sans';color:#1C1915;white-space:nowrap">{{ g.label }}</span><span style="font:500 12px ui-monospace,monospace;color:#8A8175">{{ g.id }}</span></div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="font:700 20px 'Bricolage Grotesque'">Sports and cardio</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px">
+<sc-for list="{{ activities }}" as="g" hint-placeholder-count="26">
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 12px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;color:#3FA66B;--mi-base:#1C1915;--mi-base-opacity:.1;box-shadow:0 1px 0 #E7E0D5">
+<x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="{{ g.id }}" size="80" variant="{{ variant }}" hint-size="80px,80px"></x-import>
+<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><span style="font:600 14px 'Instrument Sans';color:#1C1915;white-space:nowrap">{{ g.label }}</span><span style="font:500 12px ui-monospace,monospace;color:#8A8175">{{ g.id }}</span></div>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font:500 13px 'Instrument Sans';color:#6B6358">Glyph only, for tags and lists under 24 px: <span style="font-family:ui-monospace,monospace">variant="glyph"</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:14px;color:#1D6B40">
+<sc-for list="{{ activities }}" as="g" hint-placeholder-count="26"><x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="{{ g.id }}" size="24" variant="glyph" hint-size="24px,24px"></x-import></sc-for>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="font:700 20px 'Bricolage Grotesque'">On Fern on Black</div>
+<div style="background:#16130F;border-radius:26px;padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px">
+<sc-for list="{{ darkSet }}" as="g" hint-placeholder-count="15">
+<div style="background:#221E19;border-radius:18px;padding:14px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;color:#5CCB8A;--mi-base:#F3EEE6;--mi-base-opacity:.12">
+<x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="{{ g.id }}" size="56" variant="{{ variant }}" crop="{{ crop }}" hint-size="56px,56px"></x-import>
+<span style="font:600 12px 'Instrument Sans';color:#CFC6B8;white-space:nowrap">{{ g.label }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px">
+<div style="background:#FFFFFF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px">
+<div style="font:700 18px 'Bricolage Grotesque'">Sizes</div>
+<div style="display:flex;align-items:flex-end;gap:20px;color:#3FA66B;--mi-base:#1C1915;--mi-base-opacity:.1">
+<x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="chest" size="20" hint-size="20px,20px"></x-import>
+<x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="chest" size="32" hint-size="32px,32px"></x-import>
+<x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="chest" size="56" hint-size="56px,56px"></x-import>
+<x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="chest" size="112" hint-size="112px,112px"></x-import>
+</div>
+<div style="font:400 13px 'Instrument Sans';color:#6B6358">20 px in tags, 32 in lists, 56+ on cards. Below 24 px, prefer <span style="font-family:ui-monospace,monospace">variant="solo"</span>.</div>
+</div>
+<div style="background:#FFFFFF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px">
+<div style="font:700 18px 'Bricolage Grotesque'">Variants</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;color:#3FA66B;--mi-base:#1C1915;--mi-base-opacity:.1">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="back" size="72" hint-size="72px,72px"></x-import><span style="font:500 12px ui-monospace,monospace;color:#6B6358">map</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="back" size="72" variant="solo" hint-size="72px,72px"></x-import><span style="font:500 12px ui-monospace,monospace;color:#6B6358">solo</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="back" size="72" crop="full" hint-size="72px,72px"></x-import><span style="font:500 12px ui-monospace,monospace;color:#6B6358">crop="full"</span></div>
+</div>
+<div style="font:400 13px 'Instrument Sans';color:#6B6358">Highlight follows <span style="font-family:ui-monospace,monospace">color</span>; the body follows <span style="font-family:ui-monospace,monospace">--mi-base</span>.</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;gap:4px"><div style="font:700 20px 'Bricolage Grotesque'">Picking one for a day</div><div style="font:400 15px 'Instrument Sans';color:#4F483F">The day's tags or words go in, one icon comes out. Lifting wins over cardio on mixed days. <span style="font-family:ui-monospace,monospace">MuscleIcons.forTags(tags)</span></div></div>
+<div style="background:#FFFFFF;border-radius:22px;padding:6px 20px">
+<sc-for list="{{ days }}" as="d" hint-placeholder-count="7">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 20px 180px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid #EFE8DD">
+<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ d.tags }}" as="t" hint-placeholder-count="2"><span style="padding:5px 11px;border-radius:99px;border:1.5px solid #E0D8CB;background:#FBF8F3;font:500 13px 'Instrument Sans';white-space:nowrap">{{ t }}</span></sc-for></div>
+<span style="color:#8A8175;font:600 16px 'Instrument Sans'">→</span>
+<div style="display:flex;align-items:center;gap:10px;color:#3FA66B;--mi-base:#1C1915;--mi-base-opacity:.1"><x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="{{ d.icon }}" size="44" hint-size="44px,44px"></x-import><span style="font:600 15px 'Instrument Sans';color:#1C1915;white-space:nowrap">{{ d.label }}</span></div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="font:700 20px 'Bricolage Grotesque'">On the share card</div>
+<div style="display:flex;flex-wrap:wrap;gap:20px">
+<sc-for list="{{ cards }}" as="c" hint-placeholder-count="3">
+<div style="width:300px;height:375px;box-sizing:border-box;background:{{ c.bg }};border-radius:28px;padding:22px;display:flex;flex-direction:column;justify-content:space-between;color:#1C1915;position:relative;overflow:hidden">
+<div style="display:flex;justify-content:space-between;font:700 11px 'Instrument Sans';letter-spacing:.1em;white-space:nowrap"><span>{{ c.who }}</span><span>GYMLLM</span></div>
+<div style="position:absolute;right:14px;top:46px;color:#1C1915;--mi-base:#1C1915;--mi-base-opacity:.14">
+<x-import component-from-global-scope="muscle-icon" from="./muscle-icons.js" group="{{ c.icon }}" size="140" variant="{{ variant }}" hint-size="140px,140px"></x-import>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px;position:relative">
+<span style="align-self:flex-start;padding:5px 11px;border-radius:99px;background:rgba(28,25,21,.12);font:700 12px 'Instrument Sans';white-space:nowrap">{{ c.label }}</span>
+<div style="font:800 46px/.92 'Bricolage Grotesque';letter-spacing:-.03em;white-space:pre-line">{{ c.head }}</div>
+<div style="display:flex;flex-direction:column;gap:5px;font:600 13px 'Instrument Sans';white-space:nowrap">
+<sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;border-top:1.5px solid rgba(28,25,21,.25);padding-top:6px"><span>{{ r.a }}</span><span>{{ r.b }}</span></div></sc-for>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="font:400 13px 'Instrument Sans';color:#6B6358">Icon in ink so it reads on any card colour; the headline sits over the faint body, never over the lit muscles.</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;map&quot;,&quot;solo&quot;],&quot;default&quot;:&quot;map&quot;,&quot;tsType&quot;:&quot;'map'|'solo'&quot;},&quot;crop&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;focus&quot;,&quot;full&quot;],&quot;default&quot;:&quot;focus&quot;,&quot;tsType&quot;:&quot;'focus'|'full'&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() {
+    const t = setInterval(() => { if (window.MuscleIcons) { clearInterval(t); this.forceUpdate(); } }, 100);
+    setTimeout(() => clearInterval(t), 10000);
+  }
+  renderVals() {
+    const groups = [
+      ['chest','Chest'],['back','Back'],['shoulders','Shoulders'],['arms','Arms'],['triceps','Triceps'],
+      ['core','Core'],['legs','Legs'],['glutes','Glutes'],['hamstrings','Hamstrings'],
+      ['upper','Upper body'],['lower','Lower body'],['push','Push'],['pull','Pull'],['full','Full body'],['cardio','Cardio']
+    ].map(([id, label]) => ({ id, label }));
+    const activities = [
+      ['run','Run'],['walk','Walk'],['hike','Hike'],['cycle','Cycle'],['swim','Swim'],['row','Row'],['climb','Climb'],
+      ['hiit','HIIT'],['jumprope','Jump rope'],['stairs','Stairs'],['yoga','Yoga'],['pilates','Pilates'],['dance','Dance'],
+      ['boxing','Boxing'],['martial','Martial arts'],['basketball','Basketball'],['soccer','Soccer'],['football','Football'],
+      ['volleyball','Volleyball'],['baseball','Baseball'],['tennis','Tennis'],['paddle','Pickleball'],['golf','Golf'],
+      ['hockey','Hockey'],['ski','Ski & snow'],['sport','Sport']
+    ].map(([id, label]) => ({ id, label }));
+    const darkSet = groups.slice(0, 9).concat(activities.filter(a => ['run','cycle','swim','basketball','tennis','yoga'].includes(a.id)));
+    const M = window.MuscleIcons;
+    const query = this.state.query ?? 'pickup basketball with Sam';
+    const resolved = M ? M.forTags(query) : 'full';
+    const samples = ['ran 5k in 28 min', 'spin class', 'bench 185, lat pulldowns', 'hip thrusts 4x10', 'bjj rolling', 'pickleball doubles', 'swam 40 laps', 'yoga flow', 'squats and deadlifts', 'box jumps'].map(text => ({ text, pick: () => this.setState({ query: text }) }));
+    const days = [
+      { tags: ['Ran 5k'], icon: 'run', label: 'Run' },
+      { tags: ['Pickup basketball'], icon: 'basketball', label: 'Basketball' },
+      { tags: ['Run', 'Swim'], icon: 'cardio', label: 'Cardio' },
+      { tags: ['Bench press', 'Walk'], icon: 'chest', label: 'Chest' },
+      { tags: ['Legs'], icon: 'legs', label: 'Legs' },
+      { tags: ['Chest', 'Shoulders', 'Triceps'], icon: 'push', label: 'Push' },
+      { tags: ['Back', 'Arms'], icon: 'pull', label: 'Pull' },
+      { tags: ['Chest', 'Back', 'Cardio'], icon: 'upper', label: 'Upper body' },
+      { tags: ['Legs', 'Glutes'], icon: 'lower', label: 'Lower body' },
+      { tags: ['Chest', 'Legs'], icon: 'full', label: 'Full body' },
+      { tags: ['Cardio'], icon: 'cardio', label: 'Cardio' }
+    ];
+    const cards = [
+      { bg: '#3FA66B', who: 'MAYA · THU 24 SEP', icon: 'upper', label: 'Upper body day', head: '8 sets.\n3 miles.', rows: [{ a: 'Bench press · new best', b: '185 × 5×5' }, { a: 'Lat pulldown', b: '3×10' }] },
+      { bg: '#D9895B', who: 'SAM · WED 23 SEP', icon: 'legs', label: 'Leg day', head: '12 sets.\nNo stairs.', rows: [{ a: 'Squat', b: '225 × 5×5' }, { a: 'Leg press', b: '4×12' }] },
+      { bg: '#DDF0E3', who: 'MAYA · SUN 20 SEP', icon: 'pull', label: 'Pull day', head: '9 sets.\nAll back.', rows: [{ a: 'Deadlift', b: '245 × 3×5' }, { a: 'Curls', b: '3×12' }] },
+      { bg: '#F6E3D6', who: 'SAM · SAT 19 SEP', icon: 'basketball', label: 'Basketball', head: '90 min.\nFull court.', rows: [{ a: 'Pickup games', b: '5' }, { a: 'Walk home', b: '1.2 mi' }] }
+    ];
+    return { groups, activities, darkSet, query, resolved, resolvedLabel: M ? M.label(resolved) : '', samples,
+      onQuery: e => this.setState({ query: e.target.value }), days, cards, variant: this.props.variant ?? 'map', crop: this.props.crop ?? 'focus' };
+  }
+}
+</script>
+</body>
+</html>
