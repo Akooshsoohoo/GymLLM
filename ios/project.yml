@@ -15,11 +15,11 @@ settings:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     # Set once the owner has picked a team in Xcode, or regenerating wipes it.
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: 3JV9Y565WX
     # From the iOS OAuth client in Google Cloud. Empty until it exists: the app then
     # says Google sign-in isn't set up instead of opening it.
-    GOOGLE_IOS_CLIENT_ID: ""
-    GOOGLE_REVERSED_CLIENT_ID: com.googleusercontent.apps.unset
+    GOOGLE_IOS_CLIENT_ID: 43894553304-79v7fo5uk49faofn3ruf0pp88l08rj65.apps.googleusercontent.com
+    GOOGLE_REVERSED_CLIENT_ID: com.googleusercontent.apps.43894553304-79v7fo5uk49faofn3ruf0pp88l08rj65
 
 packages:
   GoogleSignIn:
