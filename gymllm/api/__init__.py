@@ -21,4 +21,4 @@ from . import errors  # noqa: E402
 errors.register(bp)
 errors.register(dev_bp)
 
-from . import auth_routes, core  # noqa: E402, F401
+from . import auth_routes, core, progress  # noqa: E402, F401

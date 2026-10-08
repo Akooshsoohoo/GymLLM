@@ -4,7 +4,18 @@ from __future__ import annotations
 
 from flask import current_app, jsonify, request
 
-from .. import _first_name, auth, logflow, preferences, quota, routines, session_meta, social, stats
+from .. import (
+    _first_name,
+    auth,
+    dayedit,
+    logflow,
+    preferences,
+    quota,
+    routines,
+    session_meta,
+    social,
+    stats,
+)
 from .. import sessions as sessions_mod
 from ..auth import current_user_email
 from ..llm.client import BadOutputError
@@ -212,8 +223,16 @@ def day(when: str):
     """Mirrors routes.day: one of your own workouts on a day (?session= picks it)."""
     if not is_iso_date(when):
         raise not_found("No such day.")
-    parts = day_parts(current_user_email(), when, request.args.get("session", type=int))
-    return jsonify(schema.day(parts))
+    email = current_user_email()
+    parts = day_parts(email, when, request.args.get("session", type=int))
+    n = parts["n"]
+    return jsonify(
+        **schema.day(parts),
+        # What the editor starts from, beside the lifts and cardio above.
+        default_title=session_meta.default_title(when, n),
+        visibility=social.visibilities(email).get(when, social.FRIENDS_ONLY),
+        edits_bodyweight=dayedit.is_first(dayedit.other_sessions(email, when, n), n),
+    )
 
 
 @bp.route("/preferences", methods=["PUT"])

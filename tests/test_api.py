@@ -555,3 +555,331 @@ def test_reactions_on_your_own_card(api):
     assert api.get("/me").get_json()["unseen"] == 2
     theirs = api.get(f"/home?today={TODAY}", email=OTHER).get_json()["friends"][0]["reactions"]
     assert theirs["kudoed"] is True and theirs["comments"][0]["can_delete"] is True
+
+
+# --- Stage 3: progress, sessions, exercises ---------------------------------------
+
+
+def delete(api, path, **kwargs):
+    return api.call("delete", path, **kwargs)
+
+
+def lift(exercise="bench press", weight="185 lbs", **more):
+    return {"exercise": exercise, "weight": weight, "sets": 3, "reps": [5, 5, 5], **more}
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("get", "/progress"),
+        ("get", "/sessions"),
+        ("get", "/search"),
+        ("get", "/exercises"),
+        ("get", "/exercises/bench"),
+        ("put", f"/day/{TODAY}/sessions/0"),
+        ("delete", f"/day/{TODAY}/sessions/0"),
+        ("post", "/rest/rules"),
+        ("delete", "/rest/rules/1"),
+        ("put", f"/rest/day/{TODAY}"),
+    ],
+)
+def test_stage_3_endpoints_need_a_token(client, method, path):
+    r = getattr(client, method)(f"/api/v1{path}")
+    assert r.status_code == 401 and r.get_json()["error"]["code"] == "unauthorized"
+
+
+def test_progress_for_a_new_user(api):
+    body = api.get(f"/progress?today={TODAY}").get_json()
+    assert body["range"] == "all" and body["by"] == "month" and body["start"] is None
+    assert body["total"] == 0 and body["totals"]["sessions"] == 0 and body["streak"] == 0
+    assert body["bodyweight"] is None and body["lifts"] == [] and body["prs"] == []
+    assert len(body["week"]["days"]) == 7 and body["week"]["start"] == TODAY
+    assert body["week"]["is_this_week"] is True and body["week"]["next"] is None
+    assert body["weight_unit"] == "lbs"
+
+
+def test_progress_overview(api):
+    save(api, date="2026-09-07", entries=[lift(weight="175 lbs")], bodyweight="182")
+    save(
+        api,
+        entries=[lift()],
+        cardio=[{"activity": "run", "distance": "3 miles", "duration": "30 min"}],
+        bodyweight="180",
+    )
+    body = api.get(f"/progress?today={TODAY}&range=30d&by=week").get_json()
+    assert body["range"] == "30d" and body["by"] == "week" and body["start"] == "2026-08-16"
+    totals = body["totals"]
+    assert totals["sessions"] == 2 and totals["entries"] == 2 and totals["cardio"] == 1
+    assert totals["cardio_distance"] == "3 mi" and totals["cardio_minutes"]
+    assert body["streak"] == 2 and body["per_period"][-1]["current"] is True
+    (pr,) = body["prs"]
+    assert pr["exercise"] == "barbell bench press" and pr["date"] == TODAY
+    assert pr["value"] == 185 and pr["previous"] == 175
+    (progress,) = body["lifts"]
+    assert progress["first"] == 175 and progress["latest"] == 185 and progress["change"] == 10
+    assert [p["date"] for p in progress["series"]] == ["2026-09-07", TODAY]
+    bw = body["bodyweight"]
+    assert bw["latest"] == "180 lbs" and bw["change"] == -2 and bw["chart_unit"] == "lbs"
+    assert body["tags"][0]["tag"] == "chest" and body["top_exercises"][0]["entries"] == 2
+    assert body["week"]["days"][0]["logged"] is True
+
+    last = api.get(f"/progress?today={TODAY}&week=2026-09-09").get_json()["week"]
+    assert last["start"] == "2026-09-07" and last["next"] == TODAY
+    assert last["is_this_week"] is False and last["days"][0]["bodyweight"] == "182 lbs"
+    ahead = api.get(f"/progress?today={TODAY}&week=2027-01-01").get_json()["week"]
+    assert ahead["start"] == TODAY  # never a week still to come
+
+
+def test_sessions_list_and_search(api):
+    save(api, date="2026-08-30", entries=[lift("squat", "225 lbs")], title="Leg day")
+    save(api, entries=[lift(notes="paused reps")], bodyweight="180")
+    save(api, entries=[], cardio=[{"activity": "run", "distance": "3 miles"}])
+    body = api.get(f"/sessions?today={TODAY}").get_json()
+    assert body["shown"] == 3 and body["total"] == 4 and body["range"] == "all"
+    assert [m["label"] for m in body["months"]] == ["September 2026", "August 2026"]
+    run, bench = body["months"][0]["days"]
+    assert run["session"] == 1 and run["bodyweight"] is None
+    assert run["lines"] == [{"name": "run", "detail": "3 miles", "parts": [], "pr": False}]
+    assert bench["session"] == 0 and bench["bodyweight"] == "180 lbs"
+    assert bench["lines"][0]["detail"] == "185 lbs · 3×5" and bench["icon_hint"].startswith("chest")
+    assert body["months"][1]["days"][0]["title"] == "Leg day"
+
+    def found(query):
+        hits = api.get(f"/search?today={TODAY}&{query}").get_json()
+        return [d["title"] for m in hits["months"] for d in m["days"]], hits["shown"]
+
+    assert found("q=leg") == (["Leg day"], 1)
+    assert found("q=PAUSED+bench")[1] == 1  # every word, any case, notes included
+    assert found("q=august")[1] == 1 and found("q=deadlift") == ([], 0)
+    assert found("range=7d")[1] == 2
+
+
+def test_exercises_and_one_exercise(api):
+    save(api, date="2026-09-07", entries=[lift(weight="175 lbs", notes="easy")])
+    save(api, entries=[lift(), lift("squat", "bodyweight")], cardio=[{"activity": "run"}])
+    body = api.get(f"/exercises?today={TODAY}").get_json()
+    assert body["total"] == 4 and body["cardio"][0]["activity"] == "run"
+    bench = next(e for e in body["exercises"] if e["exercise"] == "barbell bench press")
+    assert bench["sessions"] == 2 and bench["best"] == "185 lbs" and bench["spark"] == [175, 185]
+    assert bench["first"] == "2026-09-07" and bench["last"] == TODAY
+
+    one = api.get(f"/exercises/Barbell%20Bench%20Press?today={TODAY}").get_json()
+    assert one["name"] == "barbell bench press" and one["total"] == 2 and one["sessions"] == 2
+    assert one["best"] == {"value": 185, "weight": "185 lbs", "date": TODAY}
+    assert one["tags"][0] == "chest" and one["progress"]["change"] == 10
+    assert [e["date"] for e in one["entries"]] == [TODAY, "2026-09-07"]
+    assert one["entries"][1]["notes"] == "easy" and one["entries"][0]["sets_reps"] == "5, 5, 5"
+    week = api.get(f"/exercises/barbell bench press?today={TODAY}&range=7d").get_json()
+    assert week["total"] == 2 and len(week["entries"]) == 1 and week["progress"] is None
+
+    assert api.get("/exercises/zercher%20squat").status_code == 404
+    # Someone else asking for yours gets nothing.
+    assert api.get("/exercises/barbell%20bench%20press", email=OTHER).status_code == 404
+    assert api.get(f"/exercises?today={TODAY}", email=OTHER).get_json()["exercises"] == []
+    assert api.get(f"/sessions?today={TODAY}", email=OTHER).get_json()["months"] == []
+    assert api.get(f"/progress?today={TODAY}", email=OTHER).get_json()["total"] == 0
+
+
+# --- Stage 3: editing one workout -------------------------------------------------
+
+
+def edit(api, body, when=TODAY, n=0, **kwargs):
+    return api.put(f"/day/{when}/sessions/{n}?today={TODAY}", json=body, **kwargs)
+
+
+def test_day_says_what_the_editor_starts_from(api):
+    save(api, visibility="private")
+    save(api)
+    first, second = (api.get(f"/day/{TODAY}?session={n}").get_json() for n in (0, 1))
+    assert first["default_title"] == "Monday workout" and first["edits_bodyweight"] is True
+    assert second["default_title"] == "Monday workout 2" and second["edits_bodyweight"] is False
+    assert first["visibility"] == "friends"  # the day's latest save decides
+
+
+def test_edit_changes_adds_and_removes_rows(api):
+    save(
+        api,
+        entries=[lift(), lift("squat", "225 lbs")],
+        cardio=[{"activity": "run", "distance": "3 miles"}],
+    )
+    day = api.get(f"/day/{TODAY}").get_json()
+    bench, squat = day["lifts"]
+    (run,) = day["cardio"]
+    r = edit(
+        api,
+        {
+            "title": "Heavy day",
+            "visibility": "private",
+            "bodyweight": "181",
+            "lifts": [
+                {"id": bench["id"], "weight": "190", "notes": " grind "},
+                {"id": squat["id"], "delete": True},
+                lift("overhead press", "95 lbs"),
+                {"exercise": "  "},  # an empty new row is dropped
+            ],
+            "cardio": [{"id": run["id"], "duration": "25"}, {"activity": "row", "distance": "2k"}],
+        },
+    )
+    assert r.status_code == 200
+    assert r.get_json() == {"date": TODAY, "session": 0, "removed": False, "weigh_in_left": False}
+    day = api.get(f"/day/{TODAY}").get_json()
+    assert day["title"] == "Heavy day" and day["visibility"] == "private"
+    assert day["bodyweight"] == "181 lbs"
+    assert [(x["exercise"], x["weight"]) for x in day["lifts"]] == [
+        ("barbell bench press", "190 lbs"),
+        ("barbell overhead press", "95 lbs"),
+    ]
+    assert day["lifts"][0]["notes"] == "grind" and day["lifts"][1]["tags"]
+    assert [(c["activity"], c["duration"]) for c in day["cardio"]] == [
+        ("run", "25 min"),
+        ("row", ""),
+    ]
+    # And the website shows the same day.
+    with api.app.test_client() as web:
+        with web.session_transaction() as s:
+            s["user_email"] = USER
+        page = web.get(f"/day/{TODAY}").get_data(as_text=True)
+    assert "Heavy day" in page and "190 lbs" in page
+
+
+def test_edit_only_touches_what_it_names(api):
+    save(api, title="Push day", bodyweight="180", visibility="private")
+    assert edit(api, {}).status_code == 200
+    day = api.get(f"/day/{TODAY}").get_json()
+    assert day["title"] == "Push day" and day["bodyweight"] == "180 lbs"
+    assert day["visibility"] == "private" and len(day["lifts"]) == 1
+    edit(api, {"title": "", "bodyweight": ""})
+    day = api.get(f"/day/{TODAY}").get_json()
+    assert day["title"] == "Monday workout" and day["bodyweight"] is None
+
+
+def test_edit_moves_a_workout_with_its_name_and_reactions(api):
+    friends(api)
+    save(api, title="Push day", bodyweight="180")
+    save(api, date="2026-09-12")
+    with api.app.app_context():
+        social.toggle_kudos(OTHER, USER, TODAY)
+        social.add_comment(OTHER, USER, TODAY, "Nice work!")
+    r = edit(api, {"date": "2026-09-12"})
+    assert r.get_json() == {
+        "date": "2026-09-12",
+        "session": 1,
+        "removed": False,
+        "weigh_in_left": False,
+    }
+    moved = api.get("/day/2026-09-12?session=1").get_json()
+    assert moved["title"] == "Push day" and moved["reactions"]["kudos"] == 1
+    assert moved["reactions"]["comments"][0]["body"] == "Nice work!"
+    assert [s["session"] for s in moved["sessions"]] == [0, 1]
+    assert api.get(f"/day/{TODAY}").get_json()["lifts"] == []
+    with api.app.app_context():  # the weigh-in went along: nothing else was on that day
+        (reading,) = BodyWeight.query.filter_by(user_email=USER).all()
+        assert reading.date == "2026-09-12"
+
+
+@pytest.mark.parametrize(
+    "body,status,code",
+    [
+        ({"date": "tomorrow"}, 400, "bad_date"),
+        ({"date": "2026-09-15"}, 422, "future_date"),
+        ({"bodyweight": "light"}, 422, "bad_bodyweight"),
+        ({"lifts": [{"id": 1, "weight": "heavy"}]}, 422, "bad_weight"),
+        ({"lifts": [{"id": 1, "delete": True}, lift(weight="heavy")]}, 422, "bad_weight"),
+        ({"lifts": [{"id": 999, "weight": "1"}]}, 400, "bad_request"),
+        ({"lifts": [{"id": 1, "weight": 190}]}, 400, "bad_request"),
+        ({"lifts": "all of them"}, 400, "bad_request"),
+        ({"title": 7}, 400, "bad_request"),
+    ],
+)
+def test_edit_refusals_change_nothing(api, body, status, code):
+    save(api, title="Push day", bodyweight="180")
+    r = edit(api, body)
+    assert r.status_code == status and r.get_json()["error"]["code"] == code
+    day = api.get(f"/day/{TODAY}").get_json()
+    assert day["title"] == "Push day" and day["bodyweight"] == "180 lbs"
+    assert [(x["id"], x["weight"]) for x in day["lifts"]] == [(1, "185 lbs")]
+
+
+def test_edit_cannot_move_onto_another_weigh_in(api):
+    save(api, bodyweight="180")
+    save(api, date="2026-09-12", bodyweight="181")
+    r = edit(api, {"date": "2026-09-12"})
+    assert r.status_code == 422 and r.get_json()["error"]["code"] == "weigh_in_taken"
+    assert len(api.get(f"/day/{TODAY}").get_json()["lifts"]) == 1
+
+
+def test_edit_and_delete_are_only_ever_your_own(api):
+    save(api)
+    assert edit(api, {"title": "Mine now"}, email=OTHER).status_code == 404
+    assert delete(api, f"/day/{TODAY}/sessions/0", email=OTHER).status_code == 404
+    assert edit(api, {}, n=3).status_code == 404 and edit(api, {}, when="soon").status_code == 404
+    with api.app.app_context():
+        assert Workout.query.filter_by(user_email=USER).count() == 1
+
+
+def test_delete_removes_the_workout_and_what_hung_on_it(api):
+    friends(api)
+    save(api, title="Push day")
+    with api.app.app_context():
+        social.toggle_kudos(OTHER, USER, TODAY)
+    r = delete(api, f"/day/{TODAY}/sessions/0")
+    assert r.status_code == 200
+    assert r.get_json() == {"date": TODAY, "session": 0, "removed": True, "weigh_in_left": False}
+    assert api.get(f"/sessions?today={TODAY}").get_json()["shown"] == 0
+    assert api.get(f"/home?today={TODAY}", email=OTHER).get_json()["friends"] == []
+    assert delete(api, f"/day/{TODAY}/sessions/0").status_code == 404
+    save(api)  # a new workout that day starts clean
+    day = api.get(f"/day/{TODAY}").get_json()
+    assert day["title"] == "Monday workout" and day["reactions"]["kudos"] == 0
+
+
+def test_delete_keeps_the_days_weigh_in(api):
+    save(api, bodyweight="180", cardio=[{"activity": "run"}])
+    body = delete(api, f"/day/{TODAY}/sessions/0").get_json()
+    assert body["removed"] is True and body["weigh_in_left"] is True
+    day = api.get(f"/day/{TODAY}").get_json()
+    assert day["lifts"] == [] and day["cardio"] == [] and day["bodyweight"] == "180 lbs"
+    with api.app.app_context():
+        assert Cardio.query.count() == 0
+
+
+# --- Stage 3: rest days -----------------------------------------------------------
+
+
+def test_rest_rules(api):
+    r = api.post("/rest/rules", json={"kind": "weekdays", "weekdays": [6, 0, 9]})
+    assert r.status_code == 201
+    (rule,) = r.get_json()["rest_rules"]
+    assert rule["kind"] == "weekdays" and rule["weekdays"] == [0, 6]
+    r = api.post(f"/rest/rules?today={TODAY}", json={"kind": "interval", "interval_days": 4})
+    every = r.get_json()["rest_rules"][1]
+    assert every["interval_days"] == 4 and every["anchor_date"] == TODAY
+
+    progress = api.get(f"/progress?today={TODAY}&week=2026-09-07").get_json()
+    assert len(progress["rest_rules"]) == 2
+    assert [d["rest"] for d in progress["week"]["days"]] == [True, False, False, True] + [
+        False,
+        False,
+        True,
+    ]
+
+    for body in ({"kind": "weekdays"}, {"kind": "interval", "interval_days": 1}, {"kind": "x"}):
+        refused = api.post("/rest/rules", json=body)
+        assert refused.status_code == 422 and refused.get_json()["error"]["code"] == "bad_rest_rule"
+    assert delete(api, f"/rest/rules/{rule['id']}", email=OTHER).status_code == 404
+    left = delete(api, f"/rest/rules/{rule['id']}").get_json()["rest_rules"]
+    assert [x["id"] for x in left] == [every["id"]]
+
+
+def test_rest_day_by_hand(api):
+    day = "2026-09-10"
+    r = api.put(f"/rest/day/{day}?today={TODAY}", json={"rest": True})
+    assert r.status_code == 200 and r.get_json() == {"date": day, "rest": True}
+    week = api.get(f"/progress?today={TODAY}&week={day}").get_json()["week"]["days"]
+    assert [d["rest"] for d in week if d["date"] == day] == [True]
+    assert api.put(f"/rest/day/{day}?today={TODAY}").get_json()["rest"] is False  # flips
+
+    save(api)
+    for when, status in (("2026-09-15", 422), (TODAY, 422), ("someday", 404)):
+        assert api.put(f"/rest/day/{when}?today={TODAY}", json={"rest": True}).status_code == status
+    assert api.put(f"/rest/day/{day}?today={TODAY}", json={"rest": "yes"}).status_code == 400

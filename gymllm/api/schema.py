@@ -189,3 +189,123 @@ def day(parts: dict) -> dict:
         "previous": parts["prev"],
         "next": parts["nxt"],
     }
+
+
+# --- Progress -------------------------------------------------------------------
+
+
+def rest_rule(rule: dict) -> dict:
+    return {k: rule[k] for k in ("id", "kind", "weekdays", "interval_days", "anchor_date")}
+
+
+def _lift_progress(item: dict) -> dict:
+    keys = ("exercise", "first", "latest", "change", "pct", "unit")
+    return {**{k: item[k] for k in keys}, "series": [dict(p) for p in item["series"]]}
+
+
+def _bodyweight(bw: dict | None) -> dict | None:
+    """Your own weigh-ins over the range. Only ever in the owner's payload."""
+    if bw is None:
+        return None
+    keys = ("latest", "latest_date", "change", "unit", "since", "chart_unit", "charted")
+    return {**{k: bw[k] for k in keys}, "periods": [dict(p) for p in bw["periods"]]}
+
+
+def progress(parts: dict) -> dict:
+    """Your Progress overview, as routes.progress_parts() builds it."""
+    data = parts["data"]
+    totals, activity = data["totals"], data["cardio"]
+    return {
+        "range": data["range"],
+        "by": data["by"],
+        "start": data["start"].isoformat() if data["start"] else None,
+        "total": parts["total"],
+        "totals": {
+            "sessions": totals["sessions"],
+            "entries": totals["entries"],
+            "exercises": totals["exercises"],
+            "volume": totals["volume"],
+            "cardio": totals["cardio"],
+            "cardio_distance": activity["distance_text"],
+            "cardio_minutes": activity["minutes_text"],
+        },
+        "streak": data["streak"],
+        "per_period": [dict(p) for p in data["per_period"]],
+        "week": {
+            "start": parts["week_param"],
+            "end": parts["week_end"].isoformat(),
+            "previous": parts["prev_week"],
+            "next": parts["next_week"],
+            "is_this_week": parts["is_this_week"],
+            "days": [week_day(d) for d in data["week"]],
+        },
+        "rest_rules": [rest_rule(r) for r in parts["rest_rules"]],
+        "bodyweight": _bodyweight(data["bodyweight"]),
+        "lifts": [_lift_progress(x) for x in data["lifts"]],
+        "tags": [dict(t) for t in data["tags"]],
+        "top_exercises": [dict(e) for e in data["top_exercises"]],
+        "prs": [
+            {
+                "exercise": r["exercise"],
+                "date": r["date"],
+                "session": r.get("session", 0),
+                "weight": r["weight"],
+                "value": r["value"],
+                "previous": r["previous"],
+            }
+            for r in data["prs"]
+        ],
+    }
+
+
+def session_tile(d: dict) -> dict:
+    """One of your workouts on the Sessions list, as routes.sessions_parts() builds it."""
+    return {
+        "date": d["date"],
+        "session": d["session"],
+        "title": d["title"],
+        "icon_hint": session_meta.icon_hint(d["rows"], d["cardio"]),
+        "lines": [
+            {"name": ln["name"], "detail": ln["detail"], "parts": ln["parts"], "pr": ln["pr"]}
+            for ln in d["lines"]
+        ],
+        "bodyweight": d["weight"]["weight"] if d["weight"] else None,
+    }
+
+
+def exercise_row(e: dict) -> dict:
+    return {k: e[k] for k in ("exercise", "entries", "sessions", "first", "last", "best", "spark")}
+
+
+def cardio_row(c: dict) -> dict:
+    return {
+        "activity": c["activity"],
+        "count": c["count"],
+        "distance": c["distance_text"],
+        "minutes": c["minutes_text"],
+        "last": c["last"],
+    }
+
+
+def exercise(parts: dict) -> dict:
+    """One of your exercises over time, as routes.exercise_parts() builds it."""
+    lift_progress = parts["lift"]
+    return {
+        "name": parts["name"],
+        "tags": _tags(parts["tags"]),
+        "total": parts["total"],
+        "sessions": parts["sessions"],
+        "best": dict(parts["best"]) if parts["best"] else None,
+        "volume": parts["volume"],
+        "last_date": parts["last_date"],
+        "series": [dict(p) for p in parts["series"]],
+        "progress": _lift_progress(lift_progress) if lift_progress else None,
+        "entries": [
+            {
+                **lift(dict(r, sets_reps=sessions.sets_summary(r["sets"], r["reps"])), mine=True),
+                "date": r["date"],
+                "session": r.get("session", 0),
+            }
+            for r in parts["rows"]
+        ],
+    }
