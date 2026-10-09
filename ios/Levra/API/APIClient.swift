@@ -65,6 +65,9 @@ final class APIClient {
         session = URLSession(configuration: config)
     }
 
+    /// A page of the website, for a link out of the app: "privacy", "terms".
+    func page(_ path: String) -> URL { baseURL.appendingPathComponent(path) }
+
     func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
         try await send("GET", path, query: query, body: nil)
     }

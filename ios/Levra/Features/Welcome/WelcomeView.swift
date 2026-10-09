@@ -40,6 +40,7 @@ struct WelcomeView: View {
                         .font(.text(13, relativeTo: .footnote))
                         .foregroundStyle(Palette.muted)
                         .frame(maxWidth: .infinity)
+                    legal
                     #if DEBUG
                     devAccounts
                     #endif
@@ -103,6 +104,19 @@ struct WelcomeView: View {
             .accessibilityLabel("Example: a typed sentence becomes a logged workout")
         }
         .clipped()
+    }
+
+    /// The terms and the privacy policy, on the website.
+    private var legal: some View {
+        let terms = app.api.page("terms").absoluteString
+        let privacy = app.api.page("privacy").absoluteString
+        let line = "By continuing you agree to the [Terms](\(terms)) and the [Privacy Policy](\(privacy))."
+        return Text((try? AttributedString(markdown: line)) ?? AttributedString(line))
+            .font(.text(12, relativeTo: .caption))
+            .foregroundStyle(Palette.muted)
+            .tint(Palette.ink2)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
     }
 
     private func demoRow(_ name: String, _ detail: String) -> some View {

@@ -314,22 +314,19 @@ struct DayView: View {
             .font(.text(12, .bold, relativeTo: .caption))
             .tracking(1.2)
 
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(day.title)
-                        .font(.head(42, .extrabold, relativeTo: .largeTitle))
-                        .tracking(-1.2)
-                        .lineSpacing(-6)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if !day.statLine.isEmpty {
-                        Text(day.statLine).font(.text(16, .semibold))
-                    }
+            MuscleIcon(day.icon, size: 120, glyph: Palette.you)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.top, -14)
+                .padding(.bottom, -18)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(day.title)
+                    .font(.head(42, .extrabold, relativeTo: .largeTitle))
+                    .tracking(-1.2)
+                    .lineSpacing(-6)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !day.statLine.isEmpty {
+                    Text(day.statLine).font(.text(16, .semibold))
                 }
-                Spacer(minLength: 0)
-                // A stand-in until the muscle icons are exported as assets.
-                Image(systemName: Self.symbol(for: day.iconHint, lifts: !day.lifts.isEmpty))
-                    .font(.system(size: 34, weight: .semibold))
-                    .accessibilityHidden(true)
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -365,17 +362,6 @@ struct DayView: View {
                     .opacity(0.85)
             }
         }
-    }
-
-    static func symbol(for hint: String, lifts: Bool) -> String {
-        let hint = hint.lowercased()
-        let cardio: [(String, String)] = [
-            ("run", "figure.run"), ("walk", "figure.walk"), ("hike", "figure.hiking"),
-            ("cycl", "figure.outdoor.cycle"), ("bik", "figure.outdoor.cycle"),
-            ("swim", "figure.pool.swim"), ("row", "figure.rower"), ("yoga", "figure.yoga"),
-        ]
-        if !lifts, let match = cardio.first(where: { hint.contains($0.0) }) { return match.1 }
-        return lifts ? "dumbbell.fill" : "figure.mixed.cardio"
     }
 
     /// Notes are yours alone, so they sit apart from the poster.

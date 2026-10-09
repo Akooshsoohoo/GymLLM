@@ -89,8 +89,7 @@ final class ProgressUITests: XCTestCase {
         title.tap()
         title.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 30) + "Leg day")
         shot("20-day-edit")
-        app.buttons["Save changes"].tap()
-        XCTAssertTrue(app.staticTexts["Leg day"].waitForExistence(timeout: 10))
+        app.tapSave("Save changes", expecting: app.staticTexts["Leg day"], timeout: 10)
 
         // Previous day logged, then back out to Progress.
         app.buttons.labelled("Previous day logged").tap()

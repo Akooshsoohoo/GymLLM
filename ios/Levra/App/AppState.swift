@@ -77,6 +77,14 @@ final class AppState {
         phase = .signedOut
     }
 
+    /// Deletes the account and everything in it on the server, for good, then
+    /// forgets it here too: the sign-in, and a workout being recorded.
+    func deleteAccount() async throws {
+        let _: AccountDeleted = try await api.delete("/account")
+        if recording != nil { recorder.discard() }
+        signOut()
+    }
+
     func setWeightUnit(_ unit: String) async throws {
         let saved: Preferences = try await api.put("/preferences", PreferencesRequest(weightUnit: unit))
         me?.weightUnit = saved.weightUnit
