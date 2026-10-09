@@ -1,11 +1,10 @@
 import SwiftUI
 
-/// Me: your profile as friends see it, then your units and the way out. Mirrors
+/// Me: your profile as friends see it, and the way into Settings. Mirrors
 /// your own templates/profile.html. Without a profile it offers to set one up.
 struct MeView: View {
     @Environment(AppState.self) private var app
     @State private var profile: PersonProfile?
-    @State private var unit = "lbs"
     @State private var error: String?
     @State private var editing: ProfileEditView.Mode?
 
@@ -17,9 +16,21 @@ struct MeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Me")
-                    .font(.head(32, relativeTo: .largeTitle))
-                    .foregroundStyle(Palette.ink)
+                HStack {
+                    Text("Me")
+                        .font(.head(32, relativeTo: .largeTitle))
+                        .foregroundStyle(Palette.ink)
+                    Spacer()
+                    NavigationLink(value: Route.settings) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Palette.ink)
+                            .frame(width: 40, height: 40)
+                            .background(Palette.surface, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Settings")
+                }
                 if let error { ErrorBanner(message: error) }
 
                 if let own = app.me?.profile {
@@ -35,10 +46,6 @@ struct MeView: View {
                 } else if app.me != nil {
                     noProfile
                 }
-
-                settings
-                Button("Sign out") { app.signOut() }
-                    .buttonStyle(.pill(.white, height: 54, fill: true))
             }
             .padding(.horizontal, Metrics.gutter)
             .padding(.top, 20)
@@ -54,19 +61,6 @@ struct MeView: View {
         .sheet(item: $editing) { mode in
             ProfileEditView(mode: mode, cancel: { editing = nil }) { _ in editing = nil }
                 .presentationBackground(Palette.bg)
-        }
-        .onAppear { unit = app.weightUnit }
-        .onChange(of: unit) { _, new in
-            guard new != app.weightUnit else { return }
-            Task {
-                do {
-                    try await app.setWeightUnit(new)
-                    error = nil
-                } catch let failure {
-                    error = app.message(for: failure)
-                    unit = app.weightUnit
-                }
-            }
         }
     }
 
@@ -106,34 +100,6 @@ struct MeView: View {
                 .buttonStyle(.pill(.primary, height: 44))
         }
         .card()
-    }
-
-    private var settings: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionHead("Settings")
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Weight unit")
-                        .font(.head(17))
-                        .foregroundStyle(Palette.ink)
-                    Text("Used when you don't say one")
-                        .font(.text(13, relativeTo: .footnote))
-                        .foregroundStyle(Palette.muted)
-                }
-                Spacer()
-                SegmentedToggle(
-                    options: [("lbs", "lbs"), ("kg", "kg")], selection: $unit, label: "Weight unit"
-                )
-            }
-            .card()
-            if let email = app.me?.email {
-                Text("Signed in as \(email)")
-                    .font(.text(13, relativeTo: .footnote))
-                    .foregroundStyle(Palette.muted)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-        }
     }
 }
 

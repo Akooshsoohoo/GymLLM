@@ -151,12 +151,25 @@ struct HomeView: View {
 
     private func checklistSection(_ checklist: Checklist) -> some View {
         let steps: [(done: Bool, label: String, help: String)] = [
-            (checklist.logged, "Log a workout", "Type it, the way you'd text a friend."),
+            (checklist.logged, "Log a workout", "Type it, or record as you train."),
             (checklist.profile, "Set up your profile", "A handle so friends can find you."),
             (checklist.friends, "Add a friend", "Send your invite link or search by @handle."),
         ]
         return VStack(alignment: .leading, spacing: 10) {
-            SectionHead("Getting started")
+            SectionHead(title: "Getting started") {
+                Button("Hide") {
+                    Task {
+                        do {
+                            let _: Done = try await app.api.post("/onboarding/dismiss")
+                            await store.load(app: app)
+                        } catch let failure {
+                            store.error = app.message(for: failure)
+                        }
+                    }
+                }
+                .buttonStyle(LinkButtonStyle(color: Palette.muted))
+                .accessibilityLabel("Hide getting started")
+            }
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(steps, id: \.label) { step in
                     HStack(alignment: .top, spacing: 12) {

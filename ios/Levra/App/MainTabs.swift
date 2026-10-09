@@ -10,6 +10,8 @@ enum Route: Hashable {
     case person(handle: String)
     /// You beside a friend.
     case compare(handle: String)
+    /// Units, theme, sign out.
+    case settings
 
     enum SavedKind: Hashable { case saved, first }
 }
@@ -50,13 +52,16 @@ extension View {
                 PersonView(handle: handle, backTitle: backTitle)
             case let .compare(handle):
                 CompareView(handle: handle)
+            case .settings:
+                SettingsView()
             }
         }
     }
 }
 
 /// The five tabs of templates/base.html: Home, Progress, the raised centre button,
-/// Friends, Me. The centre button opens Log until Record exists.
+/// Friends, Me. The centre button opens Record, and shows the time while a workout
+/// is being recorded.
 struct MainTabs: View {
     enum Tab: Hashable { case home, progress, friends, me }
 
@@ -70,6 +75,7 @@ struct MainTabs: View {
     @State private var friendsPath: [Route] = []
     @State private var mePath: [Route] = []
     @State private var logging = false
+    @State private var recording = false
 
     var body: some View {
         Group {
@@ -102,19 +108,30 @@ struct MainTabs: View {
                 progressPath = []
                 friendsPath = []
                 mePath = []
-            }) { logging = true }
+            }, recordingSince: app.recording?.startedAt) { recording = true }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .fullScreenCover(isPresented: $logging) {
             LogFlow(store: store) { saved, first in
                 logging = false
-                tab = .home
-                homePath = [.day(date: saved.date, session: saved.session, saved: first ? .first : .saved)]
-                Task {
-                    await store.load(app: app, saved: saved)
-                    await app.refreshMe()
-                }
+                landed(on: saved, first: first)
             }
+        }
+        .fullScreenCover(isPresented: $recording) {
+            RecordFlow(store: store) { saved, first in
+                recording = false
+                landed(on: saved, first: first)
+            }
+        }
+    }
+
+    /// A workout was just saved: Home, with its Day on top.
+    private func landed(on saved: SavedSession, first: Bool) {
+        tab = .home
+        homePath = [.day(date: saved.date, session: saved.session, saved: first ? .first : .saved)]
+        Task {
+            await store.load(app: app, saved: saved)
+            await app.refreshMe()
         }
     }
 }
@@ -124,27 +141,38 @@ private struct TabBar: View {
     let unseen: Int
     /// The tab already showing was tapped again: back to its top.
     let reselect: () -> Void
-    let log: () -> Void
+    /// When the workout being recorded started, if one is.
+    let recordingSince: Date?
+    let record: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             item(.home, "Home", "house")
             item(.progress, "Progress", "chart.bar")
-            Button(action: log) {
+            Button(action: record) {
                 VStack(spacing: 3) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(Palette.onPrimary)
+                    // A record dot; a stop square while a workout is running.
+                    RoundedRectangle(cornerRadius: recordingSince == nil ? 10 : 4, style: .continuous)
+                        .fill(Palette.onPrimary)
+                        .frame(width: recordingSince == nil ? 20 : 16, height: recordingSince == nil ? 20 : 16)
                         .frame(width: 58, height: 58)
                         .background(Palette.primary, in: Circle())
                         .overlay { Circle().strokeBorder(Palette.bg, lineWidth: 4) }
                         .padding(.top, -28)
-                    Text("Log").tabLabel(active: false)
+                    if let recordingSince {
+                        TimelineView(.periodic(from: .now, by: 1)) { context in
+                            Text(Recording.clock(from: recordingSince, to: context.date))
+                                .tabLabel(active: true)
+                                .monospacedDigit()
+                        }
+                    } else {
+                        Text("Record").tabLabel(active: false)
+                    }
                 }
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Log a workout")
+            .accessibilityLabel(recordingSince == nil ? "Record a workout" : "Back to your workout")
             item(.friends, "Friends", "person.2", badge: unseen)
             item(.me, "Me", "person.crop.circle")
         }

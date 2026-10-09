@@ -114,6 +114,7 @@ final class FriendsUITests: XCTestCase {
         let invite = link.value as? String ?? ""
         XCTAssertTrue(invite.contains("/invite/"), "No invite link on People: \(invite)")
         app.buttons["Me"].tap()
+        app.buttons["Settings"].tap()
         app.tapClear(app.buttons["Sign out"])
 
         // Somebody new: Friends is profile setup until there is a profile.

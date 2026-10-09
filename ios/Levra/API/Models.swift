@@ -187,6 +187,8 @@ struct ParseResult: Codable {
 struct ParseRequest: Encodable {
     let text: String
     let weightUnit: String
+    /// The routine a recording started from: the workout takes its name.
+    var routineName: String?
 }
 
 struct SaveRequest: Encodable {

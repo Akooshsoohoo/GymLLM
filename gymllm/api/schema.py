@@ -388,3 +388,20 @@ def compare(data: dict) -> dict:
         "muscles": [dict(m) for m in data["muscles"]],
         "weekly": [dict(w) for w in data["weekly"]],
     }
+
+
+# --- Routines -------------------------------------------------------------------
+
+
+def routine_row(r: dict) -> dict:
+    """A routine on the list, as routines.list_for() builds it."""
+    return {"id": r["id"], "name": r["name"], "block_count": r["blocks"]}
+
+
+def routine(row, blocks: list[dict]) -> dict:
+    """One of your routines with its blocks, in order."""
+    return {
+        "id": row.id,
+        "name": row.name,
+        "blocks": [{"name": b["name"], "body": b["body"]} for b in blocks],
+    }

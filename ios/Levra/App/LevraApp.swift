@@ -17,6 +17,7 @@ struct LevraApp: App {
 /// Welcome when signed out, the tabs when signed in.
 struct RootView: View {
     @Environment(AppState.self) private var app
+    @AppStorage(Theme.key) private var theme = Theme.system.rawValue
 
     var body: some View {
         ZStack {
@@ -34,6 +35,8 @@ struct RootView: View {
         }
         .animation(.easeOut(duration: 0.2), value: app.phase)
         .task { await app.start() }
+        .onAppear { Theme.apply(theme) }
+        .onChange(of: theme) { _, new in Theme.apply(new) }
     }
 }
 

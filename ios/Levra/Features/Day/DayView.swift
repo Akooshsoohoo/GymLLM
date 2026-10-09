@@ -15,6 +15,7 @@ struct DayView: View {
     @State private var pickingDate = false
     @State private var editing: DayDetail?
     @State private var sharing: DayDetail?
+    @State private var visibility = "friends"
     /// The tab this stack belongs to, for the back button.
     private let backTitle: String
 
@@ -102,7 +103,9 @@ struct DayView: View {
         do {
             var query: [String: String] = [:]
             if let session { query["session"] = String(session) }
-            day = try await app.api.get("/day/\(date)", query: query)
+            let loaded: DayDetail = try await app.api.get("/day/\(date)", query: query)
+            day = loaded
+            visibility = loaded.visibility
             error = nil
         } catch let failure {
             error = app.message(for: failure)
@@ -246,6 +249,7 @@ struct DayView: View {
                 .card(padding: 14)
             }
             notes(day)
+            if !day.lifts.isEmpty || !day.cardio.isEmpty { visibilityCard(day) }
             if let reactions = day.reactions, let handle = app.me?.profile?.handle,
                reactions.kudos > 0 || !reactions.comments.isEmpty {
                 FromFriends(
@@ -254,6 +258,49 @@ struct DayView: View {
                 .id(reactions)
             }
         }
+    }
+
+    /// Who may see the day, changed on the spot. The editor has the same choice.
+    private func visibilityCard(_ day: DayDetail) -> some View {
+        let choice = Binding(
+            get: { visibility },
+            set: { new in
+                guard new != visibility else { return }
+                let old = visibility
+                visibility = new
+                Task {
+                    do {
+                        let saved: DayVisibility = try await app.api.put(
+                            "/day/\(day.date)/visibility", VisibilityRequest(visibility: new)
+                        )
+                        visibility = saved.visibility
+                        error = nil
+                        app.didChange()
+                    } catch let failure {
+                        visibility = old
+                        error = app.message(for: failure)
+                    }
+                }
+            }
+        )
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Text("Who can see this")
+                    .font(.head(17))
+                    .foregroundStyle(Palette.ink)
+                Spacer(minLength: 0)
+                SegmentedToggle(
+                    options: [("private", "Private"), ("friends", "Friends")],
+                    selection: choice, label: "Who can see this"
+                )
+            }
+            (Text(visibility == "private" ? "Only you. " : "Your friends, in their feed. ")
+                .foregroundStyle(Palette.ink)
+                + Text("It covers everything logged that day. Notes and body weight always stay private.")
+                .foregroundStyle(Palette.muted))
+                .font(.text(13, relativeTo: .footnote))
+        }
+        .card(padding: 14)
     }
 
     /// The green card that is also the look of the share image.

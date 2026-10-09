@@ -13,6 +13,8 @@ struct ReviewView: View {
     @State private var pickingDate = false
     @State private var saving = false
     @State private var error: String?
+    /// What the manual form suggests as you type a name.
+    @State private var names: ManualNames?
     private let nothingFound: Bool
 
     init(draft: ReviewDraft, cancel: @escaping () -> Void, onSaved: @escaping (SavedSession, Bool) -> Void) {
@@ -69,6 +71,9 @@ struct ReviewView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { saveBar }
         .sheet(isPresented: $pickingDate) { datePicker }
         .disabled(saving)
+        .task {
+            if draft.byHand, names == nil { names = try? await app.api.get("/log/manual") }
+        }
     }
 
     private var heading: String {
@@ -163,7 +168,7 @@ struct ReviewView: View {
             withAnimation(.easeOut(duration: 0.15)) { draft.lifts.append(.init()) }
         } rows: {
             ForEach($draft.lifts) { $row in
-                ReviewRow(name: $row.entry.exercise, placeholder: "Exercise") {
+                ReviewRow(name: $row.entry.exercise, placeholder: "Exercise", suggestions: names?.exercises ?? []) {
                     withAnimation(.easeOut(duration: 0.15)) { draft.lifts.removeAll { $0.id == row.id } }
                 } pills: {
                     ValuePill(name: "weight", text: $row.entry.weight)
@@ -181,7 +186,7 @@ struct ReviewView: View {
             withAnimation(.easeOut(duration: 0.15)) { draft.cardio.append(.init()) }
         } rows: {
             ForEach($draft.cardio) { $row in
-                ReviewRow(name: $row.entry.activity, placeholder: "Activity") {
+                ReviewRow(name: $row.entry.activity, placeholder: "Activity", suggestions: names?.activities ?? []) {
                     withAnimation(.easeOut(duration: 0.15)) { draft.cardio.removeAll { $0.id == row.id } }
                 } pills: {
                     ValuePill(name: "distance", text: $row.entry.distance)
@@ -305,8 +310,21 @@ struct ReviewView: View {
 struct ReviewRow<Pills: View>: View {
     @Binding var name: String
     let placeholder: String
+    /// Names to offer while this one is being typed: the manual form's lists.
+    var suggestions: [String] = []
     let remove: () -> Void
     @ViewBuilder var pills: Pills
+
+    @FocusState private var naming: Bool
+
+    /// Up to four names holding what was typed, the ones starting with it first.
+    private var matches: [String] {
+        let typed = name.trimmed.lowercased()
+        guard naming, typed.count >= 2 else { return [] }
+        let found = suggestions.filter { $0.lowercased().contains(typed) && $0.lowercased() != typed }
+        return Array((found.filter { $0.lowercased().hasPrefix(typed) }
+            + found.filter { !$0.lowercased().hasPrefix(typed) }).prefix(4))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -316,10 +334,19 @@ struct ReviewRow<Pills: View>: View {
                     .foregroundStyle(Palette.ink)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+                    .focused($naming)
                     .accessibilityLabel(placeholder)
                 Button("Remove", action: remove)
                     .buttonStyle(LinkButtonStyle(color: Palette.muted2, size: 13))
                     .accessibilityLabel("Remove \(name.isEmpty ? placeholder.lowercased() : name)")
+            }
+            if !matches.isEmpty {
+                FlowLayout(spacing: 8) {
+                    ForEach(matches, id: \.self) { match in
+                        Chip(text: match) { name = match }
+                            .accessibilityLabel("Use \(match)")
+                    }
+                }
             }
             FlowLayout(spacing: 8) { pills }
         }
