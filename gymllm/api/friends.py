@@ -135,7 +135,7 @@ def profile(handle: str):
         last_30={
             "sessions": totals["sessions"],
             "sets": sum(stats.set_count(r.get("sets"), r.get("reps")) for r in last_30[0]),
-            "exercises": totals["exercises"],
+            "cardio_minutes": round(totals["minutes"]),
         },
         favourites=[schema.favourite(f) for f in favourites],
         prs=[schema.pr(r) for r in stats.personal_records(rows, today - timedelta(days=90))[:5]],

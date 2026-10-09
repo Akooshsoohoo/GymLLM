@@ -198,6 +198,15 @@ def test_dev_auth_issues_a_token_for_a_seeded_account(app, client):
     assert client.post("/api/v1/auth/dev", json={"slug": "nobody"}).status_code == 404
 
 
+def test_dev_auth_can_issue_a_blank_account(app, client):
+    r = client.post("/api/v1/auth/dev", json={"slug": "new-ab12"})
+    user = r.get_json()["user"]
+    assert user["email"] == "dev-new-ab12@example.test" and user["first_name"] == "Riley"
+    assert user["profile"] is None
+    for slug in ("new-", "new-AB", "new-" + "a" * 13, "new-a b"):
+        assert client.post("/api/v1/auth/dev", json={"slug": slug}).status_code == 404
+
+
 @pytest.mark.parametrize(
     "overrides",
     [{"IS_PRODUCTION": True}, {"SQLALCHEMY_DATABASE_URI": "postgresql://u:p@localhost/x"}],
@@ -1140,7 +1149,7 @@ def test_profile_of_a_friend_a_stranger_and_yourself(api):
     assert body["person"]["name"] == "Tess" and body["relationship"] == "friends"
     assert body["visible"] is True and body["friend_count"] == 1
     assert body["total"] == 2 and body["streak"] == 1  # the private day isn't counted
-    assert body["last_30"] == {"sessions": 1, "sets": 3, "exercises": 1}
+    assert body["last_30"] == {"sessions": 1, "sets": 3, "cardio_minutes": 0}
     assert [f["exercise"] for f in body["favourites"]] == ["barbell bench press"]
     assert [c["date"] for c in body["cards"]] == [TODAY]
     assert "notes" not in body["cards"][0]["lifts"][0]

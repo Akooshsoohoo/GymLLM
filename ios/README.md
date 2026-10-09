@@ -2,10 +2,13 @@
 
 The native SwiftUI app. It talks to the JSON API at `/api/v1` (`gymllm/api/`), and
 `ios-handoff.md` at the repo root has the full plan. Built so far: the core loop
-(Welcome and sign-in, Home, Log, Review, Save) and Progress and Day (the Overview,
+(Welcome and sign-in, Home, Log, Review, Save), Progress and Day (the Overview,
 Sessions and Exercises tabs under a time range, charts, the week calendar and rest
 days, search, an exercise's history, and a Day you can step through, edit, delete
-and share as a picture). Friends, Record and Settings come next.
+and share as a picture), and Friends (profile setup and edit, the feed, high fives
+and comments, finding people, requests, invites by pasted link or code, a friend's
+profile, Compare, and your own profile on Me). Record, routines and the rest of
+Settings come next.
 
 ## Build and run
 
@@ -25,7 +28,8 @@ logging works end to end: whatever you type, it hears a bench press and a run. I
 only runs on the local SQLite database and only listens on this Mac.
 
 On Welcome, Debug builds show three seeded accounts (Alex, Sam, Jordan) under the
-Google button.
+Google button, and "New": a blank account each time, with no profile and nothing
+logged, for profile setup and the empty states.
 
 ## Test
 
@@ -37,9 +41,13 @@ With the local server running:
 `LevraUITests` signs in as Alex and drives the app: `CoreLoopUITests` logs a
 workout, edits it on Review, saves, and checks the Day it lands on;
 `ProgressUITests` goes through Progress, the calendar, search, an exercise, and a
-day's date picker, share picture, editor and delete. Each run adds one workout to
-Alex in the local database, renames one of the seeded ones to "Leg day", and can
-leave a rest day behind if it stops halfway.
+day's date picker, share picture, editor and delete; `FriendsUITests` gives a high
+five, comments, searches People, opens a friend's profile and Compare, edits Alex's
+bio, then signs in as somebody new, sets up a profile and joins by Alex's pasted
+invite link. Each run adds one workout to Alex in the local database, renames one
+of the seeded ones to "Leg day", sets Alex's bio, leaves one new account behind as
+Alex's friend, and can leave a rest day behind if it stops halfway. To start clean,
+copy `instance/gymllm.db` aside before the first run and put it back afterwards.
 Set `TEST_RUNNER_SHOTS_DIR=/some/folder` to keep a screenshot of every screen, and
 run `xcrun simctl ui booted appearance dark` first for dark mode.
 
@@ -51,7 +59,7 @@ run `xcrun simctl ui booted appearance dark` first for dark mode.
     Levra/Theme       colours, fonts, shared components
     Levra/Features    one folder per screen
     Levra/Resources   colour sets, app icon, fonts
-    LevraUITests      the core loop, Progress and Day, driven in the simulator
+    LevraUITests      the core loop, Progress and Day, and Friends, driven in the simulator
     scripts           colors.py (colour sets from static/style.css), dev_server.py
 
 Colours are never written in a view. They are generated from the tokens at the top

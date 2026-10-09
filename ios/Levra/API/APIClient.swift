@@ -10,6 +10,8 @@ struct APIError: LocalizedError, Equatable {
     var errorDescription: String? { message }
     /// The sign-in is missing, expired or no longer valid: back to Welcome.
     var isSignedOut: Bool { status == 401 }
+    /// Friends, the feed and the rest need a profile first.
+    var needsProfile: Bool { code == "profile_required" }
 
     static let offline = APIError(
         status: 0, code: "offline", message: "Couldn't reach Levra. Check your connection and try again."
@@ -73,6 +75,11 @@ final class APIClient {
 
     func put<T: Decodable>(_ path: String, _ body: some Encodable) async throws -> T {
         try await send("PUT", path, body: try encoder.encode(body))
+    }
+
+    /// A POST with nothing to say: a high five, a friend request.
+    func post<T: Decodable>(_ path: String) async throws -> T {
+        try await send("POST", path, body: Data("{}".utf8))
     }
 
     func delete<T: Decodable>(_ path: String) async throws -> T {

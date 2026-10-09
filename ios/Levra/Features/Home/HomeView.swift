@@ -198,7 +198,7 @@ struct HomeView: View {
                     .foregroundStyle(Palette.muted)
             } else {
                 VStack(spacing: 14) {
-                    ForEach(home.friends, id: \.self) { FriendCardView(card: $0) }
+                    ForEach(home.friends, id: \.self) { SessionCardView(card: $0) }
                 }
             }
         }
@@ -246,43 +246,8 @@ struct HomeView: View {
     }
 }
 
-/// A friend's workout in the feed. Lifts and cardio only: the API never sends
-/// anyone else's notes or body weight.
-struct FriendCardView: View {
-    let card: FriendCard
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                Avatar(name: card.owner?.name ?? "", url: card.owner?.avatarUrl, size: 42, tone: .friend)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(card.owner?.name ?? "A friend")
-                        .font(.text(16, .semibold))
-                        .foregroundStyle(Palette.ink)
-                    Text(meta)
-                        .font(.text(13, relativeTo: .footnote))
-                        .foregroundStyle(Palette.muted)
-                        .lineLimit(1)
-                }
-            }
-            SessionRows(lines: card.lines, cardio: card.cardio)
-            if let reactions = card.reactions, reactions.kudos > 0 || !reactions.comments.isEmpty {
-                Palette.line2.frame(height: 1)
-                ReactionsBar(reactions: reactions)
-            }
-        }
-        .card(radius: 24)
-    }
-
-    private var meta: String {
-        [Days.label(card.date), card.title, activityCount(lines: card.lines, cardio: card.cardio)]
-            .filter { !$0.isEmpty }
-            .joined(separator: " · ")
-    }
-}
-
-/// High fives and comments under a workout, shown once there are some. Read-only
-/// in this stage: giving a high five and commenting arrive with the Friends screens.
+/// High fives and comments on your own latest workout, shown once there are some.
+/// Read-only: the Day it leads to is where you answer.
 struct ReactionsBar: View {
     let reactions: Reactions
 

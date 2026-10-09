@@ -201,6 +201,55 @@ struct TagBars: View {
     }
 }
 
+/// Two people's sessions per week as two lines: green for you, clay for them.
+struct PairLines: View {
+    let weeks: [WeekPair]
+    let other: String
+
+    var body: some View {
+        Chart {
+            ForEach(Array(weeks.enumerated()), id: \.offset) { index, week in
+                line(index, week.theirs, who: other, color: Palette.friend, label: week.label)
+                line(index, week.mine, who: "You", color: Palette.you, label: week.label)
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: ticks) { value in
+                AxisValueLabel(anchor: value.as(Int.self) == 0 ? .topLeading : value.as(Int.self) == weeks.count - 1 ? .topTrailing : .top) {
+                    if let index = value.as(Int.self), weeks.indices.contains(index) {
+                        Text(weeks[index].label).chartLabel()
+                    }
+                }
+            }
+        }
+        .chartXScale(domain: -0.25...(Double(max(weeks.count - 1, 1)) + 0.25))
+        .chartYAxis { countAxis }
+        .chartYScale(domain: 0...max(weeks.map { max($0.mine, $0.theirs) }.max() ?? 0, 4))
+        .chartLegend(.hidden)
+        .frame(height: 180)
+        .accessibilityLabel("Sessions per week, you and \(other)")
+    }
+
+    @ChartContentBuilder
+    private func line(_ index: Int, _ value: Int, who: String, color: Color, label: String) -> some ChartContent {
+        LineMark(x: .value("Week", index), y: .value("Sessions", value), series: .value("Who", who))
+            .interpolationMethod(.linear)
+            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+            .foregroundStyle(color)
+        PointMark(x: .value("Week", index), y: .value("Sessions", value))
+            .symbolSize(30)
+            .foregroundStyle(color)
+            .accessibilityLabel("\(who), week of \(label)")
+            .accessibilityValue("\(value) session\(value == 1 ? "" : "s")")
+    }
+
+    private var ticks: [Int] {
+        guard weeks.count > 1 else { return [0] }
+        let last = weeks.count - 1
+        return last >= 4 ? [0, last / 2, last] : [0, last]
+    }
+}
+
 private var countAxis: some AxisContent {
     AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
         AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(Palette.line2)

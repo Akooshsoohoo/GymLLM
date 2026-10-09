@@ -246,8 +246,12 @@ struct DayView: View {
                 .card(padding: 14)
             }
             notes(day)
-            if let reactions = day.reactions, reactions.kudos > 0 || !reactions.comments.isEmpty {
-                fromFriends(reactions)
+            if let reactions = day.reactions, let handle = app.me?.profile?.handle,
+               reactions.kudos > 0 || !reactions.comments.isEmpty {
+                FromFriends(
+                    key: SessionKey(handle: handle, date: day.date, session: day.session), reactions: reactions
+                )
+                .id(reactions)
             }
         }
     }
@@ -351,41 +355,5 @@ struct DayView: View {
             }
             .card()
         }
-    }
-
-    private func fromFriends(_ reactions: Reactions) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("From friends")
-                    .font(.head(17))
-                    .foregroundStyle(Palette.ink)
-                Spacer()
-                if reactions.kudos > 0 {
-                    HStack(spacing: 6) {
-                        Image(systemName: "hand.raised.fill").font(.system(size: 13, weight: .semibold))
-                        Text("\(reactions.kudos) high five\(reactions.kudos == 1 ? "" : "s")")
-                            .font(.text(14, .semibold, relativeTo: .subheadline))
-                    }
-                    .foregroundStyle(Palette.youInk)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Palette.youTint, in: Capsule())
-                }
-            }
-            ForEach(reactions.comments) { comment in
-                HStack(alignment: .top, spacing: 10) {
-                    Avatar(name: comment.author?.name ?? "", url: comment.author?.avatarUrl, size: 32, tone: .friend)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(comment.author?.name ?? "Someone")
-                            .font(.text(14, .semibold, relativeTo: .subheadline))
-                            .foregroundStyle(Palette.ink)
-                        Text(comment.body)
-                            .font(.text(15))
-                            .foregroundStyle(Palette.ink2)
-                    }
-                }
-            }
-        }
-        .card()
     }
 }

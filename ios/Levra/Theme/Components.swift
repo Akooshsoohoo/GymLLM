@@ -140,6 +140,72 @@ struct ErrorBanner: View {
     }
 }
 
+/// A quiet green band for something that went right: "Friend request sent to Sam."
+struct NoteBanner: View {
+    let message: String
+
+    var body: some View {
+        Text(message)
+            .font(.text(15, .medium))
+            .foregroundStyle(Palette.youInk)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Palette.youTint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+/// "‹ Friends" at the top of a pushed screen, which hides the navigation bar.
+struct BackLink: View {
+    @Environment(\.dismiss) private var back
+    var title = "Back"
+
+    var body: some View {
+        Button {
+            back()
+        } label: {
+            Label(title, systemImage: "chevron.left").labelStyle(.titleAndIcon)
+        }
+        .buttonStyle(LinkButtonStyle(color: Palette.muted, size: 15))
+        .accessibilityLabel(title == "Back" ? "Back" : "Back to \(title)")
+    }
+}
+
+/// A labelled one-line field on the surface, as the day editor's title is.
+struct FormField: View {
+    let label: String
+    @Binding var text: String
+    var prompt = ""
+    var prefix: String?
+    var limit = 0
+    var plain = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.text(13, .semibold, relativeTo: .footnote))
+                .foregroundStyle(Palette.muted)
+            HStack(spacing: 2) {
+                if let prefix {
+                    Text(prefix).font(.text(16, .medium)).foregroundStyle(Palette.muted)
+                }
+                TextField("", text: $text, prompt: Text(prompt).foregroundStyle(Palette.muted2))
+                    .font(.text(16, .medium))
+                    .foregroundStyle(Palette.ink)
+                    .autocorrectionDisabled(plain)
+                    .textInputAutocapitalization(plain ? .never : .sentences)
+                    .accessibilityLabel(label)
+                    .onChange(of: text) { _, new in
+                        if limit > 0, new.count > limit { text = String(new.prefix(limit)) }
+                    }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 46)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+}
+
 // MARK: Small pieces
 
 struct Badge: View {
@@ -360,6 +426,18 @@ func activityCount(lines: [ExerciseLine], cardio: [CardioEntry]) -> String {
     if !lines.isEmpty { parts.append("\(lines.count) exercise\(lines.count == 1 ? "" : "s")") }
     if !cardio.isEmpty { parts.append("\(cardio.count) cardio") }
     return parts.joined(separator: " · ")
+}
+
+extension View {
+    /// Put the keyboard away when this screen comes up: a search left focused on the
+    /// screen below would otherwise keep it over the tab bar.
+    func dismissesKeyboard() -> some View {
+        onAppear {
+            UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
+            )
+        }
+    }
 }
 
 // MARK: Layout

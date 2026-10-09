@@ -71,6 +71,12 @@ final class AppState {
         me?.weightUnit = saved.weightUnit
     }
 
+    /// Your profile was just made or changed.
+    func setProfile(_ profile: OwnProfile) {
+        me?.profile = profile
+        didChange()
+    }
+
     /// What to tell the user about a failed request, or nil when there is nothing
     /// to say: the task was cancelled, or the sign-in ran out and they are back on
     /// Welcome.
@@ -79,6 +85,12 @@ final class AppState {
         guard let api = error as? APIError else { return APIError.unreadable.message }
         if api.isSignedOut, phase == .signedIn {
             signOut()
+            return nil
+        }
+        // The server says there is no profile: ask again who we are, and the Friends
+        // screens turn into profile setup.
+        if api.needsProfile {
+            Task { await refreshMe() }
             return nil
         }
         return api.message

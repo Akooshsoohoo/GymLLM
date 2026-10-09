@@ -28,7 +28,7 @@ struct Quota: Codable, Hashable {
 struct Me: Codable, Hashable {
     let email: String
     let firstName: String
-    let profile: OwnProfile?
+    var profile: OwnProfile?
     var weightUnit: String
     /// Nil when the server has no shared model set up.
     let quota: Quota?
