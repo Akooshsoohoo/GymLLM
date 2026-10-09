@@ -13,11 +13,13 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 from sqlalchemy import func
 
 from . import (
+    account,
     dayedit,
     logflow,
     preferences,
@@ -29,7 +31,7 @@ from . import (
     social,
     stats,
 )
-from .auth import current_user_email, login_required
+from .auth import current_user_email, login_required, sign_out
 from .exercises import (
     ACTIVITY_NAMES,
     EXERCISE_NAMES,
@@ -132,6 +134,16 @@ def welcome():
     if current_user_email():
         return redirect(url_for("main.home"))
     return render_template("welcome.html")
+
+
+@bp.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
+@bp.route("/terms")
+def terms():
+    return render_template("terms.html")
 
 
 def _client_hour() -> int:
@@ -640,6 +652,18 @@ def settings():
         or LLMConfig(provider="openai", model=PROVIDERS["openai"].default_model)
     )
     return render_template("settings.html", config=config, site_origin=_site_origin())
+
+
+@bp.route("/account/delete", methods=["POST"])
+@login_required
+def account_delete():
+    """Settings' "Delete account": everything stored for the email goes, for good, and
+    every sign-in it has anywhere stops working. Mirrored by DELETE /api/v1/account."""
+    account.delete(current_user_email())
+    sign_out()
+    session.clear()  # the model choice and its key, too
+    flash("Your account and everything in it has been deleted.", "ok")
+    return redirect(url_for("main.welcome"))
 
 
 @bp.route("/settings/test", methods=["POST"])

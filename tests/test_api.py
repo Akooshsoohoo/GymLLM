@@ -1,9 +1,21 @@
-import pytest
+import time
+from datetime import date
 
-from gymllm import auth, create_app, quota, social
+import pytest
+from sqlalchemy import or_, select, text
+
+from gymllm import account, auth, create_app, migrate, quota, rest, routines, social
 from gymllm.extensions import db
 from gymllm.llm.client import BadOutputError, RateLimitError
-from gymllm.models import BodyWeight, Cardio, RoutineBlock, SessionVisibility, Workout
+from gymllm.models import (
+    AccountCutoff,
+    BodyWeight,
+    Cardio,
+    RoutineBlock,
+    SessionMeta,
+    SessionVisibility,
+    Workout,
+)
 from tests.conftest import OTHER, SITE_LLM, USER, base_test_config
 
 TODAY = "2026-09-14"
@@ -651,6 +663,7 @@ def test_sessions_list_and_search(api):
     assert run["lines"] == [{"name": "run", "detail": "3 miles", "parts": [], "pr": False}]
     assert bench["session"] == 0 and bench["bodyweight"] == "180 lbs"
     assert bench["lines"][0]["detail"] == "185 lbs · 3×5" and bench["icon_hint"].startswith("chest")
+    assert bench["icon"] == "push"
     assert body["months"][1]["days"][0]["title"] == "Leg day"
 
     def found(query):
@@ -1496,3 +1509,227 @@ def test_day_visibility_refusals(api):
     # Somebody else's day is not yours to set: it is simply not there.
     r = api.put(f"/day/{TODAY}/visibility", email=OTHER, json={"visibility": "private"})
     assert r.status_code == 404
+
+
+# --- Stage 6: deleting an account -------------------------------------------------
+
+
+def rows_naming(email):
+    """{table: rows} for every table with an email column, counting those that hold
+    `email` in any of them. A routine's blocks count as the routine owner's."""
+    counts = {}
+    for table in db.metadata.sorted_tables:
+        columns = [c for c in table.columns if c.name.endswith("_email")]
+        if columns:
+            found = db.session.execute(select(table).where(or_(*(c == email for c in columns))))
+            counts[table.name] = len(found.all())
+    counts["routine_block"] = (
+        RoutineBlock.query.join(routines.Routine, RoutineBlock.routine_id == routines.Routine.id)
+        .filter(routines.Routine.user_email == email)
+        .count()
+    )
+    return counts
+
+
+def fill_account(api, fake_llm):
+    """USER and OTHER, friends, each with something in every table that names an
+    email, and something of theirs on the other's workout."""
+    for email, handle in ((USER, "tester"), (OTHER, "other")):
+        fake_llm.queue(BENCH)
+        assert (
+            api.post(f"/parse?today={TODAY}", email=email, json={"text": "bench"}).status_code
+            == 200
+        )
+        r = save(
+            api,
+            email=email,
+            title="Push day",
+            bodyweight="180",
+            cardio=[{"activity": "run", "distance": "3 miles", "duration": "", "notes": "slow"}],
+        )
+        assert r.status_code == 201
+        assert api.put("/preferences", email=email, json={"weight_unit": "kg"}).status_code == 200
+        assert api.post("/routines", email=email, json=PUSH).status_code == 201
+        with api.app.app_context():
+            social.save_profile(email, handle, handle.title())
+            rest.add_rule(email, "weekdays", weekdays=(6,), anchor=date(2026, 9, 14))
+            rest.set_day(email, date(2026, 9, 12), date(2026, 9, 14), wanted=True)
+            db.session.add(SessionMeta(owner_email=email, date=TODAY, title="Old title"))
+            db.session.commit()
+    with api.app.app_context():
+        social.befriend(USER, OTHER)
+        for giver, owner in ((USER, OTHER), (OTHER, USER)):
+            social.toggle_kudos(giver, owner, TODAY)
+            assert social.add_comment(giver, owner, TODAY, "Nice work!") is not None
+
+
+def later(monkeypatch, seconds=5):
+    """Move every clock forward: a sign-in in the very second an account was deleted
+    is cut off with the rest."""
+    now = time.time() + seconds
+    monkeypatch.setattr(time, "time", lambda: now)
+
+
+def test_account_delete_needs_a_token(client):
+    r = client.delete("/api/v1/account")
+    assert r.status_code == 401 and r.get_json()["error"]["code"] == "unauthorized"
+
+
+def test_account_delete_removes_every_row_that_names_the_email(api, fake_llm):
+    fill_account(api, fake_llm)
+    with api.app.app_context():
+        before, others = rows_naming(USER), rows_naming(OTHER)
+        # Nothing to delete would prove nothing: a new table with an email column has
+        # to be filled in fill_account, and emptied in account.delete.
+        empty = sorted(t for t, n in before.items() if n == 0 and t != "account_cutoff")
+        assert empty == []
+
+    r = api.call("delete", "/account")
+    assert r.status_code == 200 and r.get_json() == {"deleted": True}
+
+    with api.app.app_context():
+        assert {t: n for t, n in rows_naming(USER).items() if n} == {}
+        # The other person keeps everything that is theirs alone.
+        left = rows_naming(OTHER)
+        shared = {"friendship", "session_kudos", "comment"}
+        assert {t: n for t, n in left.items() if t not in shared} == {
+            t: n for t, n in others.items() if t not in shared
+        }
+        assert all(left[t] == 0 for t in shared)
+    feed = api.get(f"/feed?today={TODAY}", email=OTHER).get_json()
+    assert feed["cards"] == []
+    theirs = api.get(f"/day/{TODAY}", email=OTHER).get_json()
+    assert theirs["reactions"]["kudos"] == 0 and theirs["reactions"]["comments"] == []
+
+
+def test_account_delete_clears_the_table_session_kudos_replaced(api):
+    """migrate.py copies `kudos` into session_kudos at every start."""
+    with api.app.app_context():
+        db.session.execute(
+            text(
+                "CREATE TABLE kudos (id INTEGER PRIMARY KEY, owner_email VARCHAR, date VARCHAR, "
+                "giver_email VARCHAR, created_at DATETIME)"
+            )
+        )
+        for owner, giver in ((USER, OTHER), (OTHER, USER), (OTHER, "third@example.com")):
+            db.session.execute(
+                text(
+                    "INSERT INTO kudos (owner_email, date, giver_email, created_at) "
+                    "VALUES (:owner, :date, :giver, '2026-09-14 10:00:00')"
+                ),
+                {"owner": owner, "date": TODAY, "giver": giver},
+            )
+        db.session.commit()
+        migrate.run()
+        assert rows_naming(USER)["session_kudos"] == 2
+
+    assert api.call("delete", "/account").status_code == 200
+    with api.app.app_context():
+        migrate.run()
+        assert rows_naming(USER)["session_kudos"] == 0
+        assert db.session.execute(text("SELECT COUNT(*) FROM kudos")).scalar() == 1
+        db.session.execute(text("DROP TABLE kudos"))
+        db.session.commit()
+
+
+def test_account_delete_stops_every_token_for_the_email(api, monkeypatch):
+    mine, another, theirs = bearer(api.app), bearer(api.app), bearer(api.app, OTHER)
+    assert api.get("/me", headers=another).status_code == 200
+    assert api.call("delete", "/account", headers=mine).status_code == 200
+
+    for headers in (mine, another):
+        r = api.get("/me", headers=headers)
+        assert r.status_code == 401 and r.get_json()["error"]["code"] == "invalid_token"
+        assert save(api, headers=headers).status_code == 401
+    assert api.get("/me", headers=theirs).status_code == 200
+    with api.app.app_context():
+        assert Workout.query.count() == 0
+        assert rows_naming(USER)["user_activity"] == 0  # a dead token leaves no trace
+
+    # Signing in again afterwards is a new, empty account.
+    later(monkeypatch)
+    me = api.get("/me")
+    assert me.status_code == 200 and me.get_json()["profile"] is None
+    assert save(api).status_code == 201
+
+
+def test_account_cutoff_holds_no_email_and_is_dropped_when_no_longer_needed(api, monkeypatch):
+    assert api.call("delete", "/account").status_code == 200
+    with api.app.app_context():
+        (cutoff,) = AccountCutoff.query.all()
+        assert USER not in cutoff.email_hash and len(cutoff.email_hash) == 64
+        assert account.revoked(USER, cutoff.not_before)
+        assert not account.revoked(USER, cutoff.not_before + 1)
+        assert not account.revoked(OTHER, 0)
+
+    # Once the tokens it refuses have all expired, the next deletion sweeps it away.
+    later(monkeypatch, account.CUTOFF_KEPT + 60)
+    assert account.CUTOFF_KEPT >= auth.API_TOKEN_MAX_AGE
+    assert api.call("delete", "/account", email=OTHER).status_code == 200
+    with api.app.app_context():
+        assert AccountCutoff.query.count() == 1 and not account.revoked(USER, 0)
+
+
+def test_website_account_delete(api, fake_llm):
+    fill_account(api, fake_llm)
+    token = bearer(api.app)
+    here, elsewhere = api.app.test_client(), api.app.test_client()
+    for browser in (here, elsewhere):
+        with browser.session_transaction() as s:
+            s["user_email"] = USER
+            s["llm"] = {"provider": "site", "model": "", "api_key": "", "base_url": ""}
+    page = here.get("/settings").data.decode()
+    assert 'action="/account/delete"' in page and "Delete account" in page
+    assert here.get("/account/delete").status_code == 405
+
+    r = here.post("/account/delete")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/welcome")
+    with here.session_transaction() as s:
+        assert "user_email" not in s and "llm" not in s
+    assert "has been deleted" in here.get("/welcome").data.decode()
+    with api.app.app_context():
+        assert {t: n for t, n in rows_naming(USER).items() if n} == {}
+
+    # Signed out everywhere: the app's token, and a browser that was signed in too.
+    assert api.get("/me", headers=token).status_code == 401
+    r = elsewhere.get("/")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/welcome")
+    with elsewhere.session_transaction() as s:
+        assert "user_email" not in s
+    with api.app.app_context():
+        assert {t: n for t, n in rows_naming(USER).items() if n} == {}
+
+
+def test_website_account_delete_needs_a_sign_in_and_a_csrf_token(client):
+    r = client.post("/account/delete")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/welcome")
+
+    app = create_app({**base_test_config(), "WTF_CSRF_ENABLED": True})
+    client = app.test_client()
+    with client.session_transaction() as s:
+        s["user_email"] = USER
+    with app.app_context():
+        db.session.add(Workout(user_email=USER, date=TODAY, exercise="squat"))
+        db.session.commit()
+    assert client.post("/account/delete").status_code == 400
+    with app.app_context():
+        assert Workout.query.count() == 1 and AccountCutoff.query.count() == 0
+        db.session.remove()
+        db.drop_all()
+
+
+def test_account_delete_in_the_app_signs_the_website_out(api, monkeypatch):
+    browser = api.app.test_client()
+    with browser.session_transaction() as s:
+        s["user_email"] = USER
+        s[auth.SESSION_SINCE] = int(time.time())
+    assert api.call("delete", "/account").status_code == 200
+    assert browser.get("/").headers["Location"].endswith("/welcome")
+
+    # A sign-in on the website after the deletion stands.
+    later(monkeypatch)
+    with browser.session_transaction() as s:
+        s["user_email"] = USER
+        s[auth.SESSION_SINCE] = int(time.time())
+        s["llm"] = {"provider": "site", "model": "", "api_key": "", "base_url": ""}
+    assert browser.get("/").status_code == 200

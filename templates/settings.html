@@ -122,4 +122,27 @@ sudo systemctl restart ollama</code></pre>
     </p>
     {% endif %}
 </section>
+
+<section class="card card-narrow" aria-labelledby="delete-account-title">
+    <h2 class="card-title" id="delete-account-title">Delete account</h2>
+    <p class="muted small card-lead">
+        Removes your workouts, body weight, notes, routines, profile, friends, high fives and
+        comments, here and in the app. It cannot be undone.
+    </p>
+    <button type="button" class="btn btn-danger" data-dialog-open="delete-account">Delete account</button>
+    <dialog class="sheet rec-sheet" id="delete-account" aria-labelledby="delete-account-sheet-title">
+        <div class="sheet-head">
+            <h2 id="delete-account-sheet-title">Delete your account?</h2>
+            <button type="button" class="sheet-close" data-dialog-close aria-label="Close">&times;</button>
+        </div>
+        <p class="muted">Everything you logged as {{ user_email }} is deleted for good, and you are signed out everywhere.</p>
+        <div class="rec-sheet-actions">
+            <form method="post" action="{{ url_for('main.account_delete') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger btn-xl">Delete everything</button>
+            </form>
+            <button type="button" class="btn btn-xl rec-keep" data-dialog-close>Keep my account</button>
+        </div>
+    </dialog>
+</section>
 {% endblock %}

@@ -5,11 +5,13 @@ production; see the IS_PRODUCTION check in gymllm/__init__.py."""
 
 from __future__ import annotations
 
+import time
 from datetime import date, timedelta
 
 from flask import Blueprint, redirect, render_template, session, url_for
 
 from . import social
+from .auth import SESSION_SINCE
 from .extensions import db
 from .models import BodyWeight, Cardio, Workout
 
@@ -100,5 +102,6 @@ def login(slug: str):
         return redirect(url_for("dev.index"))
     _ensure_seeded()
     session["user_email"] = user["email"]
+    session[SESSION_SINCE] = int(time.time())
     session.permanent = True
     return redirect(url_for("main.home"))

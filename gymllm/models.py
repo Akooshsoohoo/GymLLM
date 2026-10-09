@@ -297,3 +297,18 @@ class RoutineBlock(db.Model):
     position = db.Column(db.Integer, nullable=False)
     name = db.Column(db.String(40), nullable=True)
     body = db.Column(db.Text, nullable=False, default="")
+
+
+# --- Deleted accounts -------------------------------------------------------------
+
+
+class AccountCutoff(db.Model):
+    """Left behind by a deleted account so its sign-ins stop working: the app's tokens
+    and the site's cookies are both stateless, so anything issued at or before
+    `not_before` is refused (see account.py). Keyed on a keyed hash of the email, not
+    the email, and removed once every such sign-in has expired anyway."""
+
+    __tablename__ = "account_cutoff"
+
+    email_hash = db.Column(db.String(64), primary_key=True)
+    not_before = db.Column(db.Integer, nullable=False)  # seconds since the epoch, UTC

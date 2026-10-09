@@ -3,6 +3,7 @@ the signed bearer tokens the iOS app uses instead of a cookie."""
 
 from __future__ import annotations
 
+import time
 from functools import wraps
 
 import requests
@@ -10,16 +11,18 @@ from flask import Blueprint, abort, current_app, flash, g, redirect, request, se
 from flask_dance.contrib.google import google, make_google_blueprint
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
-from . import activity
+from . import account, activity
 
 SESSION_EMAIL = "user_email"
 SESSION_GOOGLE_NAME = "google_name"  # prefills profile setup
 SESSION_GOOGLE_PICTURE = "google_picture"
+SESSION_SINCE = "signed_in_at"  # seconds since the epoch; see account.revoked
 AFTER_LOGIN = "after_login"  # a relative path to return to once signed in
 AUTH_SESSION_KEYS = (
     SESSION_EMAIL,
     SESSION_GOOGLE_NAME,
     SESSION_GOOGLE_PICTURE,
+    SESSION_SINCE,
     "google_oauth_token",
 )
 
@@ -58,7 +61,8 @@ def _token_serializer() -> URLSafeTimedSerializer:
 
 
 def issue_api_token(email: str, name: str = "", picture: str = "") -> str:
-    """A signed, stateless token for the iOS app, good for API_TOKEN_MAX_AGE."""
+    """A signed, stateless token for the iOS app, good for API_TOKEN_MAX_AGE or until
+    the account is deleted."""
     return _token_serializer().dumps({"email": email, "name": name, "picture": picture})
 
 
@@ -69,21 +73,29 @@ def _bearer_token() -> str | None:
 
 def api_token_claims() -> tuple[dict | None, str | None]:
     """(claims, None) for this request's valid bearer token, else (None, why): one
-    of TOKEN_MISSING, TOKEN_EXPIRED, TOKEN_INVALID. Checked once per request."""
+    of TOKEN_MISSING, TOKEN_EXPIRED, TOKEN_INVALID. A token from before its account
+    was deleted is invalid. Checked once per request."""
     if "api_token" not in g:
         token = _bearer_token()
         if token is None:
             g.api_token = (None, TOKEN_MISSING)
         else:
             try:
-                claims = _token_serializer().loads(token, max_age=API_TOKEN_MAX_AGE)
+                claims, issued = _token_serializer().loads(
+                    token, max_age=API_TOKEN_MAX_AGE, return_timestamp=True
+                )
             except SignatureExpired:
                 g.api_token = (None, TOKEN_EXPIRED)
             except BadSignature:
                 g.api_token = (None, TOKEN_INVALID)
             else:
                 ok = isinstance(claims, dict) and isinstance(claims.get("email"), str)
-                g.api_token = (claims, None) if ok and claims["email"] else (None, TOKEN_INVALID)
+                ok = (
+                    ok
+                    and claims["email"]
+                    and not account.revoked(claims["email"], issued.timestamp())
+                )
+                g.api_token = (claims, None) if ok else (None, TOKEN_INVALID)
     return g.api_token
 
 
@@ -94,14 +106,20 @@ def current_user_email() -> str | None:
     token is bad: it never falls back to the cookie. Otherwise the email is cached
     in the session after the first successful userinfo call so normal page loads
     never hit Google. An expired or revoked token clears the cached state so the
-    next request lands on the welcome page.
+    next request lands on the welcome page, and so does a session from before the
+    account was deleted (in another browser, say).
     """
     if _bearer_token() is not None:
         claims, _ = api_token_claims()
         return claims["email"] if claims else None
     email = session.get(SESSION_EMAIL)
     if email:
-        return email
+        if "session_revoked" not in g:
+            g.session_revoked = account.revoked(email, session.get(SESSION_SINCE))
+        if not g.session_revoked:
+            return email
+        _clear_auth()
+        return None
     if not google.authorized:
         return None
     try:
@@ -114,6 +132,7 @@ def current_user_email() -> str | None:
         email = info.get("email")
         if email:
             session[SESSION_EMAIL] = email
+            session[SESSION_SINCE] = int(time.time())
             session[SESSION_GOOGLE_NAME] = info.get("name") or ""
             session[SESSION_GOOGLE_PICTURE] = info.get("picture") or ""
             session.permanent = True
@@ -191,8 +210,8 @@ def oauth_success():
     return redirect(safe_next(session.pop(AFTER_LOGIN, None)) or url_for("main.home"))
 
 
-@bp.route("/logout")
-def logout():
+def sign_out() -> None:
+    """Forget who is signed in here, and hand Google back its grant."""
     token = google_bp.token or {}
     access_token = token.get("access_token")
     if access_token:
@@ -206,5 +225,10 @@ def logout():
         except requests.RequestException:
             pass
     _clear_auth()
+
+
+@bp.route("/logout")
+def logout():
+    sign_out()
     flash("You have been signed out.", "ok")
     return redirect(url_for("main.welcome"))

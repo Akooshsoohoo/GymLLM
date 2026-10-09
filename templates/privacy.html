@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Levra | Privacy{% endblock %}
+{% block meta_description %}What Levra stores, who can see it, and how to delete it.{% endblock %}
+{% block main_class %}page page-narrow{% endblock %}
+{% block content %}
+{% set contact = config.CONTACT_EMAIL %}
+{#- Whoever runs the shared model today (SITE_LLM_PROVIDER), so this stays true if it changes. -#}
+{% set reader = providers[site_llm.provider].label if site_llm else none %}
+<article class="legal">
+    <h1>Privacy</h1>
+    <p class="muted small">Last updated 8 October 2026</p>
+
+    <p>Levra is a workout log you can share with friends. This page says what we keep, who can see it, and how to delete it.</p>
+
+    <h2>What we store</h2>
+    <ul>
+        <li><strong>Who you are.</strong> The email address, name and profile picture of the Google account you sign in with. We never see your Google password.</li>
+        <li><strong>What you log.</strong> Exercises, weights, sets and reps, cardio, body weight, your notes, the names you give workouts, rest days and routines.</li>
+        <li><strong>Your profile.</strong> Your handle, name, picture and bio.</li>
+        <li><strong>Friends.</strong> Who your friends are, friend requests, high fives and comments.</li>
+        <li><strong>Settings.</strong> Your weight unit and whether the getting-started card is hidden.</li>
+        <li><strong>A little about use.</strong> How many workouts you logged by typing each day, to apply the free daily limit, and the last day you used Levra. We do not record the pages you visit.</li>
+    </ul>
+
+    <h2>Who can see it</h2>
+    <ul>
+        <li><strong>Body weight and notes are never shared.</strong> Not with friends, not on your profile, not in a picture you share. Only you see them.</li>
+        <li><strong>Friends</strong> see the exercises, weights, sets, reps and cardio of your workouts. You can make any day private, and then only you see it.</li>
+        <li><strong>Anyone signed in to Levra</strong> can find your profile by its handle and see your name, picture and bio. Anyone you give your invite link to sees your name and picture. Nobody else sees your email address.</li>
+        <li><strong>Nobody else.</strong> We do not sell your data, show ads, or use analytics or tracking tools.</li>
+    </ul>
+
+    <h2>Who helps us run Levra</h2>
+    <ul>
+        <li><strong>Google</strong> signs you in. The website also loads its fonts from Google Fonts.</li>
+        <li><strong>Render</strong> hosts the site and the database.</li>
+        <li><strong>{{ reader or "An AI model provider" }}</strong> runs the AI model that reads a workout you type or record. The text you wrote is sent to it and turned into entries. We do not keep that text, only the entries and notes that come out of it.</li>
+    </ul>
+    <p>On the website you can choose a different model in Settings. Your text then goes to the provider you chose, with your own key. That key is kept in a cookie in your browser, not in our database.</p>
+
+    <h2>On your device</h2>
+    <p>The website uses one cookie to keep you signed in and one to remember your time zone, and your browser remembers your theme and any workout you are in the middle of recording. The iPhone app keeps your sign-in in the keychain and a workout you are recording on the phone.</p>
+
+    <h2>Deleting your data</h2>
+    <p>You can edit or delete any workout at any time. To delete everything, choose <strong>Delete account</strong> in Settings, on the website or in the app. That removes all of the above straight away, including your comments and high fives on friends' workouts, and it cannot be undone.</p>
+    <p>For 30 days afterwards we keep a scrambled marker of the deleted account, which cannot be read back as your email address, so that devices still signed in to it stop working.</p>
+
+    <h2>Children</h2>
+    <p>Levra is not for children under 13.</p>
+
+    <h2>Changes and contact</h2>
+    <p>If this page changes, the date at the top changes with it.{% if contact %} Questions: <a href="mailto:{{ contact }}">{{ contact }}</a>.{% endif %}</p>
+</article>
+{% endblock %}

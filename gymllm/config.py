@@ -112,4 +112,7 @@ def build_config(env: Mapping[str, str] | None = None) -> dict:
         "GOOGLE_IOS_CLIENT_ID": env.get("GOOGLE_IOS_CLIENT_ID", "").strip(),
         "SITE_LLM": site_llm_config(env),
         "ADMIN_EMAILS": admin_emails(env),
+        # Where the privacy policy and the terms tell people to write. Unset, they
+        # leave the address out.
+        "CONTACT_EMAIL": env.get("CONTACT_EMAIL", "").strip(),
     }

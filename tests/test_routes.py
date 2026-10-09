@@ -130,6 +130,36 @@ def test_logout_clears_auth_but_keeps_llm_settings(logged_in):
         assert s["llm"]["provider"] == "openai"
 
 
+# --- privacy and terms ----------------------------------------------------------
+
+
+def test_privacy_and_terms_are_open_to_everyone(app, logged_in):
+    for who in (app.test_client(), logged_in):
+        privacy = who.get("/privacy")
+        assert privacy.status_code == 200
+        assert "Body weight and notes are never shared." in privacy.data.decode()
+        assert "Delete account" in privacy.data.decode()
+        terms = who.get("/terms")
+        assert terms.status_code == 200 and 'href="/privacy"' in terms.data.decode()
+
+
+def test_privacy_and_terms_are_linked_from_welcome_and_every_footer(app, logged_in):
+    anyone = app.test_client()
+    for page in (anyone.get("/welcome"), anyone.get("/privacy"), logged_in.get("/settings")):
+        body = page.data.decode()
+        assert page.status_code == 200
+        assert 'href="/privacy"' in body and 'href="/terms"' in body
+
+
+def test_privacy_names_the_contact_address_and_the_model_provider(site_app):
+    client = site_app.test_client()
+    body = client.get("/privacy").data.decode()
+    assert "<strong>Groq</strong> runs the AI model" in body and "mailto:" not in body
+    site_app.config["CONTACT_EMAIL"] = "hello@example.com"
+    for path in ("/privacy", "/terms"):
+        assert 'href="mailto:hello@example.com"' in client.get(path).data.decode()
+
+
 # --- settings -----------------------------------------------------------------
 
 
