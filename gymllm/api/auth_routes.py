@@ -3,12 +3,18 @@ exchanged for the API's own bearer token."""
 
 from __future__ import annotations
 
+import re
+
 from flask import current_app, jsonify
 
 from .. import auth, dev_routes
 from . import bp, dev_bp
 from .core import me_payload
 from .errors import ApiError, json_body, not_found
+
+# "new-" and a few characters: a blank dev account each time, with no profile and
+# nothing logged, which the seeded three can't show.
+NEW_SLUG = re.compile(r"new-[a-z0-9]{1,12}")
 
 
 def verify_google_id_token(token: str, audience: str) -> dict:
@@ -48,9 +54,11 @@ def auth_google():
 
 @dev_bp.route("/auth/dev", methods=["POST"])
 def auth_dev():
-    """A token for one of the seeded dev accounts, so the app can be built and run
-    before Google sign-in is configured."""
+    """A token for one of the seeded dev accounts, or for a blank one, so the app
+    can be built and run before Google sign-in is configured."""
     slug = json_body().get("slug")
+    if isinstance(slug, str) and NEW_SLUG.fullmatch(slug):
+        return _signed_in(f"dev-{slug}@example.test", "Riley New")
     user = next((u for u in dev_routes.DEV_USERS if u["slug"] == slug), None)
     if user is None:
         raise not_found("No such dev account.")

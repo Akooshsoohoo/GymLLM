@@ -50,6 +50,24 @@ enum Days {
         date(value).map(dayMonthFormat.string(from:)) ?? value
     }
 
+    private static let stamp: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    /// "2026-10-06T18:04:05Z" -> "just now", "5m", "3h", "2d", then "6 Oct". The
+    /// site's ago filter.
+    static func ago(_ value: String?, now: Date = Date()) -> String {
+        guard let value, let then = stamp.date(from: value) else { return "" }
+        let seconds = max(now.timeIntervalSince(then), 0)
+        if seconds < 60 { return "just now" }
+        if seconds < 3600 { return "\(Int(seconds / 60))m" }
+        if seconds < 86400 { return "\(Int(seconds / 3600))h" }
+        if seconds < 7 * 86400 { return "\(Int(seconds / 86400))d" }
+        return dayMonthFormat.string(from: then)
+    }
+
     /// "Morning", "Afternoon" or "Evening", as Home greets you on the site.
     static func greeting(at date: Date = Date()) -> String {
         let hour = Calendar.current.component(.hour, from: date)

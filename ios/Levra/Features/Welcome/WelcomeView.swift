@@ -134,10 +134,11 @@ struct WelcomeView: View {
     }
 
     #if DEBUG
-    /// The seeded accounts of the local server (POST /auth/dev). Debug builds only.
+    /// The seeded accounts of the local server (POST /auth/dev), and a blank one.
+    /// Debug builds only.
     private var devAccounts: some View {
         HStack(spacing: 8) {
-            Text("Dev sign-in")
+            Text("Dev")
                 .font(.text(13, .medium, relativeTo: .footnote))
                 .foregroundStyle(Palette.muted)
             ForEach(["alex", "sam", "jordan"], id: \.self) { slug in
@@ -146,6 +147,13 @@ struct WelcomeView: View {
                 }
                 .buttonStyle(.pill(.ghost, height: 34))
             }
+            // Somebody with no profile and nothing logged, a new one each time.
+            Button("New") {
+                let tag = String(UUID().uuidString.lowercased().filter { $0 != "-" }.prefix(8))
+                run { try await app.signIn(devAccount: "new-\(tag)") }
+            }
+            .buttonStyle(.pill(.ghost, height: 34))
+            .accessibilityLabel("New person")
         }
         .frame(maxWidth: .infinity)
     }

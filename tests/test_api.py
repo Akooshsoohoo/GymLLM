@@ -198,6 +198,15 @@ def test_dev_auth_issues_a_token_for_a_seeded_account(app, client):
     assert client.post("/api/v1/auth/dev", json={"slug": "nobody"}).status_code == 404
 
 
+def test_dev_auth_can_issue_a_blank_account(app, client):
+    r = client.post("/api/v1/auth/dev", json={"slug": "new-ab12"})
+    user = r.get_json()["user"]
+    assert user["email"] == "dev-new-ab12@example.test" and user["first_name"] == "Riley"
+    assert user["profile"] is None
+    for slug in ("new-", "new-AB", "new-" + "a" * 13, "new-a b"):
+        assert client.post("/api/v1/auth/dev", json={"slug": slug}).status_code == 404
+
+
 @pytest.mark.parametrize(
     "overrides",
     [{"IS_PRODUCTION": True}, {"SQLALCHEMY_DATABASE_URI": "postgresql://u:p@localhost/x"}],
@@ -883,3 +892,411 @@ def test_rest_day_by_hand(api):
     for when, status in (("2026-09-15", 422), (TODAY, 422), ("someday", 404)):
         assert api.put(f"/rest/day/{when}?today={TODAY}", json={"rest": True}).status_code == status
     assert api.put(f"/rest/day/{day}?today={TODAY}", json={"rest": "yes"}).status_code == 400
+
+
+# --- Stage 4: friends -----------------------------------------------------------
+
+STRANGER = "stranger@example.com"
+
+
+def add_profile(api, email=USER, handle="tester", name=None):
+    """A profile in the app `api` calls (conftest's add_profile fills another one)."""
+    with api.app.app_context():
+        return social.save_profile(email, handle, name or handle.title()).invite_code
+
+
+def add_workout(api, user_email=USER, **kwargs):
+    row = {"exercise": "barbell bench press", "sets": "3", "reps": "5, 5, 5", "tags": "chest;push"}
+    with api.app.app_context():
+        db.session.add(Workout(user_email=user_email, **{**row, **kwargs}))
+        db.session.commit()
+
+
+def stranger(api):
+    add_profile(api, STRANGER, "stranger", "Sal Stranger")
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("get", "/profile"),
+        ("put", "/profile"),
+        ("post", "/profile/invite-reset"),
+        ("get", "/u/other"),
+        ("get", "/u/other/compare"),
+        ("get", "/friends"),
+        ("post", "/friends/request/other"),
+        ("get", "/invite/abc"),
+        ("post", "/invite/abc"),
+        ("get", "/feed"),
+        ("post", f"/kudos/other/{TODAY}/0"),
+        ("post", f"/comments/other/{TODAY}/0"),
+        ("delete", "/comments/1"),
+    ],
+)
+def test_stage_4_endpoints_need_a_token(client, method, path):
+    r = getattr(client, method)(f"/api/v1{path}")
+    assert r.status_code == 401 and r.get_json()["error"]["code"] == "unauthorized"
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("post", "/profile/invite-reset"),
+        ("get", "/u/other"),
+        ("get", "/u/other/compare"),
+        ("get", "/friends"),
+        ("post", "/friends/request/other"),
+        ("get", "/invite/abc"),
+        ("post", "/invite/abc"),
+        ("get", "/feed"),
+        ("post", f"/kudos/other/{TODAY}/0"),
+        ("post", f"/comments/other/{TODAY}/0"),
+        ("delete", "/comments/1"),
+    ],
+)
+def test_no_profile_is_its_own_error(api, method, path):
+    r = api.call(method, path, json={})
+    assert r.status_code == 403
+    assert r.get_json()["error"] == {
+        "code": "profile_required",
+        "message": "Set up your profile first.",
+    }
+
+
+def test_profile_setup_starts_from_a_suggestion(api):
+    code = add_profile(api, OTHER, "tess_tester", "Oli Other")
+    body = api.get(f"/profile?invite={code}").get_json()
+    assert body["profile"] is None
+    # "tess_tester" is taken, so the suggestion moves on.
+    assert body["suggested"] == {"handle": "tess_tester2", "name": "Tess Tester", "bio": ""}
+    assert body["inviter"]["handle"] == "tess_tester"
+    assert OTHER not in str(body)
+
+
+def test_profile_create_then_edit(api):
+    r = api.put("/profile", json={"handle": "@Tess", "name": " Tess T ", "bio": "Lifts."})
+    body = r.get_json()
+    assert r.status_code == 201 and body["created"] is True
+    assert body["profile"]["handle"] == "tess" and body["profile"]["name"] == "Tess T"
+    assert body["profile"]["bio"] == "Lifts." and "/invite/" in body["profile"]["invite_url"]
+    assert api.get("/me").get_json()["profile"]["handle"] == "tess"
+
+    r = api.put("/profile", json={"handle": "tess", "name": "", "bio": ""})
+    assert r.status_code == 200 and r.get_json()["created"] is False
+    assert r.get_json()["profile"]["name"] == "tess"  # no name falls back to the handle
+    got = api.get("/profile").get_json()
+    assert got["profile"]["handle"] == "tess" and got["suggested"]["handle"] == "tess"
+    assert got["inviter"] is None
+
+
+def test_profile_takes_the_google_picture_from_the_token(api):
+    with api.app.test_request_context():
+        token = auth.issue_api_token(USER, "Tess", "https://pics.example/t.png")
+    r = api.put("/profile", json={"handle": "tess"}, headers={"Authorization": f"Bearer {token}"})
+    assert r.get_json()["profile"]["avatar_url"] == "https://pics.example/t.png"
+
+
+@pytest.mark.parametrize(
+    "body,status,code,says",
+    [
+        ({"handle": "ab"}, 422, "bad_handle", "3 to 20 characters"),
+        ({"handle": "has space"}, 422, "bad_handle", "3 to 20 characters"),
+        ({"handle": "admin"}, 422, "bad_handle", "reserved"),
+        ({"handle": "other"}, 422, "bad_handle", "taken"),
+        ({}, 422, "bad_handle", "3 to 20 characters"),
+        ({"handle": 7}, 400, "bad_request", "handle must be text"),
+        ({"handle": "fine", "bio": ["x"]}, 400, "bad_request", "bio must be text"),
+    ],
+)
+def test_profile_refusals_save_nothing(api, body, status, code, says):
+    add_profile(api, OTHER, "other")
+    r = api.put("/profile", json=body)
+    assert r.status_code == status and r.get_json()["error"]["code"] == code
+    assert says in r.get_json()["error"]["message"]
+    assert api.get("/me").get_json()["profile"] is None
+
+
+def test_invite_reset_kills_the_old_link(api):
+    old = add_profile(api)
+    add_profile(api, OTHER, "other")
+    new = api.post("/profile/invite-reset").get_json()["invite_url"].rsplit("/", 1)[1]
+    assert new != old
+    assert api.get(f"/invite/{old}", email=OTHER).status_code == 404
+    assert api.get(f"/invite/{new}", email=OTHER).get_json()["relationship"] == "none"
+
+
+def test_friend_requests_from_search_to_unfriending(api):
+    stranger(api)
+    with api.app.app_context():
+        social.save_profile(USER, "tester", "Tess")
+        social.save_profile(OTHER, "other", "Oli Other")
+
+    found = api.get("/friends?q=@OT").get_json()
+    assert found["results"] == [
+        {
+            "handle": "other",
+            "name": "Oli Other",
+            "avatar_url": None,
+            "bio": "",
+            "relationship": "none",
+        }
+    ]
+    assert api.get("/friends?q=tester").get_json()["results"] == []  # never yourself
+
+    r = api.post("/friends/request/other").get_json()
+    assert r["relationship"] == "outgoing" and r["message"] == "Friend request sent to Oli Other."
+    assert [p["handle"] for p in api.get("/friends").get_json()["outgoing"]] == ["other"]
+    theirs = api.get("/friends", email=OTHER).get_json()
+    assert [p["handle"] for p in theirs["incoming"]] == ["tester"] and theirs["friends"] == []
+    assert api.get("/me", email=OTHER).get_json()["unseen"] == 1
+
+    r = api.post("/friends/accept/tester", email=OTHER).get_json()
+    assert r["relationship"] == "friends" and r["message"] == "You and Tess are now friends."
+    mine = api.get("/friends").get_json()
+    assert [p["handle"] for p in mine["friends"]] == ["other"] and mine["outgoing"] == []
+    assert "/invite/" in mine["invite_url"]
+
+    assert api.post("/friends/remove/other").get_json()["relationship"] == "none"
+    assert api.get("/friends", email=OTHER).get_json()["friends"] == []
+
+    # Asking someone who already asked you makes you friends at once.
+    api.post("/friends/request/tester", email=STRANGER)
+    r = api.post("/friends/request/stranger").get_json()
+    assert r["relationship"] == "friends"
+    # Declining and cancelling forget the pair.
+    api.post("/friends/request/other")
+    assert api.post("/friends/cancel/other").get_json()["relationship"] == "none"
+    api.post("/friends/request/other")
+    assert api.post("/friends/decline/tester", email=OTHER).get_json()["relationship"] == "none"
+
+    assert api.post("/friends/poke/other").status_code == 404
+    assert api.post("/friends/request/nobody").status_code == 404
+    assert api.post("/friends/request/tester").get_json()["relationship"] == "self"
+    for payload in (found, mine, theirs):
+        assert "@example.com" not in str(payload)
+
+
+def test_invite_link_makes_friends_at_once(api):
+    add_profile(api)
+    code = add_profile(api, OTHER, "other", "Oli Other")
+    r = api.get(f"/invite/{code}").get_json()
+    assert r["person"]["name"] == "Oli Other" and r["relationship"] == "none"
+    assert r["message"] == ""
+    r = api.post(f"/invite/{code}").get_json()
+    assert r["relationship"] == "friends" and r["message"] == "You and Oli Other are now friends."
+    assert api.post(f"/invite/{code}").get_json()["message"] == ""  # already friends
+    assert api.get(f"/invite/{code}", email=OTHER).get_json()["relationship"] == "self"
+    r = api.get("/invite/not-a-code")
+    assert r.status_code == 404 and "invite link" in r.get_json()["error"]["message"]
+
+
+PRIVATE_WORDS = ("twinge", "slow and sad", "181.5", "@example.com")
+
+
+def save_with_secrets(api, **more):
+    return save(
+        api,
+        entries=[{**BENCH["exercises"][0], "notes": "left shoulder twinge"}],
+        cardio=[{"activity": "run", "distance": "3 miles", "notes": "slow and sad"}],
+        bodyweight="181.5",
+        **more,
+    )
+
+
+def test_feed_is_friends_workouts_without_notes_or_body_weight(api):
+    friends(api)
+    save_with_secrets(api)
+    r = api.get(f"/feed?today={TODAY}", email=OTHER)
+    body = r.get_json()
+    (card,) = body["cards"]
+    assert card["owner"]["handle"] == "tester" and card["date"] == TODAY
+    assert card["lifts"][0]["exercise"] == "barbell bench press"
+    assert card["reactions"] == {"kudos": 0, "kudoed": False, "comments": []}
+    assert "notes" not in card["lifts"][0] and "notes" not in card["cardio"][0]
+    assert "bodyweight" not in card
+    assert body["next_before"] is None and body["has_friends"] is True
+    for private in PRIVATE_WORDS:
+        assert private not in r.get_data(as_text=True)
+    # Your own workouts are not in your feed.
+    assert api.get(f"/feed?today={TODAY}").get_json()["cards"] == []
+
+
+def test_feed_hides_private_days_and_pages_by_date(api):
+    friends(api)
+    for day in range(1, 26):
+        add_workout(api, date=f"2026-08-{day:02d}")
+    with api.app.app_context():
+        social.set_visibility(USER, "2026-08-25", social.PRIVATE)
+        db.session.commit()
+    first = api.get("/feed", email=OTHER).get_json()
+    assert [c["date"] for c in first["cards"]][:2] == ["2026-08-24", "2026-08-23"]
+    assert len(first["cards"]) == 20 and first["next_before"] == "2026-08-05"
+    rest = api.get("/feed?before=2026-08-05", email=OTHER).get_json()
+    assert [c["date"] for c in rest["cards"]] == [f"2026-08-0{d}" for d in (4, 3, 2, 1)]
+    assert rest["next_before"] is None
+    assert len(api.get("/feed?before=nonsense", email=OTHER).get_json()["cards"]) == 20
+
+
+def test_profile_of_a_friend_a_stranger_and_yourself(api):
+    friends(api)
+    stranger(api)
+    save_with_secrets(api)
+    save(api, date="2026-09-10", visibility="private", entries=[lift("squat", "225 lbs")])
+
+    r = api.get(f"/u/tester?today={TODAY}", email=OTHER)
+    body = r.get_json()
+    assert body["person"]["name"] == "Tess" and body["relationship"] == "friends"
+    assert body["visible"] is True and body["friend_count"] == 1
+    assert body["total"] == 2 and body["streak"] == 1  # the private day isn't counted
+    assert body["last_30"] == {"sessions": 1, "sets": 3, "cardio_minutes": 0}
+    assert [f["exercise"] for f in body["favourites"]] == ["barbell bench press"]
+    assert [c["date"] for c in body["cards"]] == [TODAY]
+    assert "notes" not in body["cards"][0]["lifts"][0]
+    monday = body["week"][0]
+    assert monday["date"] == TODAY and monday["logged"] is True and "bodyweight" not in monday
+    for private in (*PRIVATE_WORDS, "squat"):
+        assert private not in r.get_data(as_text=True)
+
+    r = api.get("/u/tester", email=STRANGER)
+    assert r.get_json() == {
+        "person": {"handle": "tester", "name": "Tess", "avatar_url": None, "bio": ""},
+        "relationship": "none",
+        "friend_count": 1,
+        "visible": False,
+    }
+
+    r = api.get(f"/u/@Tester?today={TODAY}")
+    mine = r.get_json()
+    assert mine["relationship"] == "self" and mine["total"] == 3
+    assert len(mine["cards"]) == 2
+    # Even your own profile is the friends' view of you: no weigh-in, no notes.
+    for private in PRIVATE_WORDS:
+        assert private not in r.get_data(as_text=True)
+    assert api.get("/u/nobody").status_code == 404
+
+
+def test_profile_lists_recent_bests_without_the_rows_behind_them(api):
+    friends(api)
+    add_workout(api, date="2026-09-01", weight="185 lbs", notes="felt heavy")
+    add_workout(api, date="2026-09-08", weight="195 lbs", notes="felt heavy")
+    r = api.get(f"/u/tester?today={TODAY}", email=OTHER)
+    assert r.get_json()["prs"] == [
+        {
+            "exercise": "barbell bench press",
+            "date": "2026-09-08",
+            "session": 0,
+            "weight": "195 lbs",
+            "value": 195.0,
+            "previous": 185.0,
+        }
+    ]
+    assert "felt heavy" not in r.get_data(as_text=True)
+
+
+def test_compare_is_for_friends_only(api):
+    friends(api)
+    stranger(api)
+    add_workout(api, date="2026-09-10", weight="185 lbs", notes="felt heavy")
+    add_workout(api, date="2026-09-11", weight="205 lbs", user_email=OTHER)
+    add_workout(api, date="2026-09-12", exercise="deadlift", weight="315 lbs", user_email=OTHER)
+    with api.app.app_context():
+        social.set_visibility(OTHER, "2026-09-12", social.PRIVATE)
+        db.session.add(BodyWeight(user_email=OTHER, date="2026-09-11", weight="181.5 lbs"))
+        db.session.commit()
+
+    r = api.get(f"/u/other/compare?today={TODAY}&range=7d")
+    body = r.get_json()
+    assert body["range"] == "7d" and body["empty"] is False
+    assert body["me"]["handle"] == "tester" and body["other"]["handle"] == "other"
+    sessions = body["totals"][0]
+    assert sessions == {"label": "Sessions", "mine": 1, "theirs": 1, "lead": None, "units": None}
+    (shared,) = body["shared"]
+    assert shared["exercise"] == "barbell bench press" and shared["lead"] == "theirs"
+    assert shared["diff"] == 20 and shared["unit"] == "lbs"
+    assert shared["mine"]["text"] == "185 lbs" and shared["theirs"]["text"] == "205 lbs"
+    assert [f["exercise"] for f in body["favourites"]["theirs"]] == ["barbell bench press"]
+    assert body["favourites"]["mine"][0]["shared"] is True
+    assert len(body["weekly"]) == 12 and body["muscles"][0]["tag"] in ("chest", "push")
+    for private in ("deadlift", "181.5", "felt heavy", "@example.com"):
+        assert private not in r.get_data(as_text=True)
+    assert api.get("/u/other/compare?range=nonsense").get_json()["range"] == "30d"
+
+    assert api.get("/u/tester/compare").status_code == 404  # not with yourself
+    assert api.get("/u/stranger/compare").status_code == 404
+    assert api.get("/u/tester/compare", email=STRANGER).status_code == 404
+
+
+def test_high_fives_toggle_and_are_for_friends_workouts(api):
+    friends(api)
+    stranger(api)
+    save(api)
+    path = f"/kudos/tester/{TODAY}/0"
+    assert api.post(path, email=OTHER).get_json() == {"count": 1, "mine": True}
+    assert api.get("/feed", email=OTHER).get_json()["cards"][0]["reactions"]["kudoed"] is True
+    assert api.post(f"/kudos/tester/{TODAY}", email=OTHER).get_json() == {"count": 0, "mine": False}
+
+    assert api.post(path).status_code == 404  # not your own
+    assert api.post(path, email=STRANGER).status_code == 404
+    assert api.post(f"/kudos/tester/{TODAY}/3", email=OTHER).status_code == 404
+    assert api.post("/kudos/tester/not-a-date/0", email=OTHER).status_code == 404
+    with api.app.app_context():
+        social.set_visibility(USER, TODAY, social.PRIVATE)
+        db.session.commit()
+    assert api.post(path, email=OTHER).status_code == 404
+
+
+def test_comments_add_and_delete(api):
+    friends(api)
+    stranger(api)
+    save(api)
+    path = f"/comments/tester/{TODAY}/0"
+    r = api.post(path, email=OTHER, json={"body": "  Nice work!  "})
+    (first,) = r.get_json()["comments"]
+    assert r.status_code == 201 and first["body"] == "Nice work!"
+    assert first["author"]["handle"] == "other" and first["can_delete"] is True
+    mine = api.post(path, json={"body": "Thanks"}).get_json()  # on your own workout
+    assert [c["body"] for c in mine["comments"]] == ["Nice work!", "Thanks"]
+    assert all(c["can_delete"] for c in mine["comments"])  # the owner may remove any
+
+    for body in ({"body": "   "}, {}):
+        r = api.post(path, email=OTHER, json=body)
+        assert r.status_code == 422 and r.get_json()["error"]["code"] == "empty_comment"
+    assert api.post(path, email=OTHER, json={"body": 5}).status_code == 400
+    assert api.post(path, email=STRANGER, json={"body": "hi"}).status_code == 404
+
+    thanks = mine["comments"][1]["id"]
+    assert delete(api, f"/comments/{thanks}", email=STRANGER).status_code == 404
+    assert delete(api, f"/comments/{thanks}", email=OTHER).status_code == 404  # not theirs
+    left = delete(api, f"/comments/{first['id']}", email=OTHER).get_json()
+    assert [c["body"] for c in left["comments"]] == ["Thanks"]
+    assert delete(api, f"/comments/{first['id']}", email=OTHER).status_code == 404
+
+
+def test_a_former_friend_takes_a_comment_back_and_sees_no_others(api):
+    friends(api)
+    save(api)
+    path = f"/comments/tester/{TODAY}/0"
+    theirs = api.post(path, email=OTHER, json={"body": "Nice"}).get_json()["comments"][0]["id"]
+    api.post(path, json={"body": "Thanks"})
+    api.post("/friends/remove/other")
+    r = delete(api, f"/comments/{theirs}", email=OTHER)
+    assert r.status_code == 200 and r.get_json() == {"kudos": 0, "kudoed": False, "comments": []}
+
+
+def test_friends_lists_activity_and_marks_it_seen(api):
+    friends(api)
+    save_with_secrets(api)
+    api.post(f"/kudos/tester/{TODAY}/0", email=OTHER)
+    api.post(f"/comments/tester/{TODAY}/0", email=OTHER, json={"body": "Nice work!"})
+    assert api.get("/me").get_json()["unseen"] == 2
+
+    activity = api.get("/friends").get_json()["activity"]
+    assert sorted(e["kind"] for e in activity) == ["comment", "kudos"]
+    comment = next(e for e in activity if e["kind"] == "comment")
+    assert comment["who"]["handle"] == "other" and comment["body"] == "Nice work!"
+    assert comment["date"] == TODAY and comment["session"] == 0 and comment["at"].endswith("Z")
+    assert all(e["new"] for e in activity)
+
+    assert api.get("/me").get_json()["unseen"] == 0
+    assert not any(e["new"] for e in api.get("/friends").get_json()["activity"])

@@ -6,6 +6,10 @@ enum Route: Hashable {
     case day(date: String, session: Int?, saved: SavedKind?)
     /// One exercise over time, starting on the range Progress was showing.
     case exercise(name: String, range: String)
+    /// Someone's profile.
+    case person(handle: String)
+    /// You beside a friend.
+    case compare(handle: String)
 
     enum SavedKind: Hashable { case saved, first }
 }
@@ -42,14 +46,17 @@ extension View {
                 DayView(date: date, session: session, saved: saved, backTitle: backTitle)
             case let .exercise(name, range):
                 ExerciseView(name: name, range: range)
+            case let .person(handle):
+                PersonView(handle: handle, backTitle: backTitle)
+            case let .compare(handle):
+                CompareView(handle: handle)
             }
         }
     }
 }
 
 /// The five tabs of templates/base.html: Home, Progress, the raised centre button,
-/// Friends, Me. Home, the log flow and Progress are built; Friends says it is on
-/// its way, and the centre button opens Log until Record exists.
+/// Friends, Me. The centre button opens Log until Record exists.
 struct MainTabs: View {
     enum Tab: Hashable { case home, progress, friends, me }
 
@@ -57,8 +64,11 @@ struct MainTabs: View {
     @State private var tab: Tab = .home
     @State private var store = HomeStore()
     @State private var progress = ProgressStore()
+    @State private var friends = FriendsStore()
     @State private var homePath: [Route] = []
     @State private var progressPath: [Route] = []
+    @State private var friendsPath: [Route] = []
+    @State private var mePath: [Route] = []
     @State private var logging = false
 
     var body: some View {
@@ -75,18 +85,23 @@ struct MainTabs: View {
                         .routes(backTitle: "Progress")
                 }
             case .friends:
-                ComingSoon(
-                    title: "Friends",
-                    message: "The feed, high fives and comparing with friends are coming to the app. For now they're at levraapp.com."
-                )
+                NavigationStack(path: $friendsPath) {
+                    FriendsScreen(store: friends)
+                        .routes(backTitle: "Friends")
+                }
             case .me:
-                MeView()
+                NavigationStack(path: $mePath) {
+                    MeView()
+                        .routes(backTitle: "Me")
+                }
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             TabBar(tab: $tab, unseen: app.me?.unseen ?? 0, reselect: {
                 homePath = []
                 progressPath = []
+                friendsPath = []
+                mePath = []
             }) { logging = true }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -180,101 +195,5 @@ private extension Text {
     func tabLabel(active: Bool) -> some View {
         self.font(.custom(Font.TextWeight.semibold.rawValue, fixedSize: 12))
             .foregroundStyle(active ? Palette.ink : Palette.muted2)
-    }
-}
-
-/// A tab whose screens arrive in a later stage.
-private struct ComingSoon: View {
-    let title: String
-    let message: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.head(32, relativeTo: .largeTitle))
-                .foregroundStyle(Palette.ink)
-            Text(message)
-                .font(.text(16))
-                .foregroundStyle(Palette.ink2)
-                .card()
-            Spacer()
-        }
-        .padding(.horizontal, Metrics.gutter)
-        .padding(.top, 20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Palette.bg)
-    }
-}
-
-/// Who you are, your units, and the way out. The rest of Me comes with Friends.
-private struct MeView: View {
-    @Environment(AppState.self) private var app
-    @State private var unit = "lbs"
-    @State private var error: String?
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Me")
-                    .font(.head(32, relativeTo: .largeTitle))
-                    .foregroundStyle(Palette.ink)
-
-                HStack(spacing: 14) {
-                    Avatar(
-                        name: app.me?.profile?.name ?? app.firstName,
-                        url: app.me?.profile?.avatarUrl, size: 56, tone: .you
-                    )
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(app.me?.profile?.name ?? app.firstName)
-                            .font(.head(19))
-                            .foregroundStyle(Palette.ink)
-                        Text([app.me?.profile.map { "@\($0.handle)" }, app.me?.email].compactMap { $0 }.joined(separator: " · "))
-                            .font(.text(13, .medium, relativeTo: .footnote))
-                            .foregroundStyle(Palette.muted)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                }
-                .card()
-
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Weight unit")
-                            .font(.head(17))
-                            .foregroundStyle(Palette.ink)
-                        Text("Used when you don't say one")
-                            .font(.text(13, relativeTo: .footnote))
-                            .foregroundStyle(Palette.muted)
-                    }
-                    Spacer()
-                    SegmentedToggle(
-                        options: [("lbs", "lbs"), ("kg", "kg")], selection: $unit, label: "Weight unit"
-                    )
-                }
-                .card()
-
-                if let error { ErrorBanner(message: error) }
-
-                Button("Sign out") { app.signOut() }
-                    .buttonStyle(.pill(.white, height: 54, fill: true))
-            }
-            .padding(.horizontal, Metrics.gutter)
-            .padding(.top, 20)
-            .padding(.bottom, 24)
-        }
-        .background(Palette.bg)
-        .onAppear { unit = app.weightUnit }
-        .onChange(of: unit) { _, new in
-            guard new != app.weightUnit else { return }
-            Task {
-                do {
-                    try await app.setWeightUnit(new)
-                    error = nil
-                } catch let failure {
-                    error = app.message(for: failure)
-                    unit = app.weightUnit
-                }
-            }
-        }
     }
 }
