@@ -10,6 +10,11 @@ final class AppState {
     private(set) var phase: Phase = .launching
     private(set) var me: Me?
     let api = APIClient()
+    /// Goes up whenever a workout or a rest day changes, so screens already on
+    /// show load again.
+    private(set) var changes = 0
+
+    func didChange() { changes += 1 }
 
     var firstName: String { me?.firstName ?? "" }
     var weightUnit: String { me?.weightUnit ?? "lbs" }

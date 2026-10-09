@@ -33,7 +33,7 @@ struct HomeView: View {
             await store.load(app: app)
             await app.refreshMe()
         }
-        .task { await store.load(app: app) }
+        .task(id: app.changes) { await store.load(app: app) }
     }
 
     private var header: some View {

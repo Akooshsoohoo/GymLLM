@@ -4,6 +4,8 @@ import SwiftUI
 enum Route: Hashable {
     /// One of your own days. `saved` marks the workout just logged.
     case day(date: String, session: Int?, saved: SavedKind?)
+    /// One exercise over time, starting on the range Progress was showing.
+    case exercise(name: String, range: String)
 
     enum SavedKind: Hashable { case saved, first }
 }
@@ -30,16 +32,33 @@ final class HomeStore {
     }
 }
 
+extension View {
+    /// Where a tab's stack goes for each Route. `backTitle` is what a day's back
+    /// button says: the tab it leads to.
+    func routes(backTitle: String) -> some View {
+        navigationDestination(for: Route.self) { route in
+            switch route {
+            case let .day(date, session, saved):
+                DayView(date: date, session: session, saved: saved, backTitle: backTitle)
+            case let .exercise(name, range):
+                ExerciseView(name: name, range: range)
+            }
+        }
+    }
+}
+
 /// The five tabs of templates/base.html: Home, Progress, the raised centre button,
-/// Friends, Me. This stage builds Home and the log flow; Progress and Friends say
-/// they are on their way, and the centre button opens Log until Record exists.
+/// Friends, Me. Home, the log flow and Progress are built; Friends says it is on
+/// its way, and the centre button opens Log until Record exists.
 struct MainTabs: View {
     enum Tab: Hashable { case home, progress, friends, me }
 
     @Environment(AppState.self) private var app
     @State private var tab: Tab = .home
     @State private var store = HomeStore()
+    @State private var progress = ProgressStore()
     @State private var homePath: [Route] = []
+    @State private var progressPath: [Route] = []
     @State private var logging = false
 
     var body: some View {
@@ -48,18 +67,13 @@ struct MainTabs: View {
             case .home:
                 NavigationStack(path: $homePath) {
                     HomeView(store: store, openLog: { logging = true })
-                        .navigationDestination(for: Route.self) { route in
-                            switch route {
-                            case let .day(date, session, saved):
-                                DayView(date: date, session: session, saved: saved)
-                            }
-                        }
+                        .routes(backTitle: "Home")
                 }
             case .progress:
-                ComingSoon(
-                    title: "Progress",
-                    message: "Charts, personal bests and your training calendar are coming to the app. For now they're at levraapp.com."
-                )
+                NavigationStack(path: $progressPath) {
+                    ProgressScreen(store: progress, openLog: { logging = true })
+                        .routes(backTitle: "Progress")
+                }
             case .friends:
                 ComingSoon(
                     title: "Friends",
@@ -70,7 +84,10 @@ struct MainTabs: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            TabBar(tab: $tab, unseen: app.me?.unseen ?? 0, reselect: { homePath = [] }) { logging = true }
+            TabBar(tab: $tab, unseen: app.me?.unseen ?? 0, reselect: {
+                homePath = []
+                progressPath = []
+            }) { logging = true }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .fullScreenCover(isPresented: $logging) {

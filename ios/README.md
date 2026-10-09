@@ -1,8 +1,11 @@
 # Levra for iOS
 
 The native SwiftUI app. It talks to the JSON API at `/api/v1` (`gymllm/api/`), and
-`ios-handoff.md` at the repo root has the full plan. This stage is the core loop:
-Welcome and sign-in, Home, Log, Review, Save, and a basic Day.
+`ios-handoff.md` at the repo root has the full plan. Built so far: the core loop
+(Welcome and sign-in, Home, Log, Review, Save) and Progress and Day (the Overview,
+Sessions and Exercises tabs under a time range, charts, the week calendar and rest
+days, search, an exercise's history, and a Day you can step through, edit, delete
+and share as a picture). Friends, Record and Settings come next.
 
 ## Build and run
 
@@ -31,8 +34,12 @@ With the local server running:
     xcodebuild -project Levra.xcodeproj -scheme Levra \
       -destination 'platform=iOS Simulator,name=iPhone 17' test
 
-`LevraUITests` signs in as Alex, logs a workout, edits it on Review, saves, and
-checks the Day it lands on. Each run adds one workout to Alex in the local database.
+`LevraUITests` signs in as Alex and drives the app: `CoreLoopUITests` logs a
+workout, edits it on Review, saves, and checks the Day it lands on;
+`ProgressUITests` goes through Progress, the calendar, search, an exercise, and a
+day's date picker, share picture, editor and delete. Each run adds one workout to
+Alex in the local database, renames one of the seeded ones to "Leg day", and can
+leave a rest day behind if it stops halfway.
 Set `TEST_RUNNER_SHOTS_DIR=/some/folder` to keep a screenshot of every screen, and
 run `xcrun simctl ui booted appearance dark` first for dark mode.
 
@@ -44,7 +51,7 @@ run `xcrun simctl ui booted appearance dark` first for dark mode.
     Levra/Theme       colours, fonts, shared components
     Levra/Features    one folder per screen
     Levra/Resources   colour sets, app icon, fonts
-    LevraUITests      the core loop, driven in the simulator
+    LevraUITests      the core loop, Progress and Day, driven in the simulator
     scripts           colors.py (colour sets from static/style.css), dev_server.py
 
 Colours are never written in a view. They are generated from the tokens at the top
