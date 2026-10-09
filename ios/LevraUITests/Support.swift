@@ -40,6 +40,23 @@ extension XCUIApplication {
     }
 }
 
+extension XCUIApplication {
+    /// Tap a save button under a form that was just typed in, and wait for what
+    /// saving shows. With no software keyboard up, the simulator brings it back on
+    /// the next touch and the save bar moves out from under the tap, so a tap that
+    /// didn't take is made once more.
+    func tapSave(
+        _ label: String, expecting shown: XCUIElement, timeout: TimeInterval = 15,
+        file: StaticString = #filePath, line: UInt = #line
+    ) {
+        buttons[label].tap()
+        if !shown.waitForExistence(timeout: 3), buttons[label].exists, buttons[label].isHittable {
+            buttons[label].tap()
+        }
+        XCTAssertTrue(shown.waitForExistence(timeout: timeout), file: file, line: line)
+    }
+}
+
 extension XCUIElementQuery {
     /// The first element whose label holds `text`.
     func labelled(_ text: String) -> XCUIElement {

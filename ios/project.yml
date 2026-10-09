@@ -45,6 +45,12 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
+    # Sign in with Apple. Needs a team in the Apple Developer Program on a real phone.
+    entitlements:
+      path: Levra/Levra.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     info:
       path: Levra/Info.plist
       properties:
@@ -73,7 +79,7 @@ targets:
           - CFBundleURLSchemes:
               - $(GOOGLE_REVERSED_CLIENT_ID)
 
-  # Drives the core loop, Progress, Day, Friends and Record in the simulator against the local server
+  # Drives the core loop, Progress, Day, Friends, Record and account deletion in the simulator against the local server
   # (python ios/scripts/dev_server.py) and keeps a screenshot of every screen.
   LevraUITests:
     type: bundle.ui-testing

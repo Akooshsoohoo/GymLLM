@@ -25,12 +25,14 @@ enum Theme: String, CaseIterable {
     }
 }
 
-/// Settings: units, theme and the way out. Pushed from Me.
+/// Settings: units, theme, the way out, and deleting the account. Pushed from Me.
 struct SettingsView: View {
     @Environment(AppState.self) private var app
     @AppStorage(Theme.key) private var theme = Theme.system.rawValue
     @State private var unit = "lbs"
     @State private var error: String?
+    @State private var confirmingDelete = false
+    @State private var deleting = false
 
     var body: some View {
         ScrollView {
@@ -70,6 +72,18 @@ struct SettingsView: View {
                         .foregroundStyle(Palette.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                HStack(spacing: 20) {
+                    Link("Privacy", destination: app.api.page("privacy"))
+                    Link("Terms", destination: app.api.page("terms"))
+                }
+                .font(.text(14, .medium, relativeTo: .subheadline))
+                .tint(Palette.muted)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 8)
+                Button("Delete account") { confirmingDelete = true }
+                    .buttonStyle(LinkButtonStyle(color: Palette.dangerInk, size: 15))
+                    .frame(maxWidth: .infinity)
             }
             .padding(.horizontal, Metrics.gutter)
             .padding(.top, 8)
@@ -77,6 +91,17 @@ struct SettingsView: View {
         }
         .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
+        .disabled(deleting)
+        // An alert, not a dialog: it always shows the way out as a button.
+        .alert("Delete your account?", isPresented: $confirmingDelete) {
+            Button("Delete everything", role: .destructive) { deleteAccount() }
+            Button("Keep my account", role: .cancel) {}
+        } message: {
+            Text(
+                "Your workouts, body weight, notes, routines, profile, friends, high fives and "
+                    + "comments are deleted for good, here and on the website. This can't be undone."
+            )
+        }
         .onAppear { unit = app.weightUnit }
         .onChange(of: unit) { _, new in
             guard new != app.weightUnit else { return }
@@ -88,6 +113,19 @@ struct SettingsView: View {
                     error = app.message(for: failure)
                     unit = app.weightUnit
                 }
+            }
+        }
+    }
+
+    /// On success the app is back on Welcome and this screen is gone.
+    private func deleteAccount() {
+        deleting = true
+        Task {
+            do {
+                try await app.deleteAccount()
+            } catch let failure {
+                error = app.message(for: failure)
+                deleting = false
             }
         }
     }

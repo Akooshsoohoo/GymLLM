@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Levra | Terms{% endblock %}
+{% block meta_description %}The terms for using Levra.{% endblock %}
+{% block main_class %}page page-narrow{% endblock %}
+{% block content %}
+{% set contact = config.CONTACT_EMAIL %}
+<article class="legal">
+    <h1>Terms</h1>
+    <p class="muted small">Last updated 8 October 2026</p>
+
+    <p>By using Levra you agree to these terms. They are short on purpose.</p>
+
+    <h2>Your account</h2>
+    <p>You sign in with a Google account, or in the iPhone app with Apple, and must be 13 or older. Signing in with Apple while hiding your email address makes an account of its own, separate from your Google one. You are responsible for what is done with your account.</p>
+
+    <h2>Your workouts are yours</h2>
+    <p>What you log belongs to you. You allow us to store it and to show it to you and to your friends, as the <a href="{{ url_for('main.privacy') }}">privacy page</a> describes. You can delete it, or your whole account, at any time.</p>
+
+    <h2>Be decent</h2>
+    <p>Do not use profiles or comments to harass anyone or to post anything illegal. Do not try to break Levra, get into other people's accounts, or overload it with automated requests. We may remove content or close accounts that do.</p>
+
+    <h2>Not medical advice</h2>
+    <p>Levra records what you tell it. It does not give medical or training advice. Exercise at your own risk and talk to a doctor if you are unsure.</p>
+
+    <h2>The AI can get it wrong</h2>
+    <p>An AI model reads what you type and may mishear it. You see what it heard before anything is saved, and you can edit it afterwards.</p>
+
+    <h2>No guarantees</h2>
+    <p>Levra is free and provided as it is. It may change, have limits (such as a number of free logs a day), be unavailable, or stop. As far as the law allows, we are not liable for loss or damage from using it, including lost data.</p>
+
+    <h2>Changes and contact</h2>
+    <p>If these terms change, the date at the top changes with them, and using Levra after that means you accept the new ones.{% if contact %} Questions: <a href="mailto:{{ contact }}">{{ contact }}</a>.{% endif %}</p>
+</article>
+{% endblock %}

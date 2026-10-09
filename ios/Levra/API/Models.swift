@@ -227,6 +227,8 @@ struct DayDetail: Codable, Identifiable {
     let session: Int
     let title: String
     let iconHint: String
+    /// Which muscle icon stands for the day: "chest", "run". Nil from an older server.
+    let icon: String?
     let statLine: String
     /// The day's workouts when there is more than one, else empty.
     let sessions: [SessionRef]
@@ -255,10 +257,20 @@ struct Preferences: Codable {
     let weightUnit: String
 }
 
+struct AccountDeleted: Decodable {
+    let deleted: Bool
+}
+
 struct DevSignIn: Encodable {
     let slug: String
 }
 
 struct GoogleSignInRequest: Encodable {
     let idToken: String
+}
+
+struct AppleSignInRequest: Encodable {
+    let identityToken: String
+    /// Apple gives the name only the first time someone signs in.
+    let name: String
 }

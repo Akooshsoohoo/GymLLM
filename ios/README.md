@@ -11,7 +11,10 @@ profile, Compare, and your own profile on Me). And the rest: Record on the centr
 blocks of notes, kept in a file on the phone so a recording survives the app being
 killed, read as one text on Stop), routines that pre-fill it, Settings (units,
 theme, sign out), names suggested on the manual form, hiding the getting-started
-card, and who can see a day, set on the Day itself.
+card, and who can see a day, set on the Day itself. For the App Store: Sign in with Apple
+(an account of its own when the email is hidden, not linked to a Google one), "Delete account"
+in Settings, links to the site's terms and privacy policy on Welcome and in Settings,
+and the site's muscle icons on the Day and the share picture.
 
 ## Build and run
 
@@ -50,7 +53,9 @@ bio, then signs in as somebody new, sets up a profile and joins by Alex's pasted
 invite link; `RecordUITests` records a workout, kills the app and finds the
 recording still running, saves it and makes the day private and back, makes a
 routine, starts, renames and deletes it, picks a suggested name on the manual form,
-switches the theme, and hides the getting-started card as somebody new. Each run
+switches the theme, and hides the getting-started card as somebody new;
+`AccountUITests` signs in as somebody new, logs a workout, and deletes the account
+from Settings (it never deletes a seeded one). Each run
 adds two workouts to Alex in the local database, renames one of the seeded ones to
 "Leg day", sets Alex's bio, leaves two new accounts behind (one as Alex's friend),
 and can leave a rest day or a routine behind if it stops halfway. To start clean,
@@ -66,13 +71,18 @@ run `xcrun simctl ui booted appearance dark` first for dark mode.
     Levra/Theme       colours, fonts, shared components
     Levra/Features    one folder per screen
     Levra/Resources   colour sets, app icon, fonts
-    LevraUITests      the core loop, Progress and Day, Friends, and Record, driven in the simulator
-    scripts           colors.py (colour sets from static/style.css), dev_server.py
+    LevraUITests      the core loop, Progress and Day, Friends, Record and account deletion, driven in the simulator
+    scripts           colors.py (colour sets from static/style.css), muscle_icons.py, dev_server.py
 
 Colours are never written in a view. They are generated from the tokens at the top
 of `static/style.css`; after changing one there, from the repo root:
 
     python ios/scripts/colors.py static/style.css ios/Levra/Resources/Assets.xcassets
+
+The muscle icons are drawn by the site's own `static/muscle-icons.js`; after
+changing it (and `gymllm/muscle_icons.py`, which picks the icon for the app):
+
+    python ios/scripts/muscle_icons.py
 
 ## Still to set up by hand
 

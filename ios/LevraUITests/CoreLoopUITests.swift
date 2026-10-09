@@ -49,10 +49,9 @@ final class CoreLoopUITests: XCTestCase {
         time.tap()
         time.typeText("18 min")
         shot("05-review-edited")
-        app.buttons["Save workout"].tap()
 
         // Day, with what was edited.
-        XCTAssertTrue(app.staticTexts["Saved"].waitForExistence(timeout: 15))
+        app.tapSave("Save workout", expecting: app.staticTexts["Saved"])
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '190 lbs'")).firstMatch.exists)
         shot("06-day")
 

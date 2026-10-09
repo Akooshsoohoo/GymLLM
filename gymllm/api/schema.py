@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from flask import url_for
 
-from .. import session_meta, sessions
+from .. import muscle_icons, session_meta, sessions
 
 
 def timestamp(value: datetime | None) -> str | None:
@@ -123,6 +123,7 @@ def my_card(card: dict | None) -> dict | None:
         "session": card["session"],
         "title": card["title"],
         "icon_hint": card["share"]["hint"],
+        "icon": muscle_icons.for_tags(card["share"]["hint"]),
         "stat_line": card["share"]["stat_line"],
         "lifts": [lift(r, mine=True) for r in card["rows"]],
         "cardio": [cardio(c, mine=True) for c in card["cardio"]],
@@ -141,6 +142,7 @@ def friend_card(card: dict) -> dict:
         "session": card["session"],
         "title": card["title"],
         "icon_hint": session_meta.icon_hint(card["rows"], card["cardio"]),
+        "icon": muscle_icons.for_tags(session_meta.icon_hint(card["rows"], card["cardio"])),
         "lifts": [lift(r, mine=False) for r in card["rows"]],
         "cardio": [cardio(c, mine=False) for c in card["cardio"]],
         "lines": lines(card["rows"]),
@@ -178,6 +180,7 @@ def day(parts: dict) -> dict:
         "session": parts["n"],
         "title": parts["title"],
         "icon_hint": parts["share"]["hint"],
+        "icon": muscle_icons.for_tags(parts["share"]["hint"]),
         "stat_line": parts["share"]["stat_line"],
         "sessions": [{"session": s["n"], "title": s["title"]} for s in parts["switcher"]],
         "lifts": [lift(r, mine=True) for r in parts["rows"]],
@@ -265,6 +268,7 @@ def session_tile(d: dict) -> dict:
         "session": d["session"],
         "title": d["title"],
         "icon_hint": session_meta.icon_hint(d["rows"], d["cardio"]),
+        "icon": muscle_icons.for_tags(session_meta.icon_hint(d["rows"], d["cardio"])),
         "lines": [
             {"name": ln["name"], "detail": ln["detail"], "parts": ln["parts"], "pr": ln["pr"]}
             for ln in d["lines"]

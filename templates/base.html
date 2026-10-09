@@ -105,6 +105,13 @@
     flashes() where the messages fit. -#}
 {% block flashes %}{{ flashes() }}{% endblock %}
 {% block content %}{% endblock %}
+{#- Inside <main> so it sits above the phone's tab bar. Welcome has the links in its own layout. -#}
+{% block footer %}
+<footer class="site-footer">
+    <a href="{{ url_for('main.privacy') }}">Privacy</a>
+    <a href="{{ url_for('main.terms') }}">Terms</a>
+</footer>
+{% endblock %}
 </main>
 {% block tabbar %}
 {% if user_email %}

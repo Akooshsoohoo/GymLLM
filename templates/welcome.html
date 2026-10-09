@@ -4,6 +4,7 @@
 {% block chrome %}{% endblock %}
 {% block main_class %}welcome-main{% endblock %}
 {% block flashes %}{% endblock %}
+{% block footer %}{% endblock %}
 {% block content %}
 {#- Swap the gradient for a real photo by setting a background-image on .welcome-photo
     (friends mid-workout, candid, warm light). On it, what the app does in one picture:
@@ -31,6 +32,7 @@
         </a>
         <p class="welcome-note">Free. Private until you add friends.</p>
     </div>
+    <p class="welcome-legal">By continuing you agree to the <a href="{{ url_for('main.terms') }}">Terms</a> and the <a href="{{ url_for('main.privacy') }}">Privacy Policy</a>.</p>
     <div class="welcome-spacer desktop-only"></div>
 </div>
 {% endblock %}

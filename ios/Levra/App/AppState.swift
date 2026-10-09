@@ -62,6 +62,10 @@ final class AppState {
         finishSignIn(try await api.post("/auth/google", GoogleSignInRequest(idToken: token)))
     }
 
+    func signIn(appleIdentityToken token: String, name: String) async throws {
+        finishSignIn(try await api.post("/auth/apple", AppleSignInRequest(identityToken: token, name: name)))
+    }
+
     private func finishSignIn(_ auth: AuthResponse) {
         TokenStore.save(auth.token)
         api.token = auth.token
@@ -75,6 +79,14 @@ final class AppState {
         api.token = nil
         me = nil
         phase = .signedOut
+    }
+
+    /// Deletes the account and everything in it on the server, for good, then
+    /// forgets it here too: the sign-in, and a workout being recorded.
+    func deleteAccount() async throws {
+        let _: AccountDeleted = try await api.delete("/account")
+        if recording != nil { recorder.discard() }
+        signOut()
     }
 
     func setWeightUnit(_ unit: String) async throws {

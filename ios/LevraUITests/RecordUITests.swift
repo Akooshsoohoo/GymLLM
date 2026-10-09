@@ -75,15 +75,8 @@ final class RecordUITests: XCTestCase {
         XCTAssertTrue(again.staticTexts.labelled("Your friends, in their feed.").waitForExistence(timeout: 10))
     }
 
-    /// Save the routine editor and wait for the list. After typing, the simulator
-    /// brings its keyboard back on the next touch and the save bar moves out from
-    /// under the tap, so a tap that didn't take is made once more.
     private func saveRoutine(expecting name: String) {
-        app.buttons["Save routine"].tap()
-        if !app.staticTexts[name].waitForExistence(timeout: 3), app.buttons["Save routine"].exists {
-            app.buttons["Save routine"].tap()
-        }
-        XCTAssertTrue(app.staticTexts[name].waitForExistence(timeout: 10))
+        app.tapSave("Save routine", expecting: app.staticTexts[name], timeout: 10)
     }
 
     func testRoutines() {

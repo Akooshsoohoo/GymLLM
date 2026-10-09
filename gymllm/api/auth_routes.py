@@ -1,5 +1,5 @@
-"""Signing in: a Google ID token from the iOS SDK, or a seeded dev account, is
-exchanged for the API's own bearer token."""
+"""Signing in: a Google ID token from the iOS SDK, an identity token from Sign in
+with Apple, or a seeded dev account, is exchanged for the API's own bearer token."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import re
 
 from flask import current_app, jsonify
 
-from .. import auth, dev_routes
+from .. import apple_auth, auth, dev_routes
 from . import bp, dev_bp
 from .core import me_payload
 from .errors import ApiError, json_body, not_found
@@ -50,6 +50,38 @@ def auth_google():
     if not email or claims.get("email_verified") is not True:
         raise ApiError(401, "email_unverified", "That Google account has no verified email.")
     return _signed_in(email, claims.get("name") or "", claims.get("picture") or "")
+
+
+@bp.route("/auth/apple", methods=["POST"])
+def auth_apple():
+    """Sign in with Apple. The account is whatever address Apple gives us: the
+    person's own, or a private relay address when they chose to hide it. A relay
+    address is an account of its own, not linked to the same person's Google one.
+    Apple tells the app the name only the first time, so it comes in the body."""
+    data = json_body()
+    raw = data.get("identity_token")
+    if not isinstance(raw, str) or not raw.strip():
+        raise ApiError(400, "bad_request", "identity_token is required.")
+    name = data.get("name") or ""
+    if not isinstance(name, str):
+        raise ApiError(400, "bad_request", "name must be text.")
+    verify = current_app.config.get("APPLE_ID_TOKEN_VERIFIER", apple_auth.verify_identity_token)
+    try:
+        claims = verify(raw.strip(), current_app.config["APPLE_BUNDLE_ID"])
+    except ValueError:
+        raise ApiError(401, "invalid_token", "Apple sign-in didn't work. Try again.") from None
+    except Exception:  # noqa: BLE001 - Apple's keys could not be fetched, ...
+        current_app.logger.exception("Could not verify an Apple identity token")
+        raise ApiError(503, "apple_unavailable", "Couldn't reach Apple. Try again.") from None
+    email = claims.get("email")
+    # Apple sends email_verified as a boolean or as the string "true".
+    if (
+        not email
+        or not isinstance(email, str)
+        or claims.get("email_verified") not in (True, "true")
+    ):
+        raise ApiError(401, "email_unverified", "That Apple account has no verified email.")
+    return _signed_in(email, " ".join(name.split())[:60])
 
 
 @dev_bp.route("/auth/dev", methods=["POST"])

@@ -53,6 +53,7 @@ def base_test_config():
         "GOOGLE_OAUTH_CLIENT_ID": "x",
         "GOOGLE_OAUTH_CLIENT_SECRET": "y",
         "IS_PRODUCTION": False,
+        "APPLE_BUNDLE_ID": "com.levraapp.Levra",
         "SITE_LLM": None,
         "ADMIN_EMAILS": set(),
     }

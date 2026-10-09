@@ -3,10 +3,11 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The share image: the green poster at 4:5, drawn at 360×450 points and rendered
-/// at 3× for a 1080×1350 picture. Name and date on top, the workout's name with its
-/// numbers under it, then one row per lift or activity. Always the light green
-/// poster, whatever the theme, and never the weigh-in. The site draws the same
-/// thing on a canvas (renderShareCard in static/app.js).
+/// at 3× for a 1080×1350 picture. Name and date on top, the day's muscle icon top
+/// right, the workout's name with its numbers under it, then one row per lift or
+/// activity. Always the light green poster, whatever the theme, and never the
+/// weigh-in. The site draws the same thing on a canvas (renderShareCard in
+/// static/app.js).
 struct SharePoster: View {
     struct Row: Hashable {
         let name: String
@@ -26,14 +27,14 @@ struct SharePoster: View {
     let top: String
     let title: String
     let statLine: String
-    let symbol: String
+    let icon: String?
     let rows: [Row]
 
     init(day: DayDetail, name: String) {
         top = [name, Days.short(day.date)].filter { !$0.isEmpty }.joined(separator: " · ").uppercased()
         title = day.title
         statLine = day.statLine
-        symbol = DayView.symbol(for: day.iconHint, lifts: !day.lifts.isEmpty)
+        icon = day.icon
         rows = day.lines.map {
             Row(
                 name: $0.exercise.capFirst + ($0.pr ? " · new best" : ""), detail: $0.detail,
@@ -63,12 +64,10 @@ struct SharePoster: View {
         let more = rows.count - shown.count
         ZStack(alignment: .topTrailing) {
             Palette.you
-            // A stand-in until the muscle icons are exported as assets.
-            Image(systemName: symbol)
-                .font(.system(size: 124, weight: .semibold))
-                .opacity(0.16)
-                .padding(.top, 58)
-                .padding(.trailing, 18)
+            // Where the site's canvas puts it: 504 of 1080 wide, 50 in and 166 down.
+            MuscleIcon(icon, size: 168, glyph: Palette.you)
+                .padding(.top, 55)
+                .padding(.trailing, 17)
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Text(top).lineLimit(1)
