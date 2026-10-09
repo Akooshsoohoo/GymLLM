@@ -3,7 +3,7 @@ import pytest
 from gymllm import auth, create_app, quota, social
 from gymllm.extensions import db
 from gymllm.llm.client import BadOutputError, RateLimitError
-from gymllm.models import BodyWeight, Cardio, Workout
+from gymllm.models import BodyWeight, Cardio, RoutineBlock, SessionVisibility, Workout
 from tests.conftest import OTHER, SITE_LLM, USER, base_test_config
 
 TODAY = "2026-09-14"
@@ -1300,3 +1300,199 @@ def test_friends_lists_activity_and_marks_it_seen(api):
 
     assert api.get("/me").get_json()["unseen"] == 0
     assert not any(e["new"] for e in api.get("/friends").get_json()["activity"])
+
+
+# --- Stage 5: routines, manual entry, the checklist, visibility ---------------------
+
+PUSH = {
+    "name": "  Push   day ",
+    "blocks": [
+        {"name": "Warm up", "body": "5 min row"},
+        {"name": "", "body": ""},
+        {"body": "Bench press 185 lbs, 3 sets of ___\r\nDips 3 sets of ___"},
+    ],
+}
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("get", "/routines"),
+        ("post", "/routines"),
+        ("get", "/routines/1"),
+        ("put", "/routines/1"),
+        ("delete", "/routines/1"),
+        ("get", "/log/manual"),
+        ("post", "/onboarding/dismiss"),
+        ("put", f"/day/{TODAY}/visibility"),
+    ],
+)
+def test_stage_5_endpoints_need_a_token(client, method, path):
+    r = getattr(client, method)(f"/api/v1{path}")
+    assert r.status_code == 401 and r.get_json()["error"]["code"] == "unauthorized"
+
+
+def test_routine_create_list_and_read(api):
+    assert api.get("/routines").get_json() == {"routines": []}
+    r = api.post("/routines", json=PUSH)
+    made = r.get_json()
+    assert r.status_code == 201 and made["name"] == "Push day"
+    # The empty block is dropped, and the rest keep their order.
+    assert made["blocks"] == [
+        {"name": "Warm up", "body": "5 min row"},
+        {"name": "", "body": "Bench press 185 lbs, 3 sets of ___\nDips 3 sets of ___"},
+    ]
+    assert api.get("/routines").get_json() == {
+        "routines": [{"id": made["id"], "name": "Push day", "block_count": 2}]
+    }
+    assert api.get(f"/routines/{made['id']}").get_json() == made
+    # The website lists the same routine.
+    with api.client.session_transaction() as s:
+        s["user_email"] = USER
+    assert b"Push day" in api.client.get("/routines").data
+
+
+def test_routine_edit_replaces_the_name_and_blocks(api):
+    first = api.post("/routines", json=PUSH).get_json()["id"]
+    second = api.post("/routines", json={"name": "Legs"}).get_json()
+    assert second["blocks"] == []
+    r = api.put(f"/routines/{first}", json={"name": "Push", "blocks": [{"body": "Bench"}]})
+    assert r.status_code == 200
+    assert r.get_json() == {"id": first, "name": "Push", "blocks": [{"name": "", "body": "Bench"}]}
+    # The one just changed leads the list.
+    assert [x["name"] for x in api.get("/routines").get_json()["routines"]] == ["Push", "Legs"]
+
+
+@pytest.mark.parametrize(
+    "body,status,code",
+    [
+        ({"name": "   ", "blocks": [{"body": "Bench"}]}, 422, "bad_routine"),
+        ({"blocks": [{"body": "Bench"}]}, 422, "bad_routine"),
+        ({"name": 5}, 400, "bad_request"),
+        ({"name": "Push", "blocks": "Bench"}, 400, "bad_request"),
+        ({"name": "Push", "blocks": ["Bench"]}, 400, "bad_request"),
+        ({"name": "Push", "blocks": [{"body": 5}]}, 400, "bad_request"),
+    ],
+)
+def test_routine_refusals_save_nothing(api, body, status, code):
+    made = api.post("/routines", json=PUSH).get_json()
+    for r in (api.post("/routines", json=body), api.put(f"/routines/{made['id']}", json=body)):
+        assert r.status_code == status and r.get_json()["error"]["code"] == code
+    assert r.get_json()["error"]["message"]
+    assert len(api.get("/routines").get_json()["routines"]) == 1
+    assert api.get(f"/routines/{made['id']}").get_json() == made
+
+
+def test_routine_blank_name_reuses_the_websites_message(api):
+    r = api.post("/routines", json={"name": ""})
+    assert r.get_json()["error"]["message"] == "Give the routine a name."
+
+
+def test_routine_long_text_is_cut_to_size(api):
+    body = {"name": "n" * 100, "blocks": [{"name": "b" * 100, "body": "x"}] * 30}
+    made = api.post("/routines", json=body).get_json()
+    assert len(made["name"]) == 60 and len(made["blocks"]) == 20
+    assert len(made["blocks"][0]["name"]) == 40
+
+
+def test_routines_are_only_ever_your_own(api):
+    mine = api.post("/routines", json=PUSH).get_json()
+    assert api.get("/routines", email=OTHER).get_json() == {"routines": []}
+    for r in (
+        api.get(f"/routines/{mine['id']}", email=OTHER),
+        api.put(f"/routines/{mine['id']}", email=OTHER, json={"name": "Theirs"}),
+        delete(api, f"/routines/{mine['id']}", email=OTHER),
+    ):
+        assert r.status_code == 404 and r.get_json()["error"]["code"] == "not_found"
+    assert api.get(f"/routines/{mine['id']}").get_json() == mine
+
+
+def test_routine_delete(api):
+    first = api.post("/routines", json=PUSH).get_json()["id"]
+    second = api.post("/routines", json={"name": "Legs"}).get_json()["id"]
+    r = delete(api, f"/routines/{first}")
+    assert r.status_code == 200
+    assert r.get_json() == {"routines": [{"id": second, "name": "Legs", "block_count": 0}]}
+    assert api.get(f"/routines/{first}").status_code == 404
+    assert delete(api, f"/routines/{first}").status_code == 404
+    with api.app.app_context():
+        assert RoutineBlock.query.count() == 0
+
+
+def test_a_recording_from_a_routine_takes_its_name(api, fake_llm):
+    fake_llm.queue(BENCH)
+    text = "Warm up\n5 min row\n\nBench press 185 lbs, 3 sets of 5"
+    heard = api.post(
+        f"/parse?today={TODAY}", json={"text": text, "routine_name": " Push  day "}
+    ).get_json()
+    assert heard["title"] == "Push day" and heard["entries"][0]["exercise"] == "bench press"
+    assert text in fake_llm.calls[-1][1]
+    saved = save(api, title=heard["title"]).get_json()
+    assert api.get(f"/day/{TODAY}?session={saved['session']}").get_json()["title"] == "Push day"
+
+
+def test_manual_entry_names_and_save(api, fake_llm):
+    names = api.get("/log/manual").get_json()
+    assert "Barbell Bench Press" in names["exercises"] and names["activities"]
+    assert all(isinstance(n, str) and n for n in names["exercises"] + names["activities"])
+    # The form saves through POST /sessions, with no reading of text and no log spent.
+    body = {
+        "entries": [{"exercise": "Barbell Bench Press", "weight": "185", "sets": "3", "reps": "5"}],
+        "cardio": [{"activity": names["activities"][0], "duration": "20"}],
+        "bodyweight": "160",
+    }
+    assert save(api, **body).status_code == 201
+    day = api.get(f"/day/{TODAY}").get_json()
+    assert day["lifts"][0]["weight"] == "185 lbs" and day["bodyweight"] == "160 lbs"
+    assert len(day["cardio"]) == 1
+    assert api.get("/me").get_json()["quota"] == {"left": 2, "limit": 2}
+
+
+def test_checklist_dismiss_hides_it_for_good(api):
+    assert api.get(f"/home?today={TODAY}").get_json()["checklist"] is not None
+    assert api.get(f"/home?today={TODAY}", email=OTHER).get_json()["checklist"] is not None
+    for _ in range(2):  # hiding it twice is fine
+        r = api.post("/onboarding/dismiss")
+        assert r.status_code == 200 and r.get_json() == {"checklist": None}
+    assert api.get(f"/home?today={TODAY}").get_json()["checklist"] is None
+    save(api)
+    assert api.get(f"/home?today={TODAY}").get_json()["checklist"] is None
+    # Only yours.
+    assert api.get(f"/home?today={TODAY}", email=OTHER).get_json()["checklist"] is not None
+
+
+def test_day_visibility_hides_a_day_from_friends_and_shows_it_again(api):
+    add_profile(api)
+    add_profile(api, OTHER, "other")
+    with api.app.app_context():
+        social.befriend(USER, OTHER)
+    save(api)
+    feed = lambda: api.get(f"/feed?today={TODAY}", email=OTHER).get_json()["cards"]  # noqa: E731
+    assert len(feed()) == 1
+
+    r = api.put(f"/day/{TODAY}/visibility", json={"visibility": "private"})
+    assert r.status_code == 200 and r.get_json() == {"date": TODAY, "visibility": "private"}
+    assert api.get(f"/day/{TODAY}").get_json()["visibility"] == "private"
+    assert feed() == []
+
+    assert api.put(f"/day/{TODAY}/visibility", json={"visibility": "friends"}).status_code == 200
+    assert api.get(f"/day/{TODAY}").get_json()["visibility"] == "friends"
+    assert len(feed()) == 1
+
+
+def test_day_visibility_refusals(api):
+    save(api)
+    for body in ({}, {"visibility": "public"}, {"visibility": 1}, {"visibility": ""}):
+        r = api.put(f"/day/{TODAY}/visibility", json=body)
+        assert r.status_code == 400 and r.get_json()["error"]["code"] == "bad_request"
+    assert api.get(f"/day/{TODAY}").get_json()["visibility"] == "friends"
+    # A day that isn't one, a day with nothing on it, and a day with only a weigh-in.
+    save(api, date="2026-09-13", entries=[], bodyweight="160")
+    for when in ("someday", "2026-09-01", "2026-09-13"):
+        r = api.put(f"/day/{when}/visibility", json={"visibility": "private"})
+        assert r.status_code == 404 and r.get_json()["error"]["code"] == "not_found"
+    with api.app.app_context():
+        assert SessionVisibility.query.filter_by(visibility="private").count() == 0
+    # Somebody else's day is not yours to set: it is simply not there.
+    r = api.put(f"/day/{TODAY}/visibility", email=OTHER, json={"visibility": "private"})
+    assert r.status_code == 404
