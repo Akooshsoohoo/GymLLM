@@ -106,15 +106,17 @@ extension SectionHead where Trailing == EmptyView {
 struct StatTile: View {
     let label: String
     let value: String
+    /// Said small after the value: "9 weeks", "105k lbs".
+    var unit = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(.text(13, .medium, relativeTo: .footnote))
                 .foregroundStyle(Palette.muted)
-            Text(value)
-                .font(.head(30, .extrabold, relativeTo: .title))
-                .foregroundStyle(Palette.ink)
+            (Text(value).font(.head(30, .extrabold, relativeTo: .title)).foregroundStyle(Palette.ink)
+                + Text(unit.isEmpty ? "" : " \(unit)")
+                .font(.text(14, .semibold, relativeTo: .subheadline)).foregroundStyle(Palette.muted))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
@@ -217,6 +219,8 @@ struct SegmentedToggle: View {
     let options: [(value: String, label: String)]
     @Binding var selection: String
     var label: String
+    /// Stretch across the width on offer, the options sharing it equally.
+    var fill = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -230,8 +234,9 @@ struct SegmentedToggle: View {
                         .foregroundStyle(on ? Palette.ink : Palette.muted)
                         .lineLimit(1)
                         .fixedSize()
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, fill ? 4 : 14)
                         .padding(.vertical, 8)
+                        .frame(maxWidth: fill ? .infinity : nil)
                         .background {
                             if on {
                                 Capsule().fill(Palette.surface)

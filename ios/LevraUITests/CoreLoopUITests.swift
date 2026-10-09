@@ -16,18 +16,17 @@ final class CoreLoopUITests: XCTestCase {
     }
 
     func testCoreLoop() {
-        let name = ProcessInfo.processInfo.environment["SHOTS_NAME"] ?? "light"
         app.launchArguments += ["-resetSignIn"]
         app.launch()
 
         // Welcome, then a seeded account.
         XCTAssertTrue(app.buttons["Continue with Google"].waitForExistence(timeout: 10))
-        shot("01-welcome-\(name)")
+        shot("01-welcome")
         app.buttons["Alex"].tap()
 
         // Home.
         XCTAssertTrue(app.staticTexts["Friends"].waitForExistence(timeout: 10))
-        shot("02-home-\(name)")
+        shot("02-home")
 
         // Log.
         app.buttons["Log a workout"].firstMatch.tap()
@@ -35,12 +34,12 @@ final class CoreLoopUITests: XCTestCase {
         XCTAssertTrue(words.waitForExistence(timeout: 5))
         words.tap()
         words.typeText("benched 185 for 3 sets of 5, then ran 2 miles")
-        shot("03-log-\(name)")
+        shot("03-log")
         app.buttons["Log it"].tap()
 
         // Review: fix the weight in place, add a time to the run.
         XCTAssertTrue(app.staticTexts["Here's what we heard."].waitForExistence(timeout: 15))
-        shot("04-review-\(name)")
+        shot("04-review")
         let weight = app.textFields["Weight"].firstMatch
         XCTAssertEqual(weight.value as? String, "185 lbs")
         weight.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()  // caret at the end
@@ -49,13 +48,13 @@ final class CoreLoopUITests: XCTestCase {
         let time = app.textFields["Time"].firstMatch
         time.tap()
         time.typeText("18 min")
-        shot("05-review-edited-\(name)")
+        shot("05-review-edited")
         app.buttons["Save workout"].tap()
 
         // Day, with what was edited.
         XCTAssertTrue(app.staticTexts["Saved"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '190 lbs'")).firstMatch.exists)
-        shot("06-day-\(name)")
+        shot("06-day")
 
         // Back on Home, the workout leads.
         app.buttons["Back to Home"].tap()
@@ -67,18 +66,6 @@ final class CoreLoopUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Back to Home"].waitForExistence(timeout: 10))
         app.buttons["Home"].tap()
         XCTAssertTrue(app.buttons["Details"].waitForExistence(timeout: 10))
-        shot("07-home-after-\(name)")
-    }
-
-    private func shot(_ name: String) {
-        Thread.sleep(forTimeInterval: 0.6)  // let a push or a fade finish
-        let screenshot = XCUIScreen.main.screenshot()
-        let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
-        if let dir = ProcessInfo.processInfo.environment["SHOTS_DIR"] {
-            try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: dir).appendingPathComponent("\(name).png"))
-        }
+        shot("07-home-after")
     }
 }

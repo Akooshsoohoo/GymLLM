@@ -43,6 +43,13 @@ enum Days {
         return year == calendar.component(.year, from: now) ? text : "\(text) \(year)"
     }
 
+    private static let dayMonthFormat = formatter("d MMM")
+
+    /// "2026-10-05" -> "5 Oct".
+    static func dayMonth(_ value: String) -> String {
+        date(value).map(dayMonthFormat.string(from:)) ?? value
+    }
+
     /// "Morning", "Afternoon" or "Evening", as Home greets you on the site.
     static func greeting(at date: Date = Date()) -> String {
         let hour = Calendar.current.component(.hour, from: date)
@@ -64,6 +71,14 @@ enum Numbers {
             if text.hasSuffix(".0") { text.removeLast(2) }
             return text + "k"
         }
-        return n == n.rounded() ? String(format: "%.0f", n) : String(format: "%.1f", n)
+        return plain(n)
     }
+
+    /// 250.0 -> "250"; 12.5 -> "12.5". The site's fmt_num filter, without the commas.
+    static func plain(_ n: Double) -> String {
+        n == n.rounded() ? String(format: "%.0f", n) : String(format: "%.1f", n)
+    }
+
+    /// 5 -> "+5"; -2.5 -> "-2.5"; 0 -> "0".
+    static func signed(_ n: Double) -> String { (n > 0 ? "+" : "") + plain(n) }
 }

@@ -300,8 +300,9 @@ struct ReviewView: View {
     }
 }
 
-/// One lift or one cardio activity: the name, Remove, and its value pills.
-private struct ReviewRow<Pills: View>: View {
+/// One lift or one cardio activity: the name, Remove, and its value pills. The day
+/// editor uses the same rows.
+struct ReviewRow<Pills: View>: View {
     @Binding var name: String
     let placeholder: String
     let remove: () -> Void

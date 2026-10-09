@@ -218,7 +218,9 @@ struct DayStats: Codable, Hashable {
     let cardioMinutes: String
 }
 
-struct DayDetail: Codable {
+struct DayDetail: Codable, Identifiable {
+    var id: String { "\(date)#\(session)" }
+
     let date: String
     let session: Int
     let title: String
@@ -234,6 +236,11 @@ struct DayDetail: Codable {
     let reactions: Reactions?
     let previous: String?
     let next: String?
+    /// What the editor starts from, beside the lifts and cardio above.
+    let defaultTitle: String
+    let visibility: String
+    /// The day's weigh-in is edited along with the day's first workout only.
+    let editsBodyweight: Bool
 
     var isEmpty: Bool { lifts.isEmpty && cardio.isEmpty && bodyweight == nil }
 }

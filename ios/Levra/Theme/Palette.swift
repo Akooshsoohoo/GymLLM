@@ -20,6 +20,7 @@ enum Palette {
     static let dashed = Color(.dashed)
     static let track = Color(.track)
     static let disabled = Color(.disabled)
+    static let barPast = Color(.barPast)
 
     static let you = Color(.you)
     static let onYou = Color(.onYou)

@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// One of your own days: the poster, the numbers, body weight and what friends
-/// said. Where you land after saving. Mirrors templates/day.html at phone width;
-/// sharing and editing come in the next stage.
+/// said. Where you land after saving, and where a workout is edited and shared from.
+/// Mirrors templates/day.html at phone width.
 struct DayView: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var back
@@ -12,16 +12,23 @@ struct DayView: View {
     @State private var saved: Route.SavedKind?
     @State private var day: DayDetail?
     @State private var error: String?
+    @State private var pickingDate = false
+    @State private var editing: DayDetail?
+    @State private var sharing: DayDetail?
+    /// The tab this stack belongs to, for the back button.
+    private let backTitle: String
 
-    init(date: String, session: Int?, saved: Route.SavedKind?) {
+    init(date: String, session: Int?, saved: Route.SavedKind?, backTitle: String = "Home") {
         _date = State(initialValue: date)
         _session = State(initialValue: session)
         _saved = State(initialValue: saved)
+        self.backTitle = backTitle
     }
 
     private struct Key: Hashable {
         let date: String
         let session: Int?
+        let changes: Int
     }
 
     var body: some View {
@@ -44,7 +51,51 @@ struct DayView: View {
         .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
         .refreshable { await load() }
-        .task(id: Key(date: date, session: session)) { await load() }
+        .task(id: Key(date: date, session: session, changes: app.changes)) { await load() }
+        .sheet(isPresented: $pickingDate) { datePicker }
+        .sheet(item: $sharing) { day in
+            ShareSheet(day: day, name: app.firstName)
+        }
+        .fullScreenCover(item: $editing) { day in
+            DayEditView(day: day, cancel: { editing = nil }) { result in
+                editing = nil
+                edited(day, result)
+            }
+        }
+    }
+
+    /// Land on the workout wherever the edit left it. When it took the last thing
+    /// off the day, there is nothing here to look at: go back.
+    private func edited(_ day: DayDetail, _ result: DayEditResult) {
+        saved = nil
+        if !result.removed {
+            date = result.date
+            session = result.session
+        } else if day.sessions.count > 1 || result.weighInLeft || (day.bodyweight != nil && !day.editsBodyweight) {
+            session = nil
+        } else {
+            app.didChange()
+            back()
+            return
+        }
+        app.didChange()
+    }
+
+    private var datePicker: some View {
+        let selection = Binding<Date>(
+            get: { Days.date(date) ?? Date() },
+            set: { go(to: Days.iso($0)) }
+        )
+        return VStack(spacing: 8) {
+            DatePicker("Go to date", selection: selection, in: ...Date(), displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .tint(Palette.you)
+            Button("Done") { pickingDate = false }
+                .buttonStyle(.pill(.primary, height: 54, fill: true))
+        }
+        .padding(Metrics.gutter)
+        .presentationDetents([.medium, .large])
+        .presentationBackground(Palette.bg)
     }
 
     private func load() async {
@@ -59,6 +110,7 @@ struct DayView: View {
     }
 
     private func go(to other: String) {
+        guard other != date else { return }
         saved = nil
         session = nil
         date = other
@@ -72,10 +124,10 @@ struct DayView: View {
                 Button {
                     back()
                 } label: {
-                    Label("Home", systemImage: "chevron.left").labelStyle(.titleAndIcon)
+                    Label(backTitle, systemImage: "chevron.left").labelStyle(.titleAndIcon)
                 }
                 .buttonStyle(LinkButtonStyle(color: Palette.muted, size: 15))
-                .accessibilityLabel("Back to Home")
+                .accessibilityLabel("Back to \(backTitle)")
                 Spacer()
                 if let saved {
                     Badge(text: saved == .first ? "First workout logged" : "Saved", tone: .saved)
@@ -84,26 +136,41 @@ struct DayView: View {
             HStack {
                 step("chevron.left", to: day?.previous, label: "Previous day logged")
                 Spacer()
-                VStack(spacing: 2) {
-                    Text(Days.short(date))
-                        .font(.head(22))
-                        .foregroundStyle(Palette.ink)
-                    let relative = Days.label(date)
-                    if relative == "Today" || relative == "Yesterday" {
-                        Text(relative)
-                            .font(.text(13, .medium, relativeTo: .footnote))
-                            .foregroundStyle(Palette.muted)
-                    } else if relative != Days.short(date) {
-                        Text(String(date.prefix(4)))  // the year, when it isn't this one
-                            .font(.text(13, .medium, relativeTo: .footnote))
-                            .foregroundStyle(Palette.muted)
-                    }
+                Button {
+                    pickingDate = true
+                } label: {
+                    dateTitle
                 }
-                .accessibilityElement(children: .combine)
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(Days.label(date, long: true)). Pick a date")
                 Spacer()
                 step("chevron.right", to: day?.next, label: "Next day logged")
             }
         }
+    }
+
+    private var dateTitle: some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 6) {
+                Text(Days.short(date))
+                    .font(.head(22))
+                    .foregroundStyle(Palette.ink)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Palette.muted)
+            }
+            Group {
+                let relative = Days.label(date)
+                if relative == "Today" || relative == "Yesterday" {
+                    Text(relative)
+                } else if relative != Days.short(date) {
+                    Text(String(date.prefix(4)))  // the year, when it isn't this one
+                }
+            }
+            .font(.text(13, .medium, relativeTo: .footnote))
+            .foregroundStyle(Palette.muted)
+        }
+        .contentShape(Rectangle())
     }
 
     private func step(_ symbol: String, to other: String?, label: String) -> some View {
@@ -146,6 +213,16 @@ struct DayView: View {
             .padding(.vertical, 40)
         } else {
             if !day.lifts.isEmpty || !day.cardio.isEmpty { poster(day) }
+            HStack(spacing: 10) {
+                Button("Edit") { editing = day }
+                    .buttonStyle(.pill(.white, fill: true))
+                    .accessibilityLabel("Edit this workout")
+                if !day.lifts.isEmpty || !day.cardio.isEmpty {
+                    Button("Share") { sharing = day }
+                        .buttonStyle(.pill(.primary, fill: true))
+                        .accessibilityLabel("Share this workout")
+                }
+            }
             HStack(spacing: 10) {
                 StatTile(label: "Exercises", value: String(day.stats.exercises))
                 StatTile(label: "Reps", value: String(day.stats.reps))
@@ -239,7 +316,7 @@ struct DayView: View {
         }
     }
 
-    private static func symbol(for hint: String, lifts: Bool) -> String {
+    static func symbol(for hint: String, lifts: Bool) -> String {
         let hint = hint.lowercased()
         let cardio: [(String, String)] = [
             ("run", "figure.run"), ("walk", "figure.walk"), ("hike", "figure.hiking"),
