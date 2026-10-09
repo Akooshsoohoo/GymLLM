@@ -7,8 +7,11 @@ Sessions and Exercises tabs under a time range, charts, the week calendar and re
 days, search, an exercise's history, and a Day you can step through, edit, delete
 and share as a picture), and Friends (profile setup and edit, the feed, high fives
 and comments, finding people, requests, invites by pasted link or code, a friend's
-profile, Compare, and your own profile on Me). Record, routines and the rest of
-Settings come next.
+profile, Compare, and your own profile on Me). And the rest: Record on the centre tab (a timer and named
+blocks of notes, kept in a file on the phone so a recording survives the app being
+killed, read as one text on Stop), routines that pre-fill it, Settings (units,
+theme, sign out), names suggested on the manual form, hiding the getting-started
+card, and who can see a day, set on the Day itself.
 
 ## Build and run
 
@@ -44,9 +47,13 @@ workout, edits it on Review, saves, and checks the Day it lands on;
 day's date picker, share picture, editor and delete; `FriendsUITests` gives a high
 five, comments, searches People, opens a friend's profile and Compare, edits Alex's
 bio, then signs in as somebody new, sets up a profile and joins by Alex's pasted
-invite link. Each run adds one workout to Alex in the local database, renames one
-of the seeded ones to "Leg day", sets Alex's bio, leaves one new account behind as
-Alex's friend, and can leave a rest day behind if it stops halfway. To start clean,
+invite link; `RecordUITests` records a workout, kills the app and finds the
+recording still running, saves it and makes the day private and back, makes a
+routine, starts, renames and deletes it, picks a suggested name on the manual form,
+switches the theme, and hides the getting-started card as somebody new. Each run
+adds two workouts to Alex in the local database, renames one of the seeded ones to
+"Leg day", sets Alex's bio, leaves two new accounts behind (one as Alex's friend),
+and can leave a rest day or a routine behind if it stops halfway. To start clean,
 copy `instance/gymllm.db` aside before the first run and put it back afterwards.
 Set `TEST_RUNNER_SHOTS_DIR=/some/folder` to keep a screenshot of every screen, and
 run `xcrun simctl ui booted appearance dark` first for dark mode.
@@ -59,7 +66,7 @@ run `xcrun simctl ui booted appearance dark` first for dark mode.
     Levra/Theme       colours, fonts, shared components
     Levra/Features    one folder per screen
     Levra/Resources   colour sets, app icon, fonts
-    LevraUITests      the core loop, Progress and Day, and Friends, driven in the simulator
+    LevraUITests      the core loop, Progress and Day, Friends, and Record, driven in the simulator
     scripts           colors.py (colour sets from static/style.css), dev_server.py
 
 Colours are never written in a view. They are generated from the tokens at the top

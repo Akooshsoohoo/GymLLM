@@ -10,6 +10,7 @@ final class AppState {
     private(set) var phase: Phase = .launching
     private(set) var me: Me?
     let api = APIClient()
+    let recorder = RecordingStore()
     /// Goes up whenever a workout or a rest day changes, so screens already on
     /// show load again.
     private(set) var changes = 0
@@ -19,12 +20,22 @@ final class AppState {
     var firstName: String { me?.firstName ?? "" }
     var weightUnit: String { me?.weightUnit ?? "lbs" }
 
+    /// The workout being recorded on this device, unless it is somebody else's.
+    var recording: Recording? {
+        guard let recording = recorder.saved else { return nil }
+        if let email = me?.email, recording.owner != email { return nil }
+        return recording
+    }
+
     /// Picks up a saved sign-in, if there is one.
     func start() async {
         guard phase == .launching else { return }
         #if DEBUG
         // The UI tests start signed out however the last run ended.
-        if ProcessInfo.processInfo.arguments.contains("-resetSignIn") { TokenStore.clear() }
+        if ProcessInfo.processInfo.arguments.contains("-resetSignIn") {
+            TokenStore.clear()
+            recorder.discard()
+        }
         #endif
         guard let token = TokenStore.load() else {
             phase = .signedOut

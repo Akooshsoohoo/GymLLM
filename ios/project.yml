@@ -73,7 +73,7 @@ targets:
           - CFBundleURLSchemes:
               - $(GOOGLE_REVERSED_CLIENT_ID)
 
-  # Drives the core loop, Progress, Day and Friends in the simulator against the local server
+  # Drives the core loop, Progress, Day, Friends and Record in the simulator against the local server
   # (python ios/scripts/dev_server.py) and keeps a screenshot of every screen.
   LevraUITests:
     type: bundle.ui-testing
