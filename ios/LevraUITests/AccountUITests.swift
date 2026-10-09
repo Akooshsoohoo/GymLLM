@@ -20,6 +20,8 @@ final class AccountUITests: XCTestCase {
         // Welcome links to the terms and the privacy policy.
         let newPerson = app.buttons["New person"]
         XCTAssertTrue(newPerson.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Continue with Apple"].exists)
+        XCTAssertTrue(app.buttons["Continue with Google"].exists)
         XCTAssertTrue(app.links["Terms"].exists)
         XCTAssertTrue(app.links["Privacy Policy"].exists)
         shot("70-welcome-legal")

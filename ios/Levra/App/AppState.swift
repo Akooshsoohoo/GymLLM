@@ -62,6 +62,10 @@ final class AppState {
         finishSignIn(try await api.post("/auth/google", GoogleSignInRequest(idToken: token)))
     }
 
+    func signIn(appleIdentityToken token: String, name: String) async throws {
+        finishSignIn(try await api.post("/auth/apple", AppleSignInRequest(identityToken: token, name: name)))
+    }
+
     private func finishSignIn(_ auth: AuthResponse) {
         TokenStore.save(auth.token)
         api.token = auth.token

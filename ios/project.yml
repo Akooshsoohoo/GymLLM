@@ -45,6 +45,12 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
+    # Sign in with Apple. Needs a team in the Apple Developer Program on a real phone.
+    entitlements:
+      path: Levra/Levra.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     info:
       path: Levra/Info.plist
       properties:

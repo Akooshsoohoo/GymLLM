@@ -11,6 +11,7 @@ class ConfigError(RuntimeError):
     """Raised when a required environment variable is missing or invalid."""
 
 
+DEFAULT_APPLE_BUNDLE_ID = "com.levraapp.Levra"
 DEFAULT_SITE_LLM_PROVIDER = "groq"
 DEFAULT_SITE_LLM_DAILY_LIMIT = 20
 
@@ -110,6 +111,8 @@ def build_config(env: Mapping[str, str] | None = None) -> dict:
         "GOOGLE_OAUTH_CLIENT_SECRET": env.get("GOOGLE_CLIENT_SECRET", ""),
         # The iOS app's OAuth client: the audience its Google ID tokens must carry.
         "GOOGLE_IOS_CLIENT_ID": env.get("GOOGLE_IOS_CLIENT_ID", "").strip(),
+        # The iOS app's bundle ID: the audience its Sign in with Apple tokens must carry.
+        "APPLE_BUNDLE_ID": env.get("APPLE_BUNDLE_ID", "").strip() or DEFAULT_APPLE_BUNDLE_ID,
         "SITE_LLM": site_llm_config(env),
         "ADMIN_EMAILS": admin_emails(env),
         # Where the privacy policy and the terms tell people to write. Unset, they

@@ -1,16 +1,19 @@
+import AuthenticationServices
 import SwiftUI
 
-/// Signed out: what Levra does in one picture, then "Continue with Google".
+/// Signed out: what Levra does in one picture, then "Continue with Apple" and
+/// "Continue with Google".
 struct WelcomeView: View {
     @Environment(AppState.self) private var app
     @State private var busy = false
     @State private var error: String?
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         GeometryReader { screen in
             VStack(spacing: 0) {
                 photo
-                    .frame(height: min(470, screen.size.height * 0.5))
+                    .frame(height: min(470, screen.size.height * 0.42))
                 VStack(alignment: .leading, spacing: 14) {
                     BrandMark()
                     Text("Log your workout like you'd text a friend.")
@@ -25,6 +28,15 @@ struct WelcomeView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 12)
                     if let error { ErrorBanner(message: error) }
+                    SignInWithAppleButton(.continue) { request in
+                        request.requestedScopes = [.fullName, .email]
+                    } onCompletion: { result in
+                        continueWithApple(result)
+                    }
+                    .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
+                    .frame(height: 56)
+                    .clipShape(Capsule())
+                    .id(scheme)  // the button keeps its first style otherwise
                     Button(action: continueWithGoogle) {
                         HStack(spacing: 10) {
                             Image(.googleMark)
@@ -36,9 +48,11 @@ struct WelcomeView: View {
                         }
                     }
                     .buttonStyle(.pill(.primary, height: 56, fill: true))
-                    Text("Free. Private until you add friends.")
+                    Text("Free. Private until you add friends. Apple and Google sign-ins are separate accounts.")
                         .font(.text(13, relativeTo: .footnote))
                         .foregroundStyle(Palette.muted)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity)
                     legal
                     #if DEBUG
@@ -131,6 +145,26 @@ struct WelcomeView: View {
         run {
             guard let token = try await GoogleAuth.idToken() else { return }
             try await app.signIn(googleIDToken: token)
+        }
+    }
+
+    /// What the Apple sheet came back with. Backing out of it is not an error.
+    private func continueWithApple(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let token = credential.identityToken.flatMap({ String(data: $0, encoding: .utf8) })
+            else {
+                error = APIError.unreadable.message
+                return
+            }
+            let name = credential.fullName.map {
+                PersonNameComponentsFormatter.localizedString(from: $0, style: .default)
+            } ?? ""
+            run { try await app.signIn(appleIdentityToken: token, name: name) }
+        case .failure(let failure):
+            if (failure as? ASAuthorizationError)?.code == .canceled { return }
+            error = "Apple sign-in didn't work. Try again."
         }
     }
 

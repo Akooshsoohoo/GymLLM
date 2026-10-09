@@ -11,7 +11,8 @@ profile, Compare, and your own profile on Me). And the rest: Record on the centr
 blocks of notes, kept in a file on the phone so a recording survives the app being
 killed, read as one text on Stop), routines that pre-fill it, Settings (units,
 theme, sign out), names suggested on the manual form, hiding the getting-started
-card, and who can see a day, set on the Day itself. For the App Store: "Delete account"
+card, and who can see a day, set on the Day itself. For the App Store: Sign in with Apple
+(an account of its own when the email is hidden, not linked to a Google one), "Delete account"
 in Settings, links to the site's terms and privacy policy on Welcome and in Settings,
 and the site's muscle icons on the Day and the share picture.
 

@@ -268,3 +268,9 @@ struct DevSignIn: Encodable {
 struct GoogleSignInRequest: Encodable {
     let idToken: String
 }
+
+struct AppleSignInRequest: Encodable {
+    let identityToken: String
+    /// Apple gives the name only the first time someone signs in.
+    let name: String
+}

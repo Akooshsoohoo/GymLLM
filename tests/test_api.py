@@ -1,10 +1,14 @@
+import base64
+import json
 import time
 from datetime import date
 
 import pytest
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from sqlalchemy import or_, select, text
 
-from gymllm import account, auth, create_app, migrate, quota, rest, routines, social
+from gymllm import account, apple_auth, auth, create_app, migrate, quota, rest, routines, social
 from gymllm.extensions import db
 from gymllm.llm.client import BadOutputError, RateLimitError
 from gymllm.models import (
@@ -197,6 +201,119 @@ def test_google_sign_in_needs_a_token_and_a_configured_client(client):
     google = google_app({}).test_client()
     for body in ({}, {"id_token": ""}, {"id_token": 5}, ["x"]):
         assert google.post("/api/v1/auth/google", json=body).status_code == 400
+
+
+def apple_app(claims=None, error=None):
+    def verify(token, audience):
+        assert audience == "com.levraapp.Levra"
+        if error:
+            raise error
+        return claims
+
+    return create_app({**base_test_config(), "APPLE_ID_TOKEN_VERIFIER": verify})
+
+
+RELAY = "x7k2m9@privaterelay.appleid.com"
+
+
+def test_apple_sign_in_issues_a_working_token_for_the_address_apple_gives():
+    app = apple_app({"email": RELAY, "email_verified": "true", "sub": "001.abc"})
+    client = app.test_client()
+    r = client.post(
+        "/api/v1/auth/apple", json={"identity_token": "from-apple", "name": " tess  tester "}
+    )
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["user"]["email"] == RELAY and body["user"]["first_name"] == "Tess"
+    assert body["user"]["profile"] is None
+    me = client.get("/api/v1/me", headers={"Authorization": f"Bearer {body['token']}"})
+    assert me.status_code == 200 and me.get_json() == body["user"]
+    # Later sign-ins come without a name: Apple only gives it once.
+    again = client.post("/api/v1/auth/apple", json={"identity_token": "from-apple"})
+    assert again.status_code == 200 and again.get_json()["user"]["email"] == RELAY
+
+
+def test_apple_sign_in_with_a_shared_address_is_that_addresss_account(add_workout):
+    """Someone who lets Apple share their real address lands in the account that
+    address already has; a relay address never matches one."""
+    app = apple_app({"email": USER, "email_verified": True})
+    with app.app_context():
+        db.session.add(Workout(user_email=USER, date=TODAY, exercise="squat"))
+        db.session.commit()
+    client = app.test_client()
+    token = client.post("/api/v1/auth/apple", json={"identity_token": "x"}).get_json()["token"]
+    day = client.get(f"/api/v1/day/{TODAY}", headers={"Authorization": f"Bearer {token}"})
+    assert day.status_code == 200 and day.get_json()["lifts"][0]["exercise"] == "squat"
+    with app.app_context():
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.mark.parametrize(
+    "claims,error,status,code",
+    [
+        (None, ValueError("wrong audience"), 401, "invalid_token"),
+        (None, RuntimeError("no network"), 503, "apple_unavailable"),
+        ({"email": RELAY, "email_verified": "false"}, None, 401, "email_unverified"),
+        ({"email": RELAY}, None, 401, "email_unverified"),
+        ({"email_verified": "true", "sub": "001.abc"}, None, 401, "email_unverified"),
+    ],
+)
+def test_apple_sign_in_refusals(claims, error, status, code):
+    client = apple_app(claims, error).test_client()
+    r = client.post("/api/v1/auth/apple", json={"identity_token": "x"})
+    assert r.status_code == status and r.get_json()["error"]["code"] == code
+    assert "token" not in r.get_json()
+
+
+def test_apple_sign_in_needs_a_token():
+    client = apple_app({}).test_client()
+    for body in ({}, {"identity_token": ""}, {"identity_token": 5}, ["x"]):
+        assert client.post("/api/v1/auth/apple", json=body).status_code == 400
+    r = client.post("/api/v1/auth/apple", json={"identity_token": "x", "name": 5})
+    assert r.status_code == 400
+
+
+def apple_token(key, claims, kid="key-1", alg="RS256"):
+    """A JWT as Apple would sign it, with our own key standing in for theirs."""
+    part = lambda data: base64.urlsafe_b64encode(json.dumps(data).encode()).rstrip(b"=")  # noqa: E731
+    signed = part({"alg": alg, "kid": kid}) + b"." + part(claims)
+    signature = key.sign(signed, padding.PKCS1v15(), hashes.SHA256())
+    return (signed + b"." + base64.urlsafe_b64encode(signature).rstrip(b"=")).decode()
+
+
+def test_apple_identity_token_verification(monkeypatch):
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    numbers = key.public_key().public_numbers()
+    b64 = lambda n: base64.urlsafe_b64encode(n.to_bytes((n.bit_length() + 7) // 8, "big")).decode()  # noqa: E731
+    jwks = {"key-1": {"kty": "RSA", "kid": "key-1", "n": b64(numbers.n), "e": b64(numbers.e)}}
+    monkeypatch.setattr(apple_auth, "fetch_keys", lambda: jwks)
+    monkeypatch.setattr(apple_auth, "_keys", {})
+    good = {
+        "iss": "https://appleid.apple.com",
+        "aud": "com.levraapp.Levra",
+        "exp": int(time.time()) + 600,
+        "email": RELAY,
+        "email_verified": "true",
+    }
+    verify = lambda token: apple_auth.verify_identity_token(token, "com.levraapp.Levra")  # noqa: E731
+
+    assert verify(apple_token(key, good))["email"] == RELAY
+    for bad in (
+        apple_token(other, good),  # not Apple's signature
+        apple_token(key, good, kid="key-2"),  # a key Apple doesn't publish
+        apple_token(key, good, alg="none"),
+        apple_token(key, {**good, "iss": "https://example.com"}),
+        apple_token(key, {**good, "aud": "com.someone.Else"}),
+        apple_token(key, {**good, "exp": int(time.time()) - 600}),
+        apple_token(key, {k: v for k, v in good.items() if k != "exp"}),
+        apple_token(key, good).rsplit(".", 1)[0] + ".AAAA",
+        "not-a-token",
+        "a.b.c",
+    ):
+        with pytest.raises(ValueError):
+            verify(bad)
 
 
 def test_dev_auth_issues_a_token_for_a_seeded_account(app, client):
