@@ -7,7 +7,7 @@ from functools import wraps
 from flask import current_app, jsonify, request
 from werkzeug.exceptions import HTTPException
 
-from .. import auth
+from .. import auth, social
 from ..extensions import db
 
 
@@ -60,6 +60,20 @@ def token_required(view):
         claims, why = auth.api_token_claims()
         if claims is None:
             raise ApiError(401, *TOKEN_ERRORS[why])
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+def profile_required(view):
+    """A valid token and a profile; otherwise 403 profile_required, which the app
+    turns into its profile setup screen. Mirrors social_routes.profile_required."""
+
+    @wraps(view)
+    @token_required
+    def wrapped(*args, **kwargs):
+        if social.get_profile(auth.current_user_email()) is None:
+            raise ApiError(403, "profile_required", "Set up your profile first.")
         return view(*args, **kwargs)
 
     return wrapped

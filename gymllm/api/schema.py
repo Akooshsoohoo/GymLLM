@@ -309,3 +309,82 @@ def exercise(parts: dict) -> dict:
             for r in parts["rows"]
         ],
     }
+
+
+# --- Friends --------------------------------------------------------------------
+
+
+def profile_week_day(d: dict) -> dict:
+    """A day of the week strip on a profile. Unlike week_day(), no weigh-in."""
+    keys = ("date", "letter", "day", "logged", "today", "future", "exercises", "sets")
+    return {**{k: d[k] for k in keys}, "cardio": d["cardio_text"]}
+
+
+def favourite(f: dict) -> dict:
+    """One of stats.top_exercises(): a name and counts, no rows."""
+    return {k: f[k] for k in ("exercise", "entries", "sessions", "best", "last")}
+
+
+def pr(r: dict) -> dict:
+    """A best lift from stats.personal_records(), which hands back whole rows: only
+    what the lift was and what it beat goes out."""
+    return {
+        "exercise": r["exercise"],
+        "date": r["date"],
+        "session": r.get("session", 0),
+        "weight": r["weight"],
+        "value": r["value"],
+        "previous": r["previous"],
+    }
+
+
+def activity(event: dict, seen_at: datetime | None) -> dict:
+    """A high five or comment someone left on one of your workouts. `new` since you
+    last opened Friends."""
+    return {
+        "kind": event["kind"],
+        "who": person(event["who"]),
+        "date": event["date"],
+        "session": event["session"],
+        "at": timestamp(event["at"]),
+        "body": event["body"],
+        "new": seen_at is None or event["at"] > seen_at,
+    }
+
+
+def _best(entry: dict) -> dict:
+    return {k: entry[k] for k in ("exercise", "sessions", "last", "value", "unit", "text")}
+
+
+def compare(data: dict) -> dict:
+    """You beside a friend, as compare.compare() builds it from visible_data()."""
+    return {
+        "empty": data["empty"],
+        "totals": [
+            {
+                "label": t["label"],
+                "mine": t["mine"],
+                "theirs": t["theirs"],
+                "lead": t["lead"],
+                "units": list(t["units"]) if t.get("units") else None,
+            }
+            for t in data["totals"]
+        ],
+        "shared": [
+            {
+                "exercise": s["exercise"],
+                "mine": _best(s["mine"]),
+                "theirs": _best(s["theirs"]),
+                "lead": s["lead"],
+                "diff": s["diff"],
+                "unit": s["unit"],
+            }
+            for s in data["shared"]
+        ],
+        "favourites": {
+            who: [{**favourite(f), "shared": f["shared"]} for f in data["favourites"][who]]
+            for who in ("mine", "theirs")
+        },
+        "muscles": [dict(m) for m in data["muscles"]],
+        "weekly": [dict(w) for w in data["weekly"]],
+    }
