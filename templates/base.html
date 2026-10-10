@@ -33,7 +33,8 @@
         document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.content = t === "dark" ? "#16130F" : "#F5F1EA"; });
     })();
     </script>
-    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='brand/levra-favicon.svg') }}" type="image/svg+xml" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="{{ url_for('static', filename='brand/levra-favicon-dark.svg') }}" type="image/svg+xml" media="(prefers-color-scheme: dark)">
     <link rel="icon" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32" type="image/png">
     <link rel="icon" href="{{ url_for('static', filename='favicon-16.png') }}" sizes="16x16" type="image/png">
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
